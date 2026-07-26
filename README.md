@@ -1,10 +1,10 @@
 # Wallfacers prototype
 
-A browser prototype for the Wallfacer / Wallbreaker deduction game, supporting 5–7 players.
+A browser prototype for the Wallfacer / Wallbreaker deduction game, supporting flexible player counts.
 
 ## Current rules implemented
 
-- Player counts: 5 players = 1 Wallfacer, 1 Wallbreaker, 3 Loyal; 6 players = 2 Wallfacers, 2 Wallbreakers, 2 Loyal; 7 players = 2 Wallfacers, 2 Wallbreakers, 3 Loyal.
+- The host chooses the number of Wallfacers in the lobby; the same number of Wallbreakers is assigned automatically, and all remaining players are Loyal. Any room size with at least two players can start.
 - Four bounded dials: orange, yellow, blue, red; each ranges from 0 to 9.
 - Each Wallfacer has a secret three-dial exact-value plan.
 - Each round, every player privately selects one dial and one change: -2, -1, 0, +1, or +2.

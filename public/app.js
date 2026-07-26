@@ -1,7 +1,6 @@
 const COLORS = ["orange", "yellow", "blue", "red"];
 const EFFECTS = [-2,-1,0,1,2];
 const MAX_ROUNDS = 10;
-const PLAYER_COUNTS = {5:{wallfacers:1,wallbreakers:1},6:{wallfacers:2,wallbreakers:2},7:{wallfacers:2,wallbreakers:2}};
 
 const app = document.querySelector('#app');
 let peer = null;
@@ -35,7 +34,7 @@ function broadcast(){
 }
 function publicState(){
   return {
-    code:game.code, phase:game.phase, round:game.round, dials:game.dials, playerCount:game.playerCount,
+    code:game.code, phase:game.phase, round:game.round, dials:game.dials, playerCount:game.players.length, wallfacerCount:game.wallfacerCount,
     players:game.players.map(p=>({id:p.id,name:p.name,ready:!!game.selections[p.id]})),
     adminPlaying:game.adminPlaying, paused:game.paused, breakerName:game.breakerName,
     revealed:game.revealed, winner:game.winner, reason:game.reason
@@ -57,7 +56,7 @@ function roleSvg(kind){
 }
 
 let game = freshGame();
-function freshGame(){ return {code:'',phase:'lobby',round:1,playerCount:7,dials:{orange:5,yellow:5,blue:5,red:5},players:[],roles:{},selections:{},adminPlaying:false,paused:false,breakerName:'',revealed:null,winner:null,reason:''}; }
+function freshGame(){ return {code:'',phase:'lobby',round:1,wallfacerCount:1,dials:{orange:5,yellow:5,blue:5,red:5},players:[],roles:{},selections:{},adminPlaying:false,paused:false,breakerName:'',revealed:null,winner:null,reason:''}; }
 
 function createPlan(){
   const ignored = COLORS[Math.floor(Math.random()*COLORS.length)];
@@ -67,15 +66,15 @@ function createPlan(){
 }
 function assignRoles(){
   const players=[...game.players];
-  const setup=PLAYER_COUNTS[game.playerCount];
-  if(!setup || players.length!==game.playerCount) throw new Error(`Exactly ${game.playerCount} players are required.`);
+  const wallfacerCount=Math.max(1,Math.min(game.wallfacerCount,Math.floor(players.length/2)));
+  if(players.length<2) throw new Error('At least 2 players are required.');
   const shuffled=[...players].sort(()=>Math.random()-.5);
-  const wallfacers=shuffled.slice(0,setup.wallfacers);
-  const wallbreakers=shuffled.slice(setup.wallfacers,setup.wallfacers+setup.wallbreakers);
+  const wallfacers=shuffled.slice(0,wallfacerCount);
+  const wallbreakers=shuffled.slice(wallfacerCount,wallfacerCount*2);
   game.roles={};
   wallfacers.forEach(p=>{ game.roles[p.id]={kind:'wallfacer',label:'Wallfacer',plan:createPlan()}; });
   wallbreakers.forEach((p,i)=>{ game.roles[p.id]={kind:'wallbreaker',label:'Wallbreaker',targetId:wallfacers[i % wallfacers.length].id}; });
-  for(const p of shuffled.slice(setup.wallfacers+setup.wallbreakers)) game.roles[p.id]={kind:'loyal',label:'Loyal'};
+  for(const p of shuffled.slice(wallfacerCount*2)) game.roles[p.id]={kind:'loyal',label:'Loyal'};
 }
 function checkWallfacerWin(){
   for(const p of game.players){
@@ -167,10 +166,9 @@ function handleClientMessage(msg){
 
 async function createRoom(){
   myName=document.querySelector('#name')?.value.trim() || '';
-  const playerCount=Number(document.querySelector('#player-count').value);
   localView.error=''; const code=fourDigit();
   try{
-    await setupPeerAsHost(code); isHost=true; game=freshGame(); game.code=code; game.playerCount=playerCount; game.adminPlaying=false;
+    await setupPeerAsHost(code); isHost=true; game=freshGame(); game.code=code; game.adminPlaying=false;
     saveHost();
     localView.screen='lobby'; localView.state=publicState(); render();
   }catch(e){ localView.error='Could not create room. Try again.'; render(); }
@@ -194,7 +192,7 @@ async function copyInvite(){
 async function resumeHost(){
   const saved=JSON.parse(localStorage.getItem('wallfacers-host')||'null');
   if(!saved?.code||!saved.game) return;
-  try { await setupPeerAsHost(saved.code); isHost=true; game=saved.game; localView.screen=game.phase==='lobby'?'lobby':'game'; localView.state=publicState(); render(); }
+  try { await setupPeerAsHost(saved.code); isHost=true; game=saved.game; game.wallfacerCount ||= 1; localView.screen=game.phase==='lobby'?'lobby':'game'; localView.state=publicState(); render(); }
   catch { clearSession(); }
 }
 async function resumeClient(){
@@ -236,9 +234,10 @@ function omniscientHtml(state){
   return `<section class="panel stack omniscient"><div class="section-title">${roleSvg('omniscient')}<div><strong>Observer view</strong><div class="small">All hidden information is visible to the host.</div></div></div><div class="role-grid">${state.players.map(p=>{ const r=game.roles[p.id]; const plan=r?.plan?.values; return `<div class="role-card">${roleSvg(r?.kind)}<div><strong>${escapeHtml(p.name)}</strong><div class="small">${escapeHtml(r?.label||'Unassigned')}${r?.targetId?` · targets ${escapeHtml(game.players.find(x=>x.id===r.targetId)?.name||'Unknown')}`:''}</div>${plan?`<div class="small">${Object.entries(plan).map(([c,v])=>`${c} ${v}`).join(' · ')}</div>`:''}</div></div>`; }).join('')}</div></section>`;
 }
 function home(){ const inviteCode=new URLSearchParams(location.search).get('room')?.match(/^\d{4}$/)?.[0]||''; return `<div class="shell"><div class="topbar"><div class="brand">WALLFACERS</div></div><section class="panel stack"><h2>Join game</h2><input id="name" placeholder="Name" value="${escapeHtml(myName)}"><input id="code" inputmode="numeric" maxlength="4" placeholder="4-digit room code" value="${inviteCode}"><button id="join">Join room</button></section>${localView.error?`<p class="notice">${escapeHtml(localView.error)}</p>`:''}</div>`; }
-function hostPage(){ return `<div class="shell"><div class="topbar"><div class="brand">WALLFACERS</div></div><section class="panel stack"><h2>Start a game</h2><label>Players<select id="player-count"><option value="5">5 players · 1 Wallfacer</option><option value="6">6 players · 2 Wallfacers</option><option value="7" selected>7 players · 2 Wallfacers</option></select></label><button id="create">Create room</button></section>${localView.error?`<p class="notice">${escapeHtml(localView.error)}</p>`:''}</div>`; }
+function hostPage(){ return `<div class="shell"><div class="topbar"><div class="brand">WALLFACERS</div></div><section class="panel stack"><h2>Start a game</h2><p class="small">Create a room, then choose the role balance after players join.</p><button id="create">Create room</button></section>${localView.error?`<p class="notice">${escapeHtml(localView.error)}</p>`:''}</div>`; }
 function lobby(state){
-  return `<div class="shell"><div class="topbar"><div><div class="brand">WALLFACERS</div><div class="meta">Room · ${state.playerCount} players</div></div><div class="code">${state.code}</div></div><section class="panel stack"><div class="players">${state.players.map(p=>`<div class="player"><span>${escapeHtml(p.name)}</span><span>${p.ready?'✓':''}</span></div>`).join('')||'<div class="small">Waiting for players…</div>'}</div>${isHost?`<button class="secondary" id="copy-invite">Copy invite link</button><button id="start" ${state.players.length===state.playerCount?'':'disabled'}>Start game (${state.players.length}/${state.playerCount})<\/button><button class="secondary" id="leave">End game</button>`:`<button class="secondary" id="leave">Leave game</button>`}</section>${localView.error?`<p class="notice">${escapeHtml(localView.error)}</p>`:''}</div>`;
+  const maxRoles=Math.max(1,Math.floor(state.players.length/2));
+  return `<div class="shell"><div class="topbar"><div><div class="brand">WALLFACERS</div><div class="meta">Room · ${state.playerCount} players</div></div><div class="code">${state.code}</div></div><section class="panel stack"><div class="players">${state.players.map(p=>`<div class="player"><span>${escapeHtml(p.name)}</span><span>${p.ready?'✓':''}</span></div>`).join('')||'<div class="small">Waiting for players…</div>'}</div>${isHost?`<button class="secondary" id="copy-invite">Copy invite link</button><label>Wallfacers and Wallbreakers: <strong>${Math.min(state.wallfacerCount,maxRoles)}</strong><input id="role-count" type="range" min="1" max="${maxRoles}" value="${Math.min(state.wallfacerCount,maxRoles)}" ${state.players.length<2?'disabled':''}></label><button id="start" ${state.players.length>=2?'':'disabled'}>Start game (${state.players.length} players)<\/button><button class="secondary" id="leave">End game</button>`:`<button class="secondary" id="leave">Leave game</button>`}</section>${localView.error?`<p class="notice">${escapeHtml(localView.error)}</p>`:''}</div>`;
 }
 function gameScreen(state,role){
   const mine=state.players.find(p=>p.id===myPlayerId);
@@ -271,6 +270,7 @@ function bind(){
   document.querySelector('#create')?.addEventListener('click',createRoom);
   document.querySelector('#join')?.addEventListener('click',joinRoom);
   document.querySelector('#start')?.addEventListener('click',startGame);
+  document.querySelector('#role-count')?.addEventListener('input',e=>{ game.wallfacerCount=Number(e.target.value); broadcast(); });
   document.querySelector('#submit')?.addEventListener('click',submitSelection);
   document.querySelectorAll('input[name="dial"]').forEach(el=>el.addEventListener('change',()=>{ pendingSelection.color=el.value; render(); }));
   document.querySelectorAll('input[name="effect"]').forEach(el=>el.addEventListener('change',()=>{ pendingSelection.effect=Number(el.value); render(); }));
