@@ -1,5 +1,9 @@
 {
-  "rewrites": [
-    { "source": "/host", "destination": "/index.html" }
+  "builds": [
+    { "src": "public/**", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/host", "dest": "/index.html" },
+    { "handle": "filesystem" }
   ]
 }
