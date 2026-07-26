@@ -1,9 +1,13 @@
 {
   "builds": [
-    { "src": "public/**", "use": "@vercel/static" }
+    { "src": "public/index.html", "use": "@vercel/static" },
+    { "src": "public/app.js", "use": "@vercel/static" },
+    { "src": "public/styles.css", "use": "@vercel/static" }
   ],
   "routes": [
     { "src": "/host", "dest": "/index.html" },
-    { "handle": "filesystem" }
+    { "src": "/app.js", "dest": "/app.js" },
+    { "src": "/styles.css", "dest": "/styles.css" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
