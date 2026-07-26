@@ -1,0 +1,9 @@
+{
+  "name": "wallfacers-prototype",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node tests.mjs"
+  }
+}

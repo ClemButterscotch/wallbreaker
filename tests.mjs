@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+const clamp=n=>Math.max(0,Math.min(9,n));
+assert.equal(clamp(-2),0);
+assert.equal(clamp(11),9);
+assert.equal(clamp(5),5);
+const plan={orange:2,blue:7,red:5};
+const good={orange:3,blue:6,red:5};
+const bad={orange:4,blue:6,red:5};
+assert.ok(Object.entries(plan).every(([c,v])=>Math.abs(good[c]-v)<=1));
+assert.ok(!Object.entries(plan).every(([c,v])=>Math.abs(bad[c]-v)<=1));
+console.log('tests passed');
