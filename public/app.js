@@ -256,6 +256,7 @@ function gameScreen(state,role){
   </div>`;
 }
 function breakModal(){ return `<div class="modal"><div class="modal-card stack"><h2 class="role-title">Break the wall</h2><p class="small">Choose exactly three dials and guess each target.</p>${COLORS.map(c=>`<div class="row"><label style="min-width:110px"><input class="break-dial" type="checkbox" value="${c}" style="width:auto"> ${c}</label><input id="guess-${c}" type="number" min="0" max="9" value="5" style="max-width:100px"></div>`).join('')}<button class="danger" id="send-break">Submit final guess</button><button class="secondary" id="close-modal">Cancel</button></div></div>`; }
+function legalNotice(){ return '<footer class="legal">Unofficial, noncommercial fan project. Not affiliated with or endorsed by the rights holders of <em>The Three-Body Problem</em>.</footer>'; }
 function render(){
   const s=localView.state;
   if(localView.screen==='home') app.innerHTML=home();
@@ -263,6 +264,7 @@ function render(){
   else if(localView.screen==='connecting') app.innerHTML='<div class="shell"><div class="panel">Connecting…</div></div>';
   else if(localView.screen==='lobby') app.innerHTML=lobby(s);
   else app.innerHTML=gameScreen(s,localView.role);
+  app.insertAdjacentHTML('beforeend',legalNotice());
   bind();
 }
 function bind(){

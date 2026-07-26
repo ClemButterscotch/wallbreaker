@@ -52,3 +52,4 @@ button:disabled { opacity:.45; cursor:not-allowed; }
 .notice { padding:12px; border-radius:12px; background:#272b34; }
 .win { font-size:1.8rem; font-weight:800; }
 hr { border:0; border-top:1px solid #2a2e36; margin:8px 0; }
+.legal { max-width:920px; margin:0 auto; padding:0 20px 20px; color:#717784; font-size:.76rem; line-height:1.4; text-align:center; }
