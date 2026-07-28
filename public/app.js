@@ -272,11 +272,11 @@ function maxEffectFor(role,color){
 function dialCardHtml(c,state,role){
   const selected=pendingSelection.color===c;
   const max=maxEffectFor(role,c);
-  return `<div class="dial ${c} dial-card ${selected?'selected':''}"><button class="dial-action adjust" data-color="${c}" data-effect="${max===1?-1:-2}" aria-label="Decrease ${c}">${max===1?'−1':'−2'}</button><button class="dial-action dial-select" data-color="${c}" aria-label="Select ${c}"><span class="name">${c}</span><span class="value">${state.dials[c]}</span></button><button class="dial-action adjust" data-color="${c}" data-effect="${max}" aria-label="Increase ${c}">+${max}</button></div>`;
+  return `<div class="dial ${c} dial-card ${selected?'selected':''}"><div class="adjust-row"><button class="dial-action adjust" data-color="${c}" data-effect="${max===2?-2:''}" ${max===1?'disabled':''} aria-label="Decrease ${c} by 2">−2</button><button class="dial-action adjust" data-color="${c}" data-effect="-1" aria-label="Decrease ${c} by 1">−1</button></div><button class="dial-action dial-select" data-color="${c}" aria-label="Select ${c} with no change"><span class="name">${c}</span><span class="value">${state.dials[c]}</span></button><div class="adjust-row"><button class="dial-action adjust" data-color="${c}" data-effect="1" aria-label="Increase ${c} by 1">+1</button><button class="dial-action adjust" data-color="${c}" data-effect="${max===2?2:''}" ${max===1?'disabled':''} aria-label="Increase ${c} by 2">+2</button></div></div>`;
 }
 function movePanelHtml(state,role,current){
   const chosen=pendingSelection.color?`${pendingSelection.color} ${pendingSelection.effect>0?'+':''}${pendingSelection.effect}`:'Select a dial and adjustment';
-  const sophon=`<div class="sophon-card">${roleSvg('civilian')}<div><strong>Special insight</strong><div class="small">Optional private information for this round.</div></div><label class="sophon-check"><input id="sophon-see" type="checkbox" ${pendingSelection.sophonSee?'checked':''}><span>Receive private round information</span></label></div>`;
+  const sophon=role?.kind==='wallbreaker'?`<div class="sophon-card">${roleSvg('civilian')}<div><strong>Special insight</strong><div class="small">Optional private information for this round.</div></div><label class="sophon-check"><input id="sophon-see" type="checkbox" ${pendingSelection.sophonSee?'checked':''}><span>Receive private round information</span></label></div>`:'';
   return `<section class="panel stack move-panel"><div class="move-summary"><strong>Your move</strong><span>${chosen}</span></div>${sophon}<button id="submit" ${state.paused?'disabled':''}>${current?'Update selection':'Lock selection'}</button><div class="small">${state.players.filter(p=>p.ready).length}/${state.players.length} committed</div></section>`;
 }
 function home(){ const inviteCode=new URLSearchParams(location.search).get('room')?.match(/^\d{6}$/)?.[0]||''; return `<div class="shell"><div class="topbar"><div class="brand">WALLFACERS</div></div><section class="panel stack"><h2>Join game</h2><input id="name" placeholder="Name" value="${escapeHtml(myName)}"><input id="code" inputmode="numeric" maxlength="6" placeholder="6-digit room code" value="${inviteCode}"><button id="join">Join room</button></section>${localView.error?`<p class="notice">${escapeHtml(localView.error)}</p>`:''}</div>`; }
@@ -318,7 +318,7 @@ function bind(){
   document.querySelector('#start')?.addEventListener('click',startGame);
   document.querySelector('#role-count')?.addEventListener('input',e=>{ game.wallfacerCount=Number(e.target.value); broadcast(); });
   document.querySelector('#submit')?.addEventListener('click',submitSelection);
-  document.querySelectorAll('.dial-select').forEach(el=>el.addEventListener('click',()=>{ pendingSelection.color=el.dataset.color; pendingSelection.effect=null; render(); }));
+  document.querySelectorAll('.dial-select').forEach(el=>el.addEventListener('click',()=>{ pendingSelection.color=el.dataset.color; pendingSelection.effect=0; render(); }));
   document.querySelectorAll('.dial-action.adjust').forEach(el=>el.addEventListener('click',()=>{ pendingSelection.color=el.dataset.color; pendingSelection.effect=Number(el.dataset.effect); render(); }));
   document.querySelector('#sophon-see')?.addEventListener('change',el=>{ pendingSelection.sophonSee=el.target.checked; render(); });
   document.querySelector('#show-role')?.addEventListener('click',()=>{localView.modal='role';render();});

@@ -29,10 +29,12 @@ button:disabled { opacity:.45; cursor:not-allowed; }
 .dial-group { display:grid; gap:8px; }
 .group-label { color:#a1a1aa; font-size:.78rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; padding:0 4px; }
 .dials { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
-.dial-card { display:grid; grid-template-rows:24px 1fr 24px; padding:8px; min-height:176px; }
+.dial-card { display:grid; grid-template-rows:34px 1fr 34px; padding:8px; min-height:176px; }
+.adjust-row { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
 .dial-card.selected { outline:3px solid #fff; }
 .dial-action { border:0; background:transparent; color:inherit; padding:0; min-height:22px; font-weight:800; }
 .dial-action.adjust { font-size:.78rem; opacity:.85; }
+.dial-action.adjust:disabled { visibility:hidden; }
 .dial-action.adjust:hover { background:rgba(255,255,255,.12); border-radius:8px; }
 .dial-select { display:grid; place-content:center; gap:2px; text-align:center; }
 .dial-select .value { font-size:3.3rem; font-weight:800; line-height:1; }
