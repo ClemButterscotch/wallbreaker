@@ -125,6 +125,7 @@ function setupPeerAsHost(code){
     peer.on('connection',conn=>{
       conn.on('data',msg=>handleHostMessage(conn,msg));
       conn.on('close',()=>{ const id=[...conns].find(([,c])=>c===conn)?.[0]; if(id){conns.delete(id);} });
+      conn.on('error',()=>{});
     });
   });
 }
@@ -135,9 +136,9 @@ function setupPeerAsClient(){
 }
 function handleHostMessage(conn,msg){
   if(msg.type==='join'){
-    if(game.phase!=='lobby'){ send(conn,{type:'error',message:'Game already started.'}); return; }
     const existing=game.players.find(p=>p.id===msg.clientId);
     if(existing){ conns.set(msg.clientId,conn); send(conn,{type:'joined',playerId:msg.clientId}); send(conn,{type:'state',state:publicState(),role:roleFor(existing)}); return; }
+    if(game.phase!=='lobby'){ send(conn,{type:'error',message:'Game already started.'}); return; }
     if(game.players.some(p=>p.name.toLowerCase()===msg.name.toLowerCase())){ send(conn,{type:'error',message:'Name already used.'}); return; }
     const id=msg.clientId;
     conns.set(id,conn); game.players.push({id,name:msg.name});
@@ -179,7 +180,7 @@ async function joinRoom(){
   try{
     await setupPeerAsClient(); hostConn=peer.connect(roomPeerId(code),{reliable:true});
     hostConn.on('open',()=>send(hostConn,{type:'join',name:myName,clientId}));
-    hostConn.on('data',handleClientMessage); hostConn.on('error',()=>{localView.error='Connection failed.';render();});
+    hostConn.on('data',handleClientMessage); hostConn.on('close',()=>{ if(localStorage.getItem('wallfacers-session')) setTimeout(resumeClient,1000); }); hostConn.on('error',()=>{localView.error='Connection failed.';render();});
     localView.screen='connecting'; render();
   }catch{ localView.error='Could not connect.'; render(); }
 }
@@ -199,7 +200,7 @@ async function resumeClient(){
   const saved=JSON.parse(localStorage.getItem('wallfacers-session')||'null');
   if(!saved?.code||!saved.name||location.pathname==='/host') return;
   myName=saved.name; document.querySelector('#name')?.setAttribute('value',myName); localView.error='';
-  try { await setupPeerAsClient(); hostConn=peer.connect(roomPeerId(saved.code),{reliable:true}); hostConn.on('open',()=>send(hostConn,{type:'join',name:myName,clientId})); hostConn.on('data',handleClientMessage); hostConn.on('error',()=>{clearSession(); localView.error='Reconnect failed. Join the room again.'; localView.screen='home'; render();}); localView.screen='connecting'; render(); } catch { clearSession(); }
+  try { await setupPeerAsClient(); hostConn=peer.connect(roomPeerId(saved.code),{reliable:true}); hostConn.on('open',()=>send(hostConn,{type:'join',name:myName,clientId})); hostConn.on('data',handleClientMessage); hostConn.on('close',()=>{ if(localStorage.getItem('wallfacers-session')) setTimeout(resumeClient,1000); }); hostConn.on('error',()=>{}); localView.screen='connecting'; render(); } catch { clearSession(); }
 }
 function leaveGame(){ if(isHost){ peer?.destroy(); clearSession(); location.href='/host'; return; } send(hostConn,{type:'leave',playerId:myPlayerId}); peer?.destroy(); clearSession(); localView={screen:'home',state:null,role:null,error:'',modal:null}; render(); }
 function startGame(){
