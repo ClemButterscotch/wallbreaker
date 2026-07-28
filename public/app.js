@@ -227,14 +227,13 @@ function startGame(){
   catch(e){ localView.error=e.message; render(); }
 }
 function submitSelection(){
-  const color=pendingSelection.color || document.querySelector('input[name="dial"]:checked')?.value;
-  const effect=pendingSelection.effect ?? Number(document.querySelector('input[name="effect"]:checked')?.value);
-  const sophonMode=document.querySelector('input[name="sophon"]:checked')?.value || 'neither';
+  const color=pendingSelection.color;
+  const effect=pendingSelection.effect;
+  const sophonMode=pendingSelection.sophonSee?'see':'neither';
   const role=game.roles[myPlayerId];
   if(!color || !EFFECTS.includes(effect)) return;
   const subjectDials=role?.kind==='civilian' ? SUBJECTS[role.profession] : [];
-  if(role?.kind==='wallfacer' && Math.abs(effect)>1) return;
-  if(role?.kind==='civilian' && Math.abs(effect)>1 && !subjectDials.includes(color)) return;
+  if(Math.abs(effect)>maxEffectFor(role,color)) return;
   const sophonCost=sophonMode==='both'?2:(sophonMode==='see'||sophonMode==='nudge'?1:0);
   if(role?.kind==='wallbreaker' && (role.sophonTokens||0)<sophonCost) return;
   const selection={color,effect,sophonMode};
@@ -265,6 +264,21 @@ function omniscientHtml(state){
   if(!isHost) return '';
   return `<section class="panel stack omniscient"><div class="section-title">${roleSvg('omniscient')}<div><strong>Observer view</strong><div class="small">All hidden information is visible to the host.</div></div></div><div class="role-grid">${state.players.map(p=>{ const r=game.roles[p.id]; const plan=r?.plan?.values; return `<div class="role-card">${roleSvg(r?.kind)}<div><strong>${escapeHtml(p.name)}</strong><div class="small">${escapeHtml(r?.label||'Unassigned')}${r?.targetId?` · targets ${escapeHtml(game.players.find(x=>x.id===r.targetId)?.name||'Unknown')}`:''}</div>${plan?`<div class="small">${Object.entries(plan).map(([c,v])=>`${c} ${v}`).join(' · ')}</div>`:''}</div></div>`; }).join('')}</div></section>`;
 }
+function maxEffectFor(role,color){
+  if(role?.kind==='wallfacer') return 1;
+  if(role?.kind==='civilian'&&!SUBJECTS[role.profession].includes(color)) return 1;
+  return 2;
+}
+function dialCardHtml(c,state,role){
+  const selected=pendingSelection.color===c;
+  const max=maxEffectFor(role,c);
+  return `<div class="dial ${c} dial-card ${selected?'selected':''}"><button class="dial-action adjust" data-color="${c}" data-effect="${max===1?-1:-2}" aria-label="Decrease ${c}">${max===1?'−1':'−2'}</button><button class="dial-action dial-select" data-color="${c}" aria-label="Select ${c}"><span class="name">${c}</span><span class="value">${state.dials[c]}</span></button><button class="dial-action adjust" data-color="${c}" data-effect="${max}" aria-label="Increase ${c}">+${max}</button></div>`;
+}
+function movePanelHtml(state,role,current){
+  const chosen=pendingSelection.color?`${pendingSelection.color} ${pendingSelection.effect>0?'+':''}${pendingSelection.effect}`:'Select a dial and adjustment';
+  const sophon=`<div class="sophon-card">${roleSvg('civilian')}<div><strong>Special insight</strong><div class="small">Optional private information for this round.</div></div><label class="sophon-check"><input id="sophon-see" type="checkbox" ${pendingSelection.sophonSee?'checked':''}><span>Receive private round information</span></label></div>`;
+  return `<section class="panel stack move-panel"><div class="move-summary"><strong>Your move</strong><span>${chosen}</span></div>${sophon}<button id="submit" ${state.paused?'disabled':''}>${current?'Update selection':'Lock selection'}</button><div class="small">${state.players.filter(p=>p.ready).length}/${state.players.length} committed</div></section>`;
+}
 function home(){ const inviteCode=new URLSearchParams(location.search).get('room')?.match(/^\d{6}$/)?.[0]||''; return `<div class="shell"><div class="topbar"><div class="brand">WALLFACERS</div></div><section class="panel stack"><h2>Join game</h2><input id="name" placeholder="Name" value="${escapeHtml(myName)}"><input id="code" inputmode="numeric" maxlength="6" placeholder="6-digit room code" value="${inviteCode}"><button id="join">Join room</button></section>${localView.error?`<p class="notice">${escapeHtml(localView.error)}</p>`:''}</div>`; }
 function hostPage(){ return `<div class="shell"><div class="topbar"><div class="brand">WALLFACERS</div></div><section class="panel stack"><h2>Start a game</h2><p class="small">Create a room, then choose the role balance after players join.</p><button id="create">Create room</button></section>${localView.error?`<p class="notice">${escapeHtml(localView.error)}</p>`:''}</div>`; }
 function lobby(state){
@@ -278,9 +292,9 @@ function gameScreen(state,role){
   return `<div class="shell"><div class="topbar"><div><div class="brand">ROUND ${state.round}/${MAX_ROUNDS}</div><div class="meta">Room ${state.code}</div></div><div class="row"><button class="secondary" id="show-role">Show role</button><button class="secondary" id="leave">${isHost?'End game':'Leave game'}</button></div></div>
   ${state.winner?`<section class="panel stack"><div class="win">${escapeHtml(state.winner)} win</div><div>${escapeHtml(state.reason)}</div></section>`:''}
   ${state.paused&&!state.winner?`<div class="notice">Game paused: ${escapeHtml(state.breakerName)} is attempting to break the wall.</div>`:''}
-  <div class="dial-groups">${DIAL_GROUPS.map(group=>`<section class="dial-group"><div class="group-label">${group.name}</div><div class="dials">${group.colors.map(c=>`<div class="dial ${c}"><div class="name">${c}</div><div class="value">${state.dials[c]}</div></div>`).join('')}</div></section>`).join('')}</div>
+  <div class="dial-board">${DIAL_GROUPS.map(group=>`<section class="dial-group"><div class="group-label">${group.name}</div><div class="dials">${group.colors.map(c=>dialCardHtml(c,state,role)).join('')}</div></section>`).join('')}</div>
   ${omniscientHtml(state)}
-  ${!state.winner&&!isHost?`<section class="panel stack"><div><strong>Choose your move</strong></div><div class="choice-grid">${COLORS.map(c=>`<label class="choice-card dial ${c} ${pendingSelection.color===c?'selected':''}"><input type="radio" name="dial" value="${c}" ${pendingSelection.color===c?'checked':''}> <span>${c}</span></label>`).join('')}</div><div><strong>Change</strong></div><div class="effect-grid">${EFFECTS.map(e=>`<label class="choice-card ${pendingSelection.effect===e?'selected':''}"><input type="radio" name="effect" value="${e}" ${pendingSelection.effect===e?'checked':''}> <span>${e>0?'+':''}${e}</span></label>`).join('')}</div>${role?.kind==='wallbreaker'?`<div><strong>Sophon (${role.sophonTokens||0} token${role.sophonTokens===1?'':'s'})</strong></div><div class="effect-grid">${[['neither','Neither'],['see','See target move'],['nudge','Nudge a dial'],['both','Both']].map(([v,l])=>`<label class="choice-card ${pendingSelection.sophonMode===v?'selected':''}"><input type="radio" name="sophon" value="${v}" ${pendingSelection.sophonMode===v?'checked':''}> <span>${l}</span></label>`).join('')}</div>${pendingSelection.sophonMode==='nudge'||pendingSelection.sophonMode==='both'?`<div class="row"><select id="sophon-color">${COLORS.map(c=>`<option value="${c}">${c}</option>`).join('')}</select><select id="sophon-effect"><option value="1">+1</option><option value="-1">−1</option></select></div>`:''}`:''}<button id="submit">${current?'Update selection':'Lock selection'}</button><div class="small">${state.players.filter(p=>p.ready).length}/${state.players.length} committed</div></section>`:''}
+  ${!state.winner&&!isHost?movePanelHtml(state,role,current):''}
   ${state.revealed?`<section class="panel stack"><strong>Last reveal</strong>${COLORS.map(c=>`<div class="card-line">${c.toUpperCase()}: ${state.revealed[c].map(v=>v>0?`+${v}`:v).join(', ')||'—'}</div>`).join('')}</section>`:''}
   ${localView.modal==='role'?`<div class="modal"><div class="modal-card">${roleHtml(role)}<hr><button class="secondary" id="close-modal">Close</button></div></div>`:''}
   ${localView.modal==='break'?breakModal():''}
@@ -304,9 +318,9 @@ function bind(){
   document.querySelector('#start')?.addEventListener('click',startGame);
   document.querySelector('#role-count')?.addEventListener('input',e=>{ game.wallfacerCount=Number(e.target.value); broadcast(); });
   document.querySelector('#submit')?.addEventListener('click',submitSelection);
-  document.querySelectorAll('input[name="dial"]').forEach(el=>el.addEventListener('change',()=>{ pendingSelection.color=el.value; render(); }));
-  document.querySelectorAll('input[name="effect"]').forEach(el=>el.addEventListener('change',()=>{ pendingSelection.effect=Number(el.value); render(); }));
-  document.querySelectorAll('input[name="sophon"]').forEach(el=>el.addEventListener('change',()=>{ pendingSelection.sophonMode=el.value; render(); }));
+  document.querySelectorAll('.dial-select').forEach(el=>el.addEventListener('click',()=>{ pendingSelection.color=el.dataset.color; pendingSelection.effect=null; render(); }));
+  document.querySelectorAll('.dial-action.adjust').forEach(el=>el.addEventListener('click',()=>{ pendingSelection.color=el.dataset.color; pendingSelection.effect=Number(el.dataset.effect); render(); }));
+  document.querySelector('#sophon-see')?.addEventListener('change',el=>{ pendingSelection.sophonSee=el.target.checked; render(); });
   document.querySelector('#show-role')?.addEventListener('click',()=>{localView.modal='role';render();});
   document.querySelector('#close-modal')?.addEventListener('click',()=>{localView.modal=null;render();});
   document.querySelector('#break-now')?.addEventListener('click',pauseForBreak);

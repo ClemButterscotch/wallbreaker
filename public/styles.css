@@ -25,11 +25,23 @@ button:disabled { opacity:.45; cursor:not-allowed; }
 .code { font:800 2.5rem ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing:.22em; }
 .players { display:grid; gap:8px; }
 .player { display:flex; justify-content:space-between; padding:10px 12px; border-radius:11px; background:#0e1116; }
-.dial-groups { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+.dial-board { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
 .dial-group { display:grid; gap:8px; }
 .group-label { color:#a1a1aa; font-size:.78rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; padding:0 4px; }
 .dials { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
-@media (max-width:800px){ .dial-groups{grid-template-columns:1fr;} }
+.dial-card { display:grid; grid-template-rows:24px 1fr 24px; padding:8px; min-height:176px; }
+.dial-card.selected { outline:3px solid #fff; }
+.dial-action { border:0; background:transparent; color:inherit; padding:0; min-height:22px; font-weight:800; }
+.dial-action.adjust { font-size:.78rem; opacity:.85; }
+.dial-action.adjust:hover { background:rgba(255,255,255,.12); border-radius:8px; }
+.dial-select { display:grid; place-content:center; gap:2px; text-align:center; }
+.dial-select .value { font-size:3.3rem; font-weight:800; line-height:1; }
+.move-summary { display:flex; justify-content:space-between; gap:12px; align-items:center; }
+.move-summary span { color:#a1a1aa; font-family:ui-monospace,monospace; }
+.sophon-card { display:grid; grid-template-columns:auto 1fr; gap:12px; align-items:center; padding:12px; background:#0e1116; border-radius:14px; }
+.sophon-check { grid-column:1 / -1; display:flex; align-items:center; gap:12px; min-height:58px; padding:12px; border:1px solid #3a3f49; border-radius:12px; font-weight:700; }
+.sophon-check input { width:24px; height:24px; accent-color:#fff; }
+@media (max-width:800px){ .dial-board{grid-template-columns:1fr;} }
 .dial { border-radius:18px; padding:18px; text-align:center; border:1px solid rgba(255,255,255,.12); }
 .dial .name { font-size:.85rem; text-transform:uppercase; letter-spacing:.1em; opacity:.8; }
 .dial .value { font-size:3.2rem; font-weight:800; line-height:1.1; }
