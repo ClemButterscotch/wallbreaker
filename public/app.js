@@ -1,5 +1,6 @@
 const COLORS = ["yellow", "pink", "orange", "red", "blue", "green"];
 const SUBJECTS = { mathematics: ["yellow", "pink"], agriculture: ["orange", "red"], science: ["blue", "green"] };
+const DIAL_GROUPS = [{name:'Mathematics',colors:['yellow','pink']},{name:'Science',colors:['blue','green']},{name:'Agriculture',colors:['orange','red']}];
 const EFFECTS = [-2,-1,0,1,2];
 const MAX_ROUNDS = 10;
 
@@ -19,7 +20,11 @@ function roomPeerId(code){ return `wallfacers-${code}`; }
 function fourDigit(){ return String(Math.floor(100000 + Math.random()*900000)); }
 function clamp(n){ return Math.max(0, Math.min(9, n)); }
 function escapeHtml(s=''){ return s.replace(/[&<>'"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':'&quot;'}[c])); }
-function send(conn, msg){ if(conn?.open) conn.send(msg); }
+function send(conn, msg){
+  if(!conn) return;
+  if(conn.open) conn.send(msg);
+  else conn.once?.('open',()=>{ if(conn.open) conn.send(msg); });
+}
 function saveClientSession(){ if(game.code&&myName) localStorage.setItem('wallfacers-session',JSON.stringify({code:game.code,name:myName})); }
 function clearSession(){ localStorage.removeItem('wallfacers-session'); localStorage.removeItem('wallfacers-host'); }
 function saveHost(){ localStorage.setItem('wallfacers-host',JSON.stringify({code:game.code,game})); }
@@ -57,7 +62,8 @@ function roleSvg(kind){
 }
 
 let game = freshGame();
-function freshGame(){ return {code:'',phase:'lobby',round:1,wallfacerCount:1,dials:{yellow:5,pink:5,orange:5,red:5,blue:5,green:5},players:[],roles:{},selections:{},adminPlaying:false,paused:false,breakerName:'',revealed:null,winner:null,reason:''}; }
+function randomDials(){ return Object.fromEntries(COLORS.map(c=>[c,Math.floor(Math.random()*10)])); }
+function freshGame(){ return {code:'',phase:'lobby',round:1,wallfacerCount:1,dials:randomDials(),players:[],roles:{},selections:{},adminPlaying:false,paused:false,breakerName:'',revealed:null,winner:null,reason:''}; }
 
 function createPlan(){
   const values={};
@@ -272,7 +278,7 @@ function gameScreen(state,role){
   return `<div class="shell"><div class="topbar"><div><div class="brand">ROUND ${state.round}/${MAX_ROUNDS}</div><div class="meta">Room ${state.code}</div></div><div class="row"><button class="secondary" id="show-role">Show role</button><button class="secondary" id="leave">${isHost?'End game':'Leave game'}</button></div></div>
   ${state.winner?`<section class="panel stack"><div class="win">${escapeHtml(state.winner)} win</div><div>${escapeHtml(state.reason)}</div></section>`:''}
   ${state.paused&&!state.winner?`<div class="notice">Game paused: ${escapeHtml(state.breakerName)} is attempting to break the wall.</div>`:''}
-  <div class="dials">${COLORS.map(c=>`<div class="dial ${c}"><div class="name">${c}</div><div class="value">${state.dials[c]}</div></div>`).join('')}</div>
+  <div class="dial-groups">${DIAL_GROUPS.map(group=>`<section class="dial-group"><div class="group-label">${group.name}</div><div class="dials">${group.colors.map(c=>`<div class="dial ${c}"><div class="name">${c}</div><div class="value">${state.dials[c]}</div></div>`).join('')}</div></section>`).join('')}</div>
   ${omniscientHtml(state)}
   ${!state.winner&&!isHost?`<section class="panel stack"><div><strong>Choose your move</strong></div><div class="choice-grid">${COLORS.map(c=>`<label class="choice-card dial ${c} ${pendingSelection.color===c?'selected':''}"><input type="radio" name="dial" value="${c}" ${pendingSelection.color===c?'checked':''}> <span>${c}</span></label>`).join('')}</div><div><strong>Change</strong></div><div class="effect-grid">${EFFECTS.map(e=>`<label class="choice-card ${pendingSelection.effect===e?'selected':''}"><input type="radio" name="effect" value="${e}" ${pendingSelection.effect===e?'checked':''}> <span>${e>0?'+':''}${e}</span></label>`).join('')}</div>${role?.kind==='wallbreaker'?`<div><strong>Sophon (${role.sophonTokens||0} token${role.sophonTokens===1?'':'s'})</strong></div><div class="effect-grid">${[['neither','Neither'],['see','See target move'],['nudge','Nudge a dial'],['both','Both']].map(([v,l])=>`<label class="choice-card ${pendingSelection.sophonMode===v?'selected':''}"><input type="radio" name="sophon" value="${v}" ${pendingSelection.sophonMode===v?'checked':''}> <span>${l}</span></label>`).join('')}</div>${pendingSelection.sophonMode==='nudge'||pendingSelection.sophonMode==='both'?`<div class="row"><select id="sophon-color">${COLORS.map(c=>`<option value="${c}">${c}</option>`).join('')}</select><select id="sophon-effect"><option value="1">+1</option><option value="-1">−1</option></select></div>`:''}`:''}<button id="submit">${current?'Update selection':'Lock selection'}</button><div class="small">${state.players.filter(p=>p.ready).length}/${state.players.length} committed</div></section>`:''}
   ${state.revealed?`<section class="panel stack"><strong>Last reveal</strong>${COLORS.map(c=>`<div class="card-line">${c.toUpperCase()}: ${state.revealed[c].map(v=>v>0?`+${v}`:v).join(', ')||'—'}</div>`).join('')}</section>`:''}
