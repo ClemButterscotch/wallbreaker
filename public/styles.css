@@ -29,8 +29,8 @@ button:disabled { opacity:.45; cursor:not-allowed; }
 .dial-group { display:grid; gap:8px; }
 .group-label { color:#a1a1aa; font-size:.78rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; padding:0 4px; }
 .dials { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
-.dial-card { display:grid; grid-template-rows:34px 1fr 34px; padding:8px; min-height:176px; }
-.adjust-row { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
+.dial-card { display:grid; grid-template-rows:52px 1fr 52px; padding:8px; min-height:210px; }
+.adjust-row { display:grid; grid-template-rows:1fr 1fr; gap:2px; }
 .dial-card.selected { outline:3px solid #fff; }
 .dial-action { border:0; background:transparent; color:inherit; padding:0; min-height:22px; font-weight:800; }
 .dial-action.adjust { font-size:.78rem; opacity:.85; }
