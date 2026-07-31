@@ -1,5 +1,9 @@
 # Wallfacers prototype
 
+## Rebranding
+
+Technical namespaces are isolated in `public/brand.js`. Change `storageNamespace` or `peerNamespace` only when intentionally separating the renamed game from existing saved sessions and PeerJS rooms. The current visible title remains in `index.html`; game-role terminology is intentionally separate from product branding.
+
 A browser prototype for the Wallfacer / Wallbreaker deduction game, supporting flexible player counts.
 
 ## Current rules implemented
@@ -7,10 +11,10 @@ A browser prototype for the Wallfacer / Wallbreaker deduction game, supporting f
 - The host chooses the number of Wallfacers in the lobby; the same number of Wallbreakers is assigned automatically, and all remaining players are Loyal. Any room size with at least two players can start.
 - Six bounded dials: yellow and pink (mathematics), orange and red (agriculture), blue and green (science); each ranges from 0 to 9.
 - Each Wallfacer has a secret three-dial exact-value plan.
-- Each round, every player privately selects one dial and one change: -2, -1, 0, +1, or +2. Wallfacers are limited to 1; civilians may use 2 only on their profession's subject pair.
+- Each round, every non-observer player privately selects one dial and one change. Wallfacers and Wallbreakers are limited to -1, 0, or +1. Civilians may use -2 or +2 only on their profession's subject pair; all other civilian dial moves are limited to -1, 0, or +1.
 - The host resolves all committed selections simultaneously.
 - One completed Wallfacer plan immediately wins for the Loyal team.
-- Each Wallbreaker gains one Sophon token per round. They lock in whether to spend tokens on seeing their target Wallfacer's move, nudging any dial by 1, both, or neither; the single uses cost one token and both costs two.
+- Each Wallbreaker starts with two Sophon tokens and has an inventory limit of two. They gain one token per round up to that limit. They lock in whether to spend tokens on seeing their target Wallfacer's move, nudging one dial by exactly 1, both, or neither; the single uses cost one token and both costs two.
 - A Wallbreaker may submit one complete three-dial plan guess. All three values must be exact: a correct guess wins for the Wallbreakers; a wrong guess immediately wins for the Loyal team.
 - Wallbreakers win if Round 10 ends without either Wallfacer completing a plan.
 

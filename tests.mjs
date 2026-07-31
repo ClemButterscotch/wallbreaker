@@ -8,4 +8,26 @@ const good={orange:3,blue:6,red:5};
 const bad={orange:4,blue:6,red:5};
 assert.ok(Object.entries(plan).every(([c,v])=>Math.abs(good[c]-v)<=1));
 assert.ok(!Object.entries(plan).every(([c,v])=>Math.abs(bad[c]-v)<=1));
+const subjects={mathematics:['yellow','pink']};
+const maxEffectFor=(role,color)=>{
+  if(role?.kind==='wallfacer'||role?.kind==='wallbreaker') return 1;
+  if(role?.kind==='civilian'&&!subjects[role.profession].includes(color)) return 1;
+  return 2;
+};
+assert.equal(maxEffectFor({kind:'wallfacer'},'yellow'),1);
+assert.equal(maxEffectFor({kind:'wallbreaker'},'yellow'),1);
+assert.equal(maxEffectFor({kind:'civilian',profession:'mathematics'},'yellow'),2);
+assert.equal(maxEffectFor({kind:'civilian',profession:'mathematics'},'blue'),1);
+const sophonModes=['affect','see'];
+assert.ok(sophonModes.includes('affect'));
+assert.ok(sophonModes.includes('see'));
+assert.equal(sophonModes.includes('both'),false);
+const colors=['yellow','pink','orange','red','blue','green'];
+const aggregateReveal=selections=>{
+  const revealed=Object.fromEntries(colors.map(c=>[c,0]));
+  for(const sel of selections) revealed[sel.color]+=sel.effect;
+  return revealed;
+};
+assert.deepEqual(aggregateReveal([{color:'yellow',effect:1},{color:'yellow',effect:-1}]).yellow,0);
+assert.equal(aggregateReveal([{color:'blue',effect:2},{color:'blue',effect:-1}]).blue,1);
 console.log('tests passed');
