@@ -65,11 +65,14 @@ button.chat-message { cursor:pointer; }
 .dial-select .name, .dial-select .value { position:relative; z-index:1; text-shadow:0 2px 4px rgba(0,0,0,.55); }
 .value-window { position:relative; z-index:1; width:92px; height:58px; margin:4px auto 0; overflow:hidden; border:1px solid rgba(255,255,255,.24); border-radius:4px; background:#777b80; box-shadow:inset 0 2px 5px rgba(0,0,0,.35), inset 0 -2px 5px rgba(0,0,0,.3); }
 .value-reel { display:grid; grid-template-rows:repeat(3,58px); height:174px; transform:translateY(-58px); }
+.value-window.dial-up .value-reel { transform:translateY(0); }
+.value-window.dial-down .value-reel { transform:translateY(-116px); }
 .value-reel .value, .reveal-adjacent { display:grid; place-items:center; height:58px; color:#f4f4f5; font:800 3.05rem/.9 ui-monospace,SFMono-Regular,Menlo,monospace; text-shadow:0 2px 3px rgba(0,0,0,.6); }
 .reveal-adjacent { color:#d9dde0; }
-.dial-delta { position:absolute; z-index:2; right:-22px; font:800 .75rem ui-monospace,SFMono-Regular,Menlo,monospace; color:#f4f4f5; text-shadow:0 1px 3px #000; }
-.dial-up .dial-delta { top:-18px; }
-.dial-down .dial-delta { bottom:-18px; }
+.dial-delta { position:absolute; z-index:2; left:50%; font:800 .75rem ui-monospace,SFMono-Regular,Menlo,monospace; color:#f4f4f5; opacity:.22; text-shadow:0 1px 3px #000; transform:translateX(-50%); }
+.dial-delta.active { opacity:1; }
+.dial-delta-up { top:-18px; }
+.dial-delta-down { bottom:-18px; }
 .dial-select .value { font-size:3.3rem; font-weight:800; line-height:1; }
 .dial-revealed { animation:dial-flash 3s ease-out both; }
 .dial-turning .value-reel { animation:dial-reel 3s cubic-bezier(.2,.8,.2,1) both; }
@@ -104,7 +107,7 @@ button.chat-message { cursor:pointer; }
   88% { transform:translateY(-112px); }
   100% { transform:translateY(-116px); }
 }
-.dial-down .value-reel { animation-name:dial-reel-down; }
+.value-window.dial-down .value-reel { animation-name:dial-reel-down; }
 @keyframes dial-flash {
   0% { box-shadow:0 0 0 0 rgba(255,255,255,.28) inset, 0 0 0 rgba(255,255,255,0); }
   55% { box-shadow:0 0 0 2px rgba(255,255,255,.24) inset, 0 0 24px rgba(255,255,255,.14); }

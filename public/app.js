@@ -437,9 +437,8 @@ function dialValueHtml(c,state){
   const total=revealTotal(state.revealed,c);
   const final=state.dials[c];
   const prior=clamp(final-total);
-  const delta=total>0?`+${total}`:String(total);
   const direction=total>0?'dial-up':total<0?'dial-down':'dial-flat';
-  return `<div class="value-window ${direction}"><div class="value-reel"><span class="reveal-adjacent">${total>0?final:prior}</span><span class="value">${prior}</span><span class="reveal-adjacent">${total<0?final:prior}</span></div>${total?`<span class="dial-delta">${delta}</span>`:''}</div>`;
+  return `<div class="value-window ${direction}"><span class="dial-delta dial-delta-up ${total>0?'active':''}">+1</span><div class="value-reel"><span class="reveal-adjacent">${total>0?final:prior}</span><span class="value">${prior}</span><span class="reveal-adjacent">${total<0?final:prior}</span></div><span class="dial-delta dial-delta-down ${total<0?'active':''}">-1</span></div>`;
 }
 function movePanelHtml(state,role,current){
   const chosen=pendingSelection.sophonMode==='see'?"Spy on Wallfacer's move":pendingSelection.color?`${pendingSelection.color} ${pendingSelection.effect>0?'+':''}${pendingSelection.effect}`:'Select a dial and adjustment';
