@@ -61,6 +61,13 @@ button.chat-message { cursor:pointer; }
 @media (max-width:520px){ .chat-message{max-width:92%;} .chat-composer{grid-template-columns:1fr;} }
 .adjust-row { display:grid; grid-template-rows:1fr 1fr; gap:2px; }
 .dial-card.selected { outline:3px solid #fff; }
+.dial-card.locked-preview { position:relative; }
+.lock-arrows { position:absolute; left:50%; z-index:3; color:#fff; font-size:2rem; font-weight:900; line-height:1; text-shadow:0 2px 6px rgba(0,0,0,.8); pointer-events:none; animation:lock-arrow var(--lock-speed) ease-in-out infinite; }
+.lock-arrows.up { top:48%; }
+.lock-arrows.down { bottom:48%; }
+@keyframes lock-arrow { 0%,100% { opacity:.25; transform:translate(-50%,0) scale(.85); } 50% { opacity:1; transform:translate(-50%,-8px) scale(1.08); } }
+.lock-arrows.down { animation-name:lock-arrow-down; }
+@keyframes lock-arrow-down { 0%,100% { opacity:.25; transform:translate(-50%,0) scale(.85); } 50% { opacity:1; transform:translate(-50%,8px) scale(1.08); } }
 .observer-dial { pointer-events:none; }
 .dial-action { border:0; background:transparent; color:inherit; padding:0; min-height:22px; font-weight:800; }
 .dial-action.adjust { font-size:.78rem; opacity:.85; }
@@ -138,6 +145,11 @@ button.chat-message { cursor:pointer; }
 .observed-move { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; border:1px solid #d6d9dc; border-radius:10px; background:#e8ecef; color:#101318; box-shadow:0 4px 0 rgba(0,0,0,.18); }
 .observed-label { font-size:.78rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
 .observed-move strong { font:800 1.5rem ui-monospace,SFMono-Regular,Menlo,monospace; }
+.arrest-choices { display:grid; gap:8px; padding:12px; border:1px solid #3a3f49; border-radius:12px; background:#0e1116; }
+.arrest-target { display:flex; align-items:center; gap:10px; width:100%; padding:8px 10px; border:1px solid #303640; border-radius:10px; background:#171b22; color:#f4f4f5; text-align:left; }
+.arrest-target .chat-avatar { width:34px; height:34px; font-size:.72rem; }
+.arrest-target strong { margin-left:auto; color:#f5df8a; font-size:.78rem; text-transform:uppercase; }
+.arrest-target.selected { border-color:#f5df8a; background:#2a2410; }
 @media (max-width:800px){ .dial-board{grid-template-columns:1fr;} }
 .dial { border-radius:18px; padding:18px; text-align:center; border:1px solid rgba(255,255,255,.12); }
 .dial .name { font-size:.85rem; text-transform:uppercase; letter-spacing:.1em; opacity:.8; }
