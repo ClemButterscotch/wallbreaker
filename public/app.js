@@ -16,11 +16,12 @@ localStorage.setItem(storageKey('client-id'), clientId);
 let isHost = false;
 let myName = query.get('name') || '';
 let myPlayerId = null;
-let pendingSelection = {color:null,effect:null,sophonMode:'affect'};
+let pendingSelection = {color:null,effect:null,sophonMode:'affect',policeMode:'affect',arrestTarget:null};
 let reconnecting = false;
 let chatMessages = [];
 let chatReplyTo = null;
 let revealAnimationTimer = null;
+let countdownTimer = null;
 let localView = { screen:location.pathname === '/host' ? 'host' : 'home', state:null, role:null, error:'', modal:null, revealKey:'', revealAnimationPending:false };
 
 function roomPeerId(code){ return `${BRAND.peerNamespace}-${code}`; }
@@ -54,8 +55,8 @@ function broadcast(){
 }
 function publicState(){
   return {
-    code:game.code, phase:game.phase, round:game.round, dials:game.dials, playerCount:game.players.length, wallfacerCount:game.wallfacerCount,
-    players:game.players.map(p=>({id:p.id,name:p.name,ready:!!game.selections[p.id]})),
+    code:game.code, phase:game.phase, countdown:game.countdown||0, round:game.round, dials:game.dials, playerCount:game.players.length, wallfacerCount:game.wallfacerCount,
+    players:game.players.map(p=>({id:p.id,name:p.name,ready:!!game.selections[p.id],wallfacer:game.roles[p.id]?.kind==='wallfacer'})),
     adminPlaying:game.adminPlaying, paused:game.paused, breakerName:game.breakerName,
     revealed:game.revealed, winner:game.winner, reason:game.reason
   };
@@ -63,12 +64,12 @@ function publicState(){
 function roleFor(player){
   if(!player || !game.roles[player.id]) return null;
   const r=game.roles[player.id];
-  if(r.kind==='wallfacer') return {...r};
+  if(r.kind==='wallfacer') return {...r,arrested:!!game.arrested?.[player.id]};
   if(r.kind==='wallbreaker'){
     const target=game.players.find(p=>p.id===r.targetId);
-    return {...r,targetName:target?.name||'Unknown'};
+    return {...r,targetName:target?.name||'Unknown',arrested:!!game.arrested?.[player.id]};
   }
-  return {...r};
+  return {...r,arrested:!!game.arrested?.[player.id]};
 }
 function roleSvg(kind){
   const icon = kind==='wallfacer' ? '<path d="M12 3 4.5 6v5.2c0 4.4 3.1 7.6 7.5 9.8 4.4-2.2 7.5-5.4 7.5-9.8V6L12 3Z"/><path d="m8.5 12 2.2 2.2 4.8-5"/>' : kind==='wallbreaker' ? '<path d="m5 4 14 8-14 8 3-8-3-8Z"/><path d="M10 12h8"/>' : '<circle cx="12" cy="12" r="8"/><path d="M8 12h8M12 8v8"/>';
@@ -78,7 +79,7 @@ function eyeSvg(){ return '<svg class="eye-svg" viewBox="0 0 24 24" aria-hidden=
 
 let game = freshGame();
 function randomDials(){ return Object.fromEntries(COLORS.map(c=>[c,Math.floor(Math.random()*10)])); }
-function freshGame(){ return {code:'',phase:'lobby',round:1,wallfacerCount:1,dials:randomDials(),players:[],roles:{},selections:{},adminPlaying:false,paused:false,breakerName:'',revealed:null,winner:null,reason:''}; }
+function freshGame(){ return {code:'',phase:'lobby',round:1,wallfacerCount:1,dials:randomDials(),players:[],roles:{},selections:{},arrested:{},adminPlaying:false,paused:false,breakerName:'',revealed:null,winner:null,reason:''}; }
 
 function createPlan(){
   const values={};
@@ -92,11 +93,13 @@ function assignRoles(){
   const shuffled=[...players].sort(()=>Math.random()-.5);
   const wallfacers=shuffled.slice(0,wallfacerCount);
   const wallbreakers=shuffled.slice(wallfacerCount,wallfacerCount*2);
+  const police=shuffled[wallfacerCount*2];
   game.roles={};
   wallfacers.forEach(p=>{ game.roles[p.id]={kind:'wallfacer',label:'Wallfacer',plan:createPlan()}; });
   wallbreakers.forEach((p,i)=>{ game.roles[p.id]={kind:'wallbreaker',label:'Wallbreaker',targetId:wallfacers[i % wallfacers.length].id,sophonResult:null}; });
   const civilianKinds=Object.keys(SUBJECTS);
-  shuffled.slice(wallfacerCount*2).forEach(p=>{ game.roles[p.id]={kind:'civilian',label:'Civilian',profession:civilianKinds[Math.floor(Math.random()*civilianKinds.length)]}; });
+  if(police) game.roles[police.id]={kind:'police',label:'Shi Qiang'};
+  shuffled.slice(wallfacerCount*2+(police?1:0)).forEach(p=>{ game.roles[p.id]={kind:'civilian',label:'Civilian',profession:civilianKinds[Math.floor(Math.random()*civilianKinds.length)]}; });
 }
 function checkWallfacerWin(){
   for(const p of game.players){
@@ -112,8 +115,12 @@ function resolveRound(){
   const entries=Object.entries(game.selections);
   if(entries.length!==game.players.length) return;
   const roundSelections=game.selections;
+  const policeSelection=entries.map(([,sel])=>sel).find(sel=>sel?.policeMode==='arrest');
+  const arrested={};
+  if(policeSelection?.arrestTarget && game.players.some(p=>p.id===policeSelection.arrestTarget)) arrested[policeSelection.arrestTarget]=true;
+  game.arrested=arrested;
   const revealed=Object.fromEntries(COLORS.map(c=>[c,0]));
-  for(const [,sel] of entries) if(sel.color) revealed[sel.color]+=sel.effect;
+  for(const [playerId,sel] of entries) if(sel.color&&!arrested[playerId]) revealed[sel.color]+=sel.effect;
   for(const c of COLORS){
     game.dials[c]=clamp(game.dials[c]+revealed[c]);
   }
@@ -261,7 +268,7 @@ function handleClientMessage(msg){
       clearTimeout(revealAnimationTimer);
       revealAnimationTimer=setTimeout(()=>{ localView.revealAnimationPending=false; render(); },3000);
     }
-    localView.state=msg.state; localView.role=msg.role; localView.screen=msg.state.phase==='lobby'?'lobby':'game'; saveClientSession();
+    localView.state=msg.state; localView.role=msg.role; localView.screen=['lobby','countdown'].includes(msg.state.phase)?'lobby':'game'; saveClientSession();
     if(msg.state.phase==='playing'&&!wasPlaying) localView.modal='role';
     render();
   }
@@ -335,7 +342,8 @@ async function resumeHost(attempt=0){
   if(!saved?.code||!saved.game) return;
   try {
     await setupPeerAsHost(saved.code); isHost=true; game=saved.game; game.wallfacerCount ||= 1;
-    localView.screen=game.phase==='lobby'?'lobby':'game'; localView.state=publicState(); render();
+    localView.screen=['lobby','countdown'].includes(game.phase)?'lobby':'game'; localView.state=publicState(); render();
+    if(game.phase==='countdown') beginCountdown();
   } catch {
     peer?.destroy?.();
     if(attempt<12){
@@ -354,16 +362,26 @@ async function resumeClient(){
 }
 function leaveGame(){ if(isHost){ peer?.destroy(); clearSession(); location.href='/host'; return; } send(hostConn,{type:'leave',playerId:myPlayerId}); peer?.destroy(); clearSession(); localView={screen:'home',state:null,role:null,error:'',modal:null}; render(); }
 function startGame(){
-  try{ assignRoles(); game.phase='playing'; game.round=1; game.selections={}; game.revealed=null; pendingSelection={color:null,effect:null,sophonMode:'affect'}; localView.modal=null; localView.screen='game'; broadcast(); }
+  try{ assignRoles(); game.phase='countdown'; game.countdown=3; game.round=1; game.selections={}; game.arrested={}; game.revealed=null; pendingSelection={color:null,effect:null,sophonMode:'affect',policeMode:'affect',arrestTarget:null}; localView.modal=null; localView.screen='lobby'; broadcast(); beginCountdown(); }
   catch(e){ localView.error=e.message; render(); }
+}
+function beginCountdown(){
+  if(!isHost || countdownTimer) return;
+  countdownTimer=setInterval(()=>{
+    if(game.phase!=='countdown'){ clearInterval(countdownTimer); countdownTimer=null; return; }
+    game.countdown=Math.max(0,(game.countdown||0)-1);
+    if(game.countdown===0){ game.phase='playing'; delete game.countdown; clearInterval(countdownTimer); countdownTimer=null; }
+    broadcast();
+  },1000);
 }
 function submitSelection(){
   const role=currentRoleFor(myPlayerId);
   const color=pendingSelection.color;
   const effect=pendingSelection.effect;
   const sophonMode=pendingSelection.sophonMode || 'affect';
+  const policeMode=pendingSelection.policeMode || 'affect';
   if(localView.state?.players.find(p=>p.id===myPlayerId)?.ready) return;
-  const selection=role?.kind==='wallbreaker'&&sophonMode==='see' ? {sophonMode:'see'} : {color,effect,sophonMode:'affect'};
+  const selection=role?.kind==='wallbreaker'&&sophonMode==='see' ? {sophonMode:'see'} : role?.kind==='police'&&policeMode==='arrest' ? {policeMode:'arrest',arrestTarget:pendingSelection.arrestTarget} : {color,effect,sophonMode:'affect',policeMode:'affect'};
   if(!isLegalSelection(myPlayerId,selection)) return;
   if(isHost){
     if(game.selections[myPlayerId]) return;
@@ -382,17 +400,19 @@ function sendBreak(){
 
 function roleHtml(role){
   if(!role) return '<p>No role assigned.</p>';
-  if(role.kind==='civilian') return `<div class="role-heading">${roleSvg(role.kind)}<div><h2 class="role-title">${escapeHtml(role.profession)}</h2><p>Subject area: ${SUBJECTS[role.profession].join(' and ')}. Adjust one of these by 1 or 2, or any other dial by 1.</p></div></div>`;
-  if(role.kind==='wallbreaker') return `<div class="role-heading">${roleSvg(role.kind)}<div><h2 class="role-title">Wallbreaker</h2><p>You may adjust a dial by 1. Each round, choose whether the Sophon affects one dial by 1 or reveals the Wallfacer's move.</p></div><button class="danger" id="break-now">Guess the complete plan</button>${role.sophonResult?`<div class="card-list"><strong>Observed move</strong><div class="card-line">${role.sophonResult.color} ${role.sophonResult.effect>0?'+':''}${role.sophonResult.effect}</div></div>`:''}`;
+  const arrested=role.arrested?'<div class="arrest-notice">You were arrested this turn. Your dial effect did not happen.</div>':'';
+  if(role.kind==='police') return `${arrested}<div class="role-heading">${roleSvg(role.kind)}<div><h2 class="role-title">Shi Qiang</h2><p>You are Police. Each round, choose whether to affect a dial by 1 or secretly arrest one player.</p></div></div>`;
+  if(role.kind==='civilian') return `${arrested}<div class="role-heading">${roleSvg(role.kind)}<div><h2 class="role-title">${escapeHtml(role.profession)}</h2><p>Subject area: ${SUBJECTS[role.profession].join(' and ')}. Adjust one of these by 1 or 2, or any other dial by 1.</p></div></div>`;
+  if(role.kind==='wallbreaker') return `${arrested}<div class="role-heading">${roleSvg(role.kind)}<div><h2 class="role-title">Wallbreaker</h2><p>You may adjust a dial by 1. Each round, choose whether the Sophon affects one dial by 1 or reveals the Wallfacer's move.</p></div><button class="danger" id="break-now">Guess the complete plan</button>${role.sophonResult?`<div class="card-list"><strong>Observed move</strong><div class="card-line">${role.sophonResult.color} ${role.sophonResult.effect>0?'+':''}${role.sophonResult.effect}</div></div>`:''}`;
   const rows=Object.entries(role.plan.values).map(([c,v])=>`<div class="card-line">${c.toUpperCase()} = ${v}</div>`).join('');
-  return `<div class="role-heading">${roleSvg(role.kind)}<div><h2 class="role-title">Wallfacer</h2><p>Adjust a dial by 1 while completing this configuration:</p></div></div><div class="card-list">${rows}</div>`;
+  return `${arrested}<div class="role-heading">${roleSvg(role.kind)}<div><h2 class="role-title">Wallfacer</h2><p>Adjust a dial by 1 while completing this configuration:</p></div></div><div class="card-list">${rows}</div>`;
 }
 function omniscientHtml(state){
   if(!isHost) return '';
   return `<section class="panel stack omniscient"><div class="section-title">${roleSvg('omniscient')}<div><strong>Observer view</strong><div class="small">All hidden information is visible to the host.</div></div></div><div class="role-grid">${state.players.map(p=>{ const r=game.roles[p.id]; const plan=r?.plan?.values; return `<div class="role-card">${roleSvg(r?.kind)}<div><strong>${escapeHtml(p.name)}</strong><div class="small">${escapeHtml(r?.label||'Unassigned')}${r?.targetId?` · targets ${escapeHtml(game.players.find(x=>x.id===r.targetId)?.name||'Unknown')}`:''}</div>${plan?`<div class="small">${Object.entries(plan).map(([c,v])=>`${c} ${v}`).join(' · ')}</div>`:''}</div></div>`; }).join('')}</div></section>`;
 }
 function maxEffectFor(role,color){
-  if(role?.kind==='wallfacer'||role?.kind==='wallbreaker') return 1;
+  if(role?.kind==='wallfacer'||role?.kind==='wallbreaker'||role?.kind==='police') return 1;
   if(role?.kind==='civilian'&&!SUBJECTS[role.profession].includes(color)) return 1;
   return 2;
 }
@@ -407,6 +427,7 @@ function isLegalSelection(playerId,selection){
   const role=currentRoleFor(playerId);
   if(!role || !selection) return false;
   if(role.kind==='wallbreaker' && selection.sophonMode==='see') return true;
+  if(role.kind==='police' && selection.policeMode==='arrest') return Boolean(selection.arrestTarget&&game.players.some(p=>p.id===selection.arrestTarget&&p.id!==playerId));
   if(!COLORS.includes(selection.color)) return false;
   return legalEffectsFor(role,selection.color).includes(selection.effect);
 }
@@ -414,7 +435,7 @@ function dialCardHtml(c,state,role){
   const selected=pendingSelection.color===c;
   const effects=legalEffectsFor(role,c);
   const button=(effect)=>effects.includes(effect)?`<button class="dial-action adjust" data-color="${c}" data-effect="${effect}" aria-label="${effect<0?'Decrease':'Increase'} ${c} by ${Math.abs(effect)}">${effect>0?'+':''}${effect}</button>`:'';
-  return `<div class="dial ${c} dial-card ${selected?'selected':''} ${dialRevealClass(state,c)}" ${dialRevealStyle(state,c)}><div class="adjust-row">${button(-2)}${button(-1)}</div><button class="dial-action dial-select" data-color="${c}" aria-label="Select ${c} with no change"><span class="name">${c}</span>${dialValueHtml(c,state)}</button><div class="adjust-row">${button(1)}${button(2)}</div></div>`;
+  return `<div class="dial ${c} dial-card ${selected?'selected':''} ${dialRevealClass(state,c)}" ${dialRevealStyle(state,c)}><div class="adjust-row">${button(2)}${button(1)}</div><button class="dial-action dial-select" data-color="${c}" aria-label="Select ${c} with no change"><span class="name">${c}</span>${dialValueHtml(c,state)}</button><div class="adjust-row">${button(-1)}${button(-2)}</div></div>`;
 }
 function observerDialCardHtml(c,state){
   return `<div class="dial ${c} dial-card observer-dial ${dialRevealClass(state,c)}" ${dialRevealStyle(state,c)}><div></div><div class="dial-select"><span class="name">${c}</span>${dialValueHtml(c,state)}</div><div></div></div>`;
@@ -443,15 +464,18 @@ function dialValueHtml(c,state){
 function movePanelHtml(state,role,current){
   const chosen=pendingSelection.sophonMode==='see'?"Spy on Wallfacer's move":pendingSelection.color?`${pendingSelection.color} ${pendingSelection.effect>0?'+':''}${pendingSelection.effect}`:'Select a dial and adjustment';
   const spy=role?.kind==='wallbreaker'?`<button class="spy-choice ${pendingSelection.sophonMode==='see'?'selected':''}" id="spy-choice" aria-pressed="${pendingSelection.sophonMode==='see'}">${eyeSvg()}<span>Spy on Wallfacer's move</span></button>`:'';
-  const hasChoice=role?.kind==='wallbreaker' ? pendingSelection.sophonMode==='see'||(pendingSelection.color&&EFFECTS.includes(pendingSelection.effect)) : Boolean(pendingSelection.color&&EFFECTS.includes(pendingSelection.effect));
+  const arrest=role?.kind==='police'?`<button class="spy-choice ${pendingSelection.policeMode==='arrest'?'selected':''}" id="arrest-choice" aria-pressed="${pendingSelection.policeMode==='arrest'}">${roleSvg('police')}<span>Arrest someone for this turn</span></button>${pendingSelection.policeMode==='arrest'?`<select id="arrest-target"><option value="">Choose a player</option>${state.players.filter(p=>p.id!==myPlayerId).map(p=>`<option value="${escapeHtml(p.id)}" ${pendingSelection.arrestTarget===p.id?'selected':''}>${escapeHtml(p.name)}</option>`).join('')}</select>`:''}`:'';
+  const hasChoice=role?.kind==='wallbreaker' ? pendingSelection.sophonMode==='see'||(pendingSelection.color&&EFFECTS.includes(pendingSelection.effect)) : role?.kind==='police' ? pendingSelection.policeMode==='arrest'?Boolean(pendingSelection.arrestTarget):(pendingSelection.color&&EFFECTS.includes(pendingSelection.effect)) : Boolean(pendingSelection.color&&EFFECTS.includes(pendingSelection.effect));
   const observed=role?.kind==='wallbreaker'&&role.sophonResult?`<div class="observed-move"><div class="observed-label">Wallfacer move observed</div><strong>${role.sophonResult.color} ${role.sophonResult.effect>0?'+':''}${role.sophonResult.effect}</strong></div>`:'';
-  return `<section class="panel stack move-panel"><div class="move-summary"><strong>Your move</strong><span>${current?'Locked':chosen}</span></div>${observed}${spy}<button id="submit" ${state.paused||current||!hasChoice?'disabled':''}>${current?'Locked in':'Lock selection'}</button><div class="small">${state.players.filter(p=>p.ready).length}/${state.players.length} locked</div></section>`;
+  const summary=role?.kind==='police'&&pendingSelection.policeMode==='arrest'?(pendingSelection.arrestTarget?'Arrest selected player':'Choose a player'):chosen;
+  return `<section class="panel stack move-panel"><div class="move-summary"><strong>Your move</strong><span>${current?'Locked':summary}</span></div>${observed}${spy}${arrest}<button id="submit" ${state.paused||current||!hasChoice?'disabled':''}>${current?'Locked in':'Lock selection'}</button><div class="small">${state.players.filter(p=>p.ready).length}/${state.players.length} locked</div></section>`;
 }
 function home(){ const inviteCode=new URLSearchParams(location.search).get('room')?.match(/^\d{6}$/)?.[0]||''; return `<div class="shell"><div class="topbar"><div class="brand">WALLFACERS</div></div><section class="panel stack"><h2>Join game</h2><input id="name" placeholder="Name" value="${escapeHtml(myName)}"><input id="code" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" maxlength="6" placeholder="6-digit room code" value="${inviteCode}"><button id="join">Join room</button></section>${localView.error?`<p class="notice">${escapeHtml(localView.error)}</p>`:''}</div>`; }
 function hostPage(){ return `<div class="shell"><div class="topbar"><div class="brand">WALLFACERS</div></div><section class="panel stack"><h2>Start a game</h2><p class="small">Create a room, then choose the role balance after players join.</p><button id="create">Create room</button></section>${localView.error?`<p class="notice">${escapeHtml(localView.error)}</p>`:''}</div>`; }
 function lobby(state){
   const maxRoles=Math.max(1,Math.floor(state.players.length/2));
-  return `<div class="shell"><div class="topbar"><div><div class="brand">WALLFACERS</div><div class="meta">Room · ${state.playerCount} players</div></div><div class="code">${state.code}</div></div><section class="panel stack"><div class="players">${state.players.map(p=>`<div class="player"><span>${escapeHtml(p.name)}</span><span>${isHost?`<button class="secondary remove-player" data-player-id="${escapeHtml(p.id)}">Remove</button>`:(p.ready?'✓':'')}</span></div>`).join('')||'<div class="small">Waiting for players…</div>'}</div>${isHost?`<button class="secondary" id="copy-invite">Copy invite link</button><label>Wallfacers and Wallbreakers: <strong>${Math.min(state.wallfacerCount,maxRoles)}</strong><input id="role-count" type="range" min="1" max="${maxRoles}" value="${Math.min(state.wallfacerCount,maxRoles)}" ${state.players.length<2?'disabled':''}></label><button id="start" ${state.players.length>=2?'':'disabled'}>Start game (${state.players.length} players)<\/button><button class="secondary" id="leave">End game</button>`:`<button class="secondary" id="leave">Leave game</button>`}</section>${chatHtml()}${localView.error?`<p class="notice">${escapeHtml(localView.error)}</p>`:''}</div>`;
+  const countdown=state.phase==='countdown'?`<div class="countdown" role="status" aria-live="polite">Starting in <strong>${state.countdown}</strong>…</div>`:'';
+  return `<div class="shell"><div class="topbar"><div><div class="brand">WALLFACERS</div><div class="meta">Room · ${state.playerCount} players</div></div><div class="code">${state.code}</div></div><section class="panel stack">${countdown}<div class="players">${state.players.map(p=>`<div class="player"><span>${escapeHtml(p.name)}${p.wallfacer?' · Wallfacer':''}</span><span>${isHost?`<button class="secondary remove-player" data-player-id="${escapeHtml(p.id)}">Remove</button>`:(p.ready?'✓':'')}</span></div>`).join('')||'<div class="small">Waiting for players…</div>'}</div>${isHost?`<button class="secondary" id="copy-invite">Copy invite link</button><label>Wallfacers and Wallbreakers: <strong>${Math.min(state.wallfacerCount,maxRoles)}</strong><input id="role-count" type="range" min="1" max="${maxRoles}" value="${Math.min(state.wallfacerCount,maxRoles)}" ${state.players.length<2||state.phase!=='lobby'?'disabled':''}></label><button id="start" ${state.players.length>=2&&state.phase==='lobby'?'':'disabled'}>${state.phase==='countdown'?'Starting…':`Start game (${state.players.length} players)`}</button><button class="secondary" id="leave">End game</button>`:`<button class="secondary" id="leave">Leave game</button>`}</section>${chatHtml()}${localView.error?`<p class="notice">${escapeHtml(localView.error)}</p>`:''}</div>`;
 }
 function gameScreen(state,role){
   const mine=state.players.find(p=>p.id===myPlayerId);
@@ -461,6 +485,7 @@ function gameScreen(state,role){
   return `<div class="shell"><div class="topbar"><div><div class="brand">ROUND ${state.round}/${MAX_ROUNDS}</div><div class="meta">Room ${state.code}</div></div><div class="row">${sophonHeader}<button class="secondary" id="show-role">Show role</button><button class="secondary" id="leave">${isHost?'End game':'Leave game'}</button></div></div>
   ${state.winner?`<section class="panel stack"><div class="win">${escapeHtml(state.winner)} win</div><div>${escapeHtml(state.reason)}</div></section>`:''}
   ${state.paused&&!state.winner?`<div class="notice">Game paused: ${escapeHtml(state.breakerName)} is attempting to break the wall.</div>`:''}
+  <div class="known-wallfacer">Wallfacer: ${escapeHtml(state.players.find(p=>p.wallfacer)?.name||'Unknown')}</div>
   <div class="dial-board">${DIAL_GROUPS.map(group=>`<section class="dial-group"><div class="group-label">${group.name}</div><div class="dials">${group.colors.map(c=>isHost?observerDialCardHtml(c,state):dialCardHtml(c,state,role)).join('')}</div></section>`).join('')}</div>
   ${omniscientHtml(state)}
   ${!state.winner&&!isHost?movePanelHtml(state,role,current):''}
@@ -489,9 +514,11 @@ function bind(){
   document.querySelector('#start')?.addEventListener('click',startGame);
   document.querySelector('#role-count')?.addEventListener('input',e=>{ game.wallfacerCount=Number(e.target.value); broadcast(); });
   document.querySelector('#submit')?.addEventListener('click',submitSelection);
-  document.querySelectorAll('.dial-select').forEach(el=>el.addEventListener('click',()=>{ pendingSelection.color=el.dataset.color; pendingSelection.effect=0; pendingSelection.sophonMode='affect'; render(); }));
-  document.querySelectorAll('.dial-action.adjust').forEach(el=>el.addEventListener('click',()=>{ pendingSelection.color=el.dataset.color; pendingSelection.effect=Number(el.dataset.effect); pendingSelection.sophonMode='affect'; render(); }));
+  document.querySelectorAll('.dial-select').forEach(el=>el.addEventListener('click',()=>{ pendingSelection.color=el.dataset.color; pendingSelection.effect=0; pendingSelection.sophonMode='affect'; pendingSelection.policeMode='affect'; render(); }));
+  document.querySelectorAll('.dial-action.adjust').forEach(el=>el.addEventListener('click',()=>{ pendingSelection.color=el.dataset.color; pendingSelection.effect=Number(el.dataset.effect); pendingSelection.sophonMode='affect'; pendingSelection.policeMode='affect'; render(); }));
   document.querySelector('#spy-choice')?.addEventListener('click',()=>{ pendingSelection.color=null; pendingSelection.effect=null; pendingSelection.sophonMode='see'; render(); });
+  document.querySelector('#arrest-choice')?.addEventListener('click',()=>{ pendingSelection.color=null; pendingSelection.effect=null; pendingSelection.policeMode='arrest'; render(); });
+  document.querySelector('#arrest-target')?.addEventListener('change',event=>{ pendingSelection.arrestTarget=event.target.value||null; render(); });
   document.querySelector('#show-role')?.addEventListener('click',()=>{localView.modal='role';render();});
   document.querySelector('#close-modal')?.addEventListener('click',()=>{localView.modal=null;render();});
   document.querySelector('#break-now')?.addEventListener('click',pauseForBreak);

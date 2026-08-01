@@ -155,6 +155,10 @@ button.chat-message { cursor:pointer; }
 .modal-card { width:min(520px,100%); background:#15181e; border:1px solid #303640; border-radius:20px; padding:20px; }
 .role-title { font-size:1.8rem; font-weight:800; margin:0 0 10px; }
 .notice { padding:12px; border-radius:12px; background:#272b34; }
+.known-wallfacer { padding:10px 12px; border:1px solid #6a5a24; border-radius:10px; background:#2a2410; color:#f5df8a; font-weight:800; }
+.arrest-notice { padding:12px; border:1px solid #8f1d1d; border-radius:10px; background:#351416; color:#ffd5d5; font-weight:800; }
+.countdown { padding:18px; border:1px solid #59616d; border-radius:12px; text-align:center; font-size:1.2rem; }
+.countdown strong { display:block; font-size:3.5rem; line-height:1.1; }
 .win { font-size:1.8rem; font-weight:800; }
 hr { border:0; border-top:1px solid #2a2e36; margin:8px 0; }
 .legal { max-width:920px; margin:0 auto; padding:0 20px 20px; color:#717784; font-size:.76rem; line-height:1.4; text-align:center; }
