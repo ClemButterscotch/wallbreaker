@@ -35,6 +35,13 @@ button:disabled { opacity:.45; cursor:not-allowed; }
 .chat-panel { display:grid; gap:0; padding:0; overflow:hidden; }
 .chat-header { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:15px 16px; border-bottom:1px solid #262a31; }
 .chat-header span { color:#a1a1aa; font-size:.78rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
+.chat-contacts { display:flex; gap:18px; overflow-x:auto; padding:16px 16px 12px; border-bottom:1px solid #262a31; background:#15181e; }
+.chat-contact { position:relative; display:grid; justify-items:center; gap:6px; flex:0 0 72px; padding:0; background:none; color:#a1a1aa; font-size:.72rem; }
+.chat-contact.selected { color:#fff; }
+.chat-avatar { display:grid; place-items:center; width:54px; height:54px; border:2px solid #49515d; border-radius:50%; background:linear-gradient(145deg,#ee91b0,#be5d86); color:#fff; font-weight:800; letter-spacing:.03em; box-shadow:0 3px 10px rgba(0,0,0,.25); }
+.chat-contact.selected .chat-avatar { border-color:#fff; box-shadow:0 0 0 3px rgba(255,255,255,.15),0 3px 10px rgba(0,0,0,.25); }
+.chat-contact-name { max-width:72px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.chat-unread { position:absolute; top:-3px; right:3px; display:grid; place-items:center; min-width:20px; height:20px; padding:0 5px; border:2px solid #15181e; border-radius:999px; background:#ec5570; color:#fff; font-size:.68rem; font-weight:800; }
 .chat-messages { display:flex; flex-direction:column; gap:10px; min-height:132px; max-height:300px; overflow:auto; padding:16px; background:#0f1217; }
 .chat-message { display:flex; max-width:78%; border:0; padding:0; background:none; color:inherit; text-align:left; }
 button.chat-message { cursor:pointer; }
@@ -156,6 +163,7 @@ button.chat-message { cursor:pointer; }
 .role-title { font-size:1.8rem; font-weight:800; margin:0 0 10px; }
 .notice { padding:12px; border-radius:12px; background:#272b34; }
 .known-wallfacer { padding:10px 12px; border:1px solid #6a5a24; border-radius:10px; background:#2a2410; color:#f5df8a; font-weight:800; }
+.known-wallfacers { display:grid; gap:8px; padding:12px; border:1px solid #6a5a24; border-radius:10px; background:#2a2410; color:#f5df8a; }
 .arrest-notice { padding:12px; border:1px solid #8f1d1d; border-radius:10px; background:#351416; color:#ffd5d5; font-weight:800; }
 .countdown { padding:18px; border:1px solid #59616d; border-radius:12px; text-align:center; font-size:1.2rem; }
 .countdown strong { display:block; font-size:3.5rem; line-height:1.1; }

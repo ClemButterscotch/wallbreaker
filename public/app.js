@@ -20,6 +20,9 @@ let pendingSelection = {color:null,effect:null,sophonMode:'affect',policeMode:'a
 let reconnecting = false;
 let chatMessages = [];
 let chatReplyTo = null;
+let chatUnread = {};
+let audioContext = null;
+let lastCountdownSound = null;
 let revealAnimationTimer = null;
 let countdownTimer = null;
 let localView = { screen:location.pathname === '/host' ? 'host' : 'home', state:null, role:null, error:'', modal:null, revealKey:'', revealAnimationPending:false };
@@ -28,6 +31,17 @@ function roomPeerId(code){ return `${BRAND.peerNamespace}-${code}`; }
 function fourDigit(){ return String(Math.floor(100000 + Math.random()*900000)); }
 function clamp(n){ return Math.max(0, Math.min(9, n)); }
 function escapeHtml(s=''){ return s.replace(/[&<>'"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':'&quot;'}[c])); }
+function playTung(){
+  try{
+    audioContext ||= new (window.AudioContext||window.webkitAudioContext)();
+    const now=audioContext.currentTime;
+    const oscillator=audioContext.createOscillator();
+    const gain=audioContext.createGain();
+    oscillator.type='sine'; oscillator.frequency.setValueAtTime(220,now); oscillator.frequency.exponentialRampToValueAtTime(110,now+.32);
+    gain.gain.setValueAtTime(.0001,now); gain.gain.exponentialRampToValueAtTime(.18,now+.015); gain.gain.exponentialRampToValueAtTime(.0001,now+.38);
+    oscillator.connect(gain); gain.connect(audioContext.destination); oscillator.start(now); oscillator.stop(now+.4);
+  }catch{}
+}
 function send(conn, msg){
   if(!conn) return;
   if(conn.open) conn.send(msg);
@@ -56,7 +70,7 @@ function broadcast(){
 function publicState(){
   return {
     code:game.code, phase:game.phase, countdown:game.countdown||0, round:game.round, dials:game.dials, playerCount:game.players.length, wallfacerCount:game.wallfacerCount,
-    players:game.players.map(p=>({id:p.id,name:p.name,ready:!!game.selections[p.id],wallfacer:game.roles[p.id]?.kind==='wallfacer'})),
+    players:game.players.map(p=>({id:p.id,name:p.name,ready:!!game.selections[p.id]})),
     adminPlaying:game.adminPlaying, paused:game.paused, breakerName:game.breakerName,
     revealed:game.revealed, winner:game.winner, reason:game.reason
   };
@@ -64,7 +78,7 @@ function publicState(){
 function roleFor(player){
   if(!player || !game.roles[player.id]) return null;
   const r=game.roles[player.id];
-  if(r.kind==='wallfacer') return {...r,arrested:!!game.arrested?.[player.id]};
+  if(r.kind==='wallfacer') return {...r,arrested:!!game.arrested?.[player.id],otherWallfacers:game.players.filter(p=>p.id!==player.id&&game.roles[p.id]?.kind==='wallfacer').map(p=>p.name)};
   if(r.kind==='wallbreaker'){
     const target=game.players.find(p=>p.id===r.targetId);
     return {...r,targetName:target?.name||'Unknown',arrested:!!game.arrested?.[player.id]};
@@ -255,6 +269,7 @@ function handleHostMessage(conn,msg){
     const player=game.players.find(p=>p.id===msg.playerId);
     if(!player || !msg.text.trim()) return;
     chatMessages.push({from:player.name,text:msg.text.trim(),playerId:player.id});
+    if(chatReplyTo!==player.id) chatUnread[player.id]=(chatUnread[player.id]||0)+1;
     render();
   }
 }
@@ -262,6 +277,7 @@ function handleClientMessage(msg){
   if(msg.type==='joined'){ myPlayerId=msg.playerId; }
   if(msg.type==='state'){
     const wasPlaying=localView.state?.phase==='playing';
+    if(msg.state.phase==='countdown' && msg.state.countdown!==lastCountdownSound){ lastCountdownSound=msg.state.countdown; playTung(); }
     const nextRevealKey=`${msg.state.round}:${JSON.stringify(msg.state.revealed)}`;
     if(msg.state.revealed && nextRevealKey!==localView.revealKey){
       localView.revealKey=nextRevealKey; localView.revealAnimationPending=true;
@@ -325,7 +341,21 @@ function removePlayer(playerId){
   if(!isHost || !playerId) return;
   handleHostMessage(null,{type:'removePlayer',playerId});
 }
+function chatInitials(name=''){ return name.split(/\s+/).filter(Boolean).map(part=>part[0]).join('').slice(0,2).toUpperCase()||'?'; }
 function chatHtml(){
+  if(isHost){
+    const players=game.players;
+    const active=chatReplyTo||players[0]?.id||null;
+    if(active && chatReplyTo!==active) chatReplyTo=active;
+    const player=players.find(p=>p.id===active);
+    const messages=chatMessages.filter(m=>m.playerId===active).map(m=>{
+      const mine=m.from==='Observer';
+      const bubble=`<div class="chat-bubble"><div class="chat-author">${escapeHtml(m.from)}</div><div class="chat-text">${escapeHtml(m.text)}</div></div>`;
+      return `<div class="chat-message ${mine?'mine':'theirs'}">${bubble}</div>`;
+    }).join('')||'<div class="chat-empty">No messages in this conversation.</div>';
+    const contacts=players.map(p=>`<button class="chat-contact ${p.id===active?'selected':''}" data-chat-contact="${escapeHtml(p.id)}" aria-label="Open messages with ${escapeHtml(p.name)}"><span class="chat-avatar">${chatInitials(p.name)}</span><span class="chat-contact-name">${escapeHtml(p.name)}</span>${chatUnread[p.id]?`<span class="chat-unread">${chatUnread[p.id]>9?'9+':chatUnread[p.id]}</span>`:''}</button>`).join('');
+    return `<section class="panel chat-panel"><div class="chat-header"><strong>Private player messages</strong>${player?`<span>${escapeHtml(player.name)}</span>`:''}</div><div class="chat-contacts">${contacts||'<div class="chat-empty">No players yet.</div>'}</div><div class="chat-messages">${messages}</div><div class="chat-composer"><input id="chat-input" placeholder="${player?'Message '+escapeHtml(player.name)+'...':'Select a player'}" ${player?'':'disabled'}><button id="chat-send" ${player?'':'disabled'}>Send</button></div></section>`;
+  }
   const messages=chatMessages.length?chatMessages.map(m=>{
     const mine=m.from==='You'||(isHost&&m.from==='Observer');
     const selected=isHost&&chatReplyTo&&m.playerId===chatReplyTo;
@@ -334,8 +364,7 @@ function chatHtml(){
       ? `<button class="chat-message ${mine?'mine':'theirs'} ${selected?'selected':''}" data-chat-player="${escapeHtml(m.playerId||'')}" aria-label="Reply to ${escapeHtml(m.from)}">${bubble}</button>`
       : `<div class="chat-message ${mine?'mine':'theirs'}">${bubble}</div>`;
   }).join(''):'<div class="chat-empty">No messages yet.</div>';
-  const placeholder=isHost?(chatReplyTo?'Reply to selected player...':'Select a player message to reply'):'Ask the observer a question...';
-  return `<section class="panel chat-panel"><div class="chat-header"><strong>${isHost?'Private player messages':'Message the observer'}</strong>${isHost&&chatReplyTo?`<span>Replying</span>`:''}</div><div class="chat-messages">${messages}</div><div class="chat-composer"><input id="chat-input" placeholder="${placeholder}" ${isHost&&!chatReplyTo?'disabled':''}><button id="chat-send" ${isHost&&!chatReplyTo?'disabled':''}>Send</button></div></section>`;
+  return `<section class="panel chat-panel"><div class="chat-header"><strong>Message the observer</strong></div><div class="chat-messages">${messages}</div><div class="chat-composer"><input id="chat-input" placeholder="Ask the observer a question..."><button id="chat-send">Send</button></div></section>`;
 }
 async function resumeHost(attempt=0){
   const saved=JSON.parse(localStorage.getItem(storageKey('host'))||'null');
@@ -362,7 +391,7 @@ async function resumeClient(){
 }
 function leaveGame(){ if(isHost){ peer?.destroy(); clearSession(); location.href='/host'; return; } send(hostConn,{type:'leave',playerId:myPlayerId}); peer?.destroy(); clearSession(); localView={screen:'home',state:null,role:null,error:'',modal:null}; render(); }
 function startGame(){
-  try{ assignRoles(); game.phase='countdown'; game.countdown=3; game.round=1; game.selections={}; game.arrested={}; game.revealed=null; pendingSelection={color:null,effect:null,sophonMode:'affect',policeMode:'affect',arrestTarget:null}; localView.modal=null; localView.screen='lobby'; broadcast(); beginCountdown(); }
+  try{ if(game.players.length<2) throw new Error('At least 2 players are required.'); game.phase='countdown'; game.countdown=3; game.round=1; game.selections={}; game.arrested={}; game.revealed=null; pendingSelection={color:null,effect:null,sophonMode:'affect',policeMode:'affect',arrestTarget:null}; localView.modal=null; localView.screen='lobby'; lastCountdownSound=3; playTung(); broadcast(); beginCountdown(); }
   catch(e){ localView.error=e.message; render(); }
 }
 function beginCountdown(){
@@ -370,7 +399,8 @@ function beginCountdown(){
   countdownTimer=setInterval(()=>{
     if(game.phase!=='countdown'){ clearInterval(countdownTimer); countdownTimer=null; return; }
     game.countdown=Math.max(0,(game.countdown||0)-1);
-    if(game.countdown===0){ game.phase='playing'; delete game.countdown; clearInterval(countdownTimer); countdownTimer=null; }
+    if(game.countdown>0) playTung();
+    if(game.countdown===0){ assignRoles(); game.phase='playing'; delete game.countdown; clearInterval(countdownTimer); countdownTimer=null; localView.modal='role'; }
     broadcast();
   },1000);
 }
@@ -405,7 +435,8 @@ function roleHtml(role){
   if(role.kind==='civilian') return `${arrested}<div class="role-heading">${roleSvg(role.kind)}<div><h2 class="role-title">${escapeHtml(role.profession)}</h2><p>Subject area: ${SUBJECTS[role.profession].join(' and ')}. Adjust one of these by 1 or 2, or any other dial by 1.</p></div></div>`;
   if(role.kind==='wallbreaker') return `${arrested}<div class="role-heading">${roleSvg(role.kind)}<div><h2 class="role-title">Wallbreaker</h2><p>You may adjust a dial by 1. Each round, choose whether the Sophon affects one dial by 1 or reveals the Wallfacer's move.</p></div><button class="danger" id="break-now">Guess the complete plan</button>${role.sophonResult?`<div class="card-list"><strong>Observed move</strong><div class="card-line">${role.sophonResult.color} ${role.sophonResult.effect>0?'+':''}${role.sophonResult.effect}</div></div>`:''}`;
   const rows=Object.entries(role.plan.values).map(([c,v])=>`<div class="card-line">${c.toUpperCase()} = ${v}</div>`).join('');
-  return `${arrested}<div class="role-heading">${roleSvg(role.kind)}<div><h2 class="role-title">Wallfacer</h2><p>Adjust a dial by 1 while completing this configuration:</p></div></div><div class="card-list">${rows}</div>`;
+  const otherWallfacers=role.otherWallfacers?.length?`<div class="known-wallfacers"><strong>Other Wallfacers</strong><div>${role.otherWallfacers.map(name=>`<div class="card-line">${escapeHtml(name)}</div>`).join('')}</div></div>`:'';
+  return `${arrested}<div class="role-heading">${roleSvg(role.kind)}<div><h2 class="role-title">Wallfacer</h2><p>Adjust a dial by 1 while completing this configuration.</p></div></div>${otherWallfacers}<div class="card-list">${rows}</div>`;
 }
 function omniscientHtml(state){
   if(!isHost) return '';
@@ -475,7 +506,7 @@ function hostPage(){ return `<div class="shell"><div class="topbar"><div class="
 function lobby(state){
   const maxRoles=Math.max(1,Math.floor(state.players.length/2));
   const countdown=state.phase==='countdown'?`<div class="countdown" role="status" aria-live="polite">Starting in <strong>${state.countdown}</strong>…</div>`:'';
-  return `<div class="shell"><div class="topbar"><div><div class="brand">WALLFACERS</div><div class="meta">Room · ${state.playerCount} players</div></div><div class="code">${state.code}</div></div><section class="panel stack">${countdown}<div class="players">${state.players.map(p=>`<div class="player"><span>${escapeHtml(p.name)}${p.wallfacer?' · Wallfacer':''}</span><span>${isHost?`<button class="secondary remove-player" data-player-id="${escapeHtml(p.id)}">Remove</button>`:(p.ready?'✓':'')}</span></div>`).join('')||'<div class="small">Waiting for players…</div>'}</div>${isHost?`<button class="secondary" id="copy-invite">Copy invite link</button><label>Wallfacers and Wallbreakers: <strong>${Math.min(state.wallfacerCount,maxRoles)}</strong><input id="role-count" type="range" min="1" max="${maxRoles}" value="${Math.min(state.wallfacerCount,maxRoles)}" ${state.players.length<2||state.phase!=='lobby'?'disabled':''}></label><button id="start" ${state.players.length>=2&&state.phase==='lobby'?'':'disabled'}>${state.phase==='countdown'?'Starting…':`Start game (${state.players.length} players)`}</button><button class="secondary" id="leave">End game</button>`:`<button class="secondary" id="leave">Leave game</button>`}</section>${chatHtml()}${localView.error?`<p class="notice">${escapeHtml(localView.error)}</p>`:''}</div>`;
+  return `<div class="shell"><div class="topbar"><div><div class="brand">WALLFACERS</div><div class="meta">Room · ${state.playerCount} players</div></div><div class="code">${state.code}</div></div><section class="panel stack">${countdown}<div class="players">${state.players.map(p=>`<div class="player"><span>${escapeHtml(p.name)}</span><span>${isHost?`<button class="secondary remove-player" data-player-id="${escapeHtml(p.id)}">Remove</button>`:(p.ready?'✓':'')}</span></div>`).join('')||'<div class="small">Waiting for players…</div>'}</div>${isHost?`<button class="secondary" id="copy-invite">Copy invite link</button><label>Wallfacers and Wallbreakers: <strong>${Math.min(state.wallfacerCount,maxRoles)}</strong><input id="role-count" type="range" min="1" max="${maxRoles}" value="${Math.min(state.wallfacerCount,maxRoles)}" ${state.players.length<2||state.phase!=='lobby'?'disabled':''}></label><button id="start" ${state.players.length>=2&&state.phase==='lobby'?'':'disabled'}>${state.phase==='countdown'?'Starting…':`Start game (${state.players.length} players)`}</button><button class="secondary" id="leave">End game</button>`:`<button class="secondary" id="leave">Leave game</button>`}</section>${chatHtml()}${localView.error?`<p class="notice">${escapeHtml(localView.error)}</p>`:''}</div>`;
 }
 function gameScreen(state,role){
   const mine=state.players.find(p=>p.id===myPlayerId);
@@ -485,7 +516,6 @@ function gameScreen(state,role){
   return `<div class="shell"><div class="topbar"><div><div class="brand">ROUND ${state.round}/${MAX_ROUNDS}</div><div class="meta">Room ${state.code}</div></div><div class="row">${sophonHeader}<button class="secondary" id="show-role">Show role</button><button class="secondary" id="leave">${isHost?'End game':'Leave game'}</button></div></div>
   ${state.winner?`<section class="panel stack"><div class="win">${escapeHtml(state.winner)} win</div><div>${escapeHtml(state.reason)}</div></section>`:''}
   ${state.paused&&!state.winner?`<div class="notice">Game paused: ${escapeHtml(state.breakerName)} is attempting to break the wall.</div>`:''}
-  <div class="known-wallfacer">Wallfacer: ${escapeHtml(state.players.find(p=>p.wallfacer)?.name||'Unknown')}</div>
   <div class="dial-board">${DIAL_GROUPS.map(group=>`<section class="dial-group"><div class="group-label">${group.name}</div><div class="dials">${group.colors.map(c=>isHost?observerDialCardHtml(c,state):dialCardHtml(c,state,role)).join('')}</div></section>`).join('')}</div>
   ${omniscientHtml(state)}
   ${!state.winner&&!isHost?movePanelHtml(state,role,current):''}
@@ -528,7 +558,7 @@ function bind(){
   document.querySelectorAll('.remove-player').forEach(el=>el.addEventListener('click',event=>{ event.stopPropagation(); removePlayer(el.dataset.playerId); }));
   document.querySelector('#chat-send')?.addEventListener('click',sendChat);
   document.querySelector('#chat-input')?.addEventListener('keydown',event=>{ if(event.key==='Enter') sendChat(); });
-  document.querySelectorAll('.chat-message').forEach(el=>el.addEventListener('click',()=>{ chatReplyTo=el.dataset.chatPlayer||null; render(); }));
+  document.querySelectorAll('.chat-contact').forEach(el=>el.addEventListener('click',()=>{ chatReplyTo=el.dataset.chatContact||null; if(chatReplyTo) delete chatUnread[chatReplyTo]; render(); }));
 }
 render();
 if(location.pathname==='/host') resumeHost(); else resumeClient();
