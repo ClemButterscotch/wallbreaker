@@ -10,7 +10,7 @@ const types = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; char
 const httpServer = createServer(async (req, res) => {
   const requested = decodeURIComponent((req.url || '/').split('?')[0]);
   const relative = requested === '/' || requested === '/host' ? '/index.html' :
-    (requested === '/app.js' || requested === '/styles.css' || requested === '/brand.js' ? `/public${requested}` : requested);
+    (requested === '/app.js' || requested === '/styles.css' || requested === '/brand.js' || requested === '/game-rules.js' || requested === '/tutorial.js' ? `/public${requested}` : requested);
   const file = normalize(join(root, relative));
   if (!file.startsWith(root)) { res.writeHead(403).end('Forbidden'); return; }
   try {
@@ -22,5 +22,5 @@ const httpServer = createServer(async (req, res) => {
   }
 });
 httpServer.listen(port, '0.0.0.0', () => {
-  console.log(`Wallfacers is ready at http://127.0.0.1:${port}`);
+  console.log(`wallbreaker is ready at http://127.0.0.1:${port}`);
 });

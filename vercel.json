@@ -3,12 +3,16 @@
     { "src": "index.html", "use": "@vercel/static" },
     { "src": "public/app.js", "use": "@vercel/static" },
     { "src": "public/brand.js", "use": "@vercel/static" },
+    { "src": "public/game-rules.js", "use": "@vercel/static" },
+    { "src": "public/tutorial.js", "use": "@vercel/static" },
     { "src": "public/styles.css", "use": "@vercel/static" }
   ],
   "routes": [
     { "src": "/host", "dest": "/index.html" },
     { "src": "/app.js", "dest": "/public/app.js" },
     { "src": "/brand.js", "dest": "/public/brand.js" },
+    { "src": "/game-rules.js", "dest": "/public/game-rules.js" },
+    { "src": "/tutorial.js", "dest": "/public/tutorial.js" },
     { "src": "/styles.css", "dest": "/public/styles.css" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
