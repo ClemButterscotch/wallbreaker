@@ -103,6 +103,13 @@ export function mathbreakerGuessKey(fields){
   return [...fields].sort().join(',');
 }
 
+export function isMathbreakerGuessWindowOpen({mode,phase,paused,lastGuessRound,round}){
+  return mode==='mathbreaker'
+    && phase==='playing'
+    && !paused
+    && lastGuessRound!==round;
+}
+
 export function validateMathbreakerGuess({planFields,guessFields,previousGuessKeys=[],lastGuessRound,round}){
   const key=mathbreakerGuessKey(guessFields);
   if(!key) return {valid:false,correct:false,error:'Choose exactly three different fields.'};

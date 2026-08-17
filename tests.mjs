@@ -13,6 +13,7 @@ import {
   resolveMathbreakerAdvancement,
   resolveMathbreakerDecay,
   isMathbreakerPlanComplete,
+  isMathbreakerGuessWindowOpen,
   validateMathbreakerGuess,
   maxEffectFor,
   legalEffectsFor,
@@ -108,6 +109,13 @@ test('Mathbreaker guesses are private candidates that cannot repeat or occur twi
   const correct=validateMathbreakerGuess({planFields,guessFields:['green','yellow','blue'],previousGuessKeys:[],lastGuessRound:1,round:2});
   assert.equal(correct.valid,true);
   assert.equal(correct.correct,true);
+});
+
+test('Mathbreaker guessing stays available after decay is locked',()=>{
+  const turn={mode:'mathbreaker',phase:'playing',paused:false,lastGuessRound:null,round:4};
+  assert.equal(isMathbreakerGuessWindowOpen({...turn,decayLocked:true}),true,'decay locking is independent from guessing');
+  assert.equal(isMathbreakerGuessWindowOpen({...turn,lastGuessRound:4}),false,'the second guess in a turn remains blocked');
+  assert.equal(isMathbreakerGuessWindowOpen({...turn,phase:'math-reveal'}),false,'guessing closes once resolution begins');
 });
 
 test('role-specific dial limits are enforced',()=>{
