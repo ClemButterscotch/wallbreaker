@@ -9,8 +9,10 @@ const types = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; char
 
 const httpServer = createServer(async (req, res) => {
   const requested = decodeURIComponent((req.url || '/').split('?')[0]);
-  const relative = requested === '/' || requested === '/host' ? '/index.html' :
-    (requested === '/app.js' || requested === '/styles.css' || requested === '/brand.js' || requested === '/game-rules.js' || requested === '/tutorial.js' ? `/public${requested}` : requested);
+  const relative = requested === '/rules' ? '/rules.html' :
+    requested === '/mathbreaker/rules' ? '/mathbreaker-rules.html' :
+    requested === '/' || requested === '/host' || requested === '/tutorial/host' || requested === '/mathbreaker/host' ? '/index.html' :
+    (requested === '/app.js' || requested === '/styles.css' || requested === '/brand.js' || requested === '/game-rules.js' || requested === '/tutorial.js' || requested === '/rules.js' || requested === '/rules.css' ? `/public${requested}` : requested);
   const file = normalize(join(root, relative));
   if (!file.startsWith(root)) { res.writeHead(403).end('Forbidden'); return; }
   try {

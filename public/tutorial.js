@@ -2,49 +2,49 @@ const ROLE_COPY={
   wallfacer:{label:'Wallfacer',team:'Loyal',mark:'WF'},
   wallbreaker:{label:'Wallbreaker',team:'Saboteur',mark:'WB'},
   police:{label:'Shi Qiang',team:'Loyal',mark:'SQ'},
-  civilian:{label:'Civilian',team:'Loyal',mark:'CV'}
+  civilian:{label:'Specialist',team:'Loyal',mark:'SP'}
 };
 
 const slides=[
   {
-    eyebrow:'01 · THE MACHINE',
-    title:'Six dials. One invisible destination.',
-    copy:'Together, the table changes six numbered dials. A Wallfacer is quietly steering three of them toward an exact secret plan while a paired Wallbreaker tries to discover and stop it.',
+    eyebrow:'01 · OBJECTIVE',
+    title:'Complete the Wallfacer’s secret plan exactly.',
+    copy:'The plan identifies three of the six colored dials and gives an exact target value for each. The Loyal team wins if all three values match after a round resolves.',
     art:`<div class="tutorial-dial-rig"><div class="mini-dial yellow"><span>YELLOW</span><strong>3</strong></div><div class="mini-dial pink"><span>PINK</span><strong>7</strong></div><div class="mini-dial blue"><span>BLUE</span><strong>1</strong></div><div class="plan-beacon"><span>SECRET PLAN</span><b>?</b><b>?</b><b>?</b></div></div>`,
-    facts:['Every dial is always between 0 and 9; changes stop at those limits.','Yellow + pink are Mathematics, blue + green are Science, orange + red are Agriculture.','The host is a neutral observer and authoritative referee.']
+    facts:['Every dial remains between 0 and 9; changes stop at those limits.','Yellow and pink are Mathematics, blue and green are Science, and orange and red are Agriculture.','The Wallfacer must not announce the three plan colors because the Wallbreaker can win by guessing them.','The host is a neutral observer and authoritative referee.']
   },
   {
-    eyebrow:'02 · HIDDEN TEAMS',
-    title:'Your role changes what you know—and what you can move.',
-    copy:'Roles are private in a standard game. The host chooses how many Wallfacer–Wallbreaker pairs to include; any remaining seats become Loyal specialists.',
-    art:`<div class="tutorial-role-orbit"><div class="orbit-card loyal"><b>WF</b><span>Wallfacer</span></div><div class="orbit-card danger"><b>WB</b><span>Wallbreaker</span></div><div class="orbit-card loyal"><b>SQ</b><span>Shi Qiang</span></div><div class="orbit-card loyal"><b>CV</b><span>Civilian</span></div></div>`,
-    facts:['There are always equal numbers of Wallfacers and Wallbreakers. The host may include one Police role when an extra seat is available; all other seats are Civilians.','Wallfacers know their own three-dial plan and the names of any other Wallfacers. They may change any dial by −1, 0, or +1.','Each Wallbreaker is assigned one Wallfacer target. They may change a dial by −1, 0, or +1—or observe that target’s move.','Each Civilian has a subject. They may use −2 through +2 on its two dials, but only −1 through +1 elsewhere.','Shi Qiang may change a dial by −1, 0, or +1—or secretly arrest one other player for the round.']
+    eyebrow:'02 · ROLES',
+    title:'A standard game always uses the same core roles.',
+    copy:'There is one Wallfacer, one Wallbreaker, and one Shi Qiang. Every remaining player is a Specialist.',
+    art:`<div class="tutorial-role-orbit"><div class="orbit-card loyal"><b>WF</b><span>Wallfacer</span></div><div class="orbit-card danger"><b>WB</b><span>Wallbreaker</span></div><div class="orbit-card loyal"><b>SQ</b><span>Shi Qiang</span></div><div class="orbit-card loyal"><b>SP</b><span>Specialist</span></div></div>`,
+    facts:['The Wallfacer knows the complete plan and may change any dial by −1, 0, or +1.','The Wallbreaker may change a dial by −1, 0, or +1, or use the Sophon to observe the Wallfacer’s move.','Shi Qiang may change a dial by −1, 0, or +1, or secretly arrest one other player for the round.','Each Specialist independently receives a random subject. Duplicates are allowed. They may use −2 through +2 on that subject’s two dials, but only −1 through +1 elsewhere.']
   },
   {
     eyebrow:'03 · EACH ROUND',
-    title:'Choose privately. Lock once. Reveal together.',
-    copy:'Every player commits exactly one action. A lock is final for that round, so talk first and click carefully.',
+    title:'Every player locks one action before resolution.',
+    copy:'Players may discuss the board first. Each player then chooses a legal action privately and locks it. A locked action cannot be changed during that round.',
     art:`<div class="tutorial-flow"><div><b>1</b><span>Discuss</span></div><i>→</i><div><b>2</b><span>Choose</span></div><i>→</i><div><b>3</b><span>Lock</span></div><i>→</i><div class="flow-live"><b>4</b><span>Resolve</span></div></div>`,
-    facts:['The host waits until every player is locked, then resolves all actions simultaneously.','Moves on the same dial add together. The public reveal shows the net change, not who caused it.','A 0 move is legal and can be useful for concealment.','Private player-to-observer chat is available for questions; it is not a public team channel.']
+    facts:['The host waits until every player is locked, then adds all legal effects together before revealing the result.','On one dial, +2 and +1 produce a public change of +3. A +1 and a −1 produce 0, which looks the same as no one changing that dial.','The public reveal shows only each dial’s net change, not the individual actions that produced it.','A 0 move is legal. Optional messaging is private between each player and the observer.']
   },
   {
     eyebrow:'04 · SPECIAL ACTIONS',
-    title:'Observation exposes intent. Arrest erases an effect.',
-    copy:'The two special roles trade away their dial move when they use their power.',
+    title:'The Wallbreaker and Shi Qiang each choose between two actions.',
+    copy:'Using the Sophon or making an arrest replaces that player’s dial move for the round.',
     art:`<div class="power-split"><div class="power-card sophon"><span class="power-orb"></span><strong>SOPHON</strong><p>See the target Wallfacer’s locked move after resolution.</p></div><div class="power-card arrest"><span class="power-ring">×</span><strong>ARREST</strong><p>Cancel one player’s dial effect for this round.</p></div></div>`,
-    facts:['A Wallbreaker chooses one Sophon action each round: affect one dial or observe the target Wallfacer.','An observed move appears only to that Wallbreaker after the round resolves.','Shi Qiang chooses either a normal dial move or one arrest target.','An arrest cancels the target’s dial effect; the rest of the round still resolves.']
+    facts:['The Wallbreaker either affects one dial or uses the Sophon to observe the Wallfacer’s locked move after resolution.','The observation result is shown only to the Wallbreaker.','Shi Qiang either affects one dial or arrests one other player.','An arrest removes the target’s dial effect from the total. Only the arrested player is notified; the arrest is not public during play.']
   },
   {
     eyebrow:'05 · HOW IT ENDS',
-    title:'The Wallbreakers get one dangerous accusation.',
-    copy:'Victory can arrive suddenly. Watch the dials, protect the plan, and do not guess casually.',
-    art:`<div class="ending-map"><div class="ending loyal"><span>LOYAL WIN</span><strong>Plan completed</strong></div><div class="ending breaker"><span>WALLBREAKER WIN</span><strong>Exact plan guessed</strong></div><div class="ending loyal"><span>LOYAL WIN</span><strong>Wrong guess</strong></div><div class="ending breaker"><span>WALLBREAKER WIN</span><strong>Survive round limit</strong></div></div>`,
-    facts:['After each resolution, if any Wallfacer’s three named dials exactly match all three values, the Loyal team wins immediately.','A Wallbreaker may guess the complete plan: exactly three dial names and their exact values. A correct guess wins immediately.','An incorrect Wallbreaker guess immediately gives victory to the Loyal team.','If the configured final round ends with no completed plan, the Wallbreakers win.']
+    title:'The game ends in one of four ways.',
+    copy:'The game checks the plan after every round. The Wallbreaker may also make a final guess during play.',
+    art:`<div class="ending-map"><div class="ending loyal"><span>LOYAL WIN</span><strong>Plan completed</strong></div><div class="ending breaker"><span>WALLBREAKER WIN</span><strong>Three colors guessed</strong></div><div class="ending loyal"><span>LOYAL WIN</span><strong>Wrong guess</strong></div><div class="ending breaker"><span>WALLBREAKER WIN</span><strong>Round limit reached</strong></div></div>`,
+    facts:['If the plan’s three dials exactly match their target values after resolution, the Loyal team wins immediately.','The Wallbreaker may guess which three dial colors are in the plan. The values are not part of the guess.','A correct guess wins for the Wallbreaker. An incorrect guess immediately wins for the Loyal team.','If the final configured round ends without the plan being completed, the Wallbreaker wins.']
   },
   {
     eyebrow:'06 · OPEN-BOOK PRACTICE',
-    title:'Now play once with the walls made of glass.',
-    copy:'The practice game uses the real rules, real locks, and real win conditions. Its only advantage is extra visibility, so everyone can connect cause to effect.',
+    title:'Guided practice reveals information that is normally private.',
+    copy:'The practice game uses the standard rules, locks, and win conditions, but exposes hidden information so the group can learn the system.',
     art:`<div class="glass-wall"><div class="glass-secret"><span>ROLES</span><strong>VISIBLE</strong></div><div class="glass-secret"><span>PLANS</span><strong>VISIBLE</strong></div><div class="glass-secret"><span>LOCKS</span><strong>VISIBLE</strong></div></div>`,
     facts:['During this tutorial, everyone can inspect every role, Wallfacer plan, Wallbreaker target, and already-locked action.','The teaching panel updates live underneath the dials. Use it to explain why the board changed.','In a standard game that panel is never loaded and none of this hidden information is sent to players.','When you are ready, mark your briefing complete. The host starts the shared countdown.']
   }
@@ -66,7 +66,7 @@ export function briefingHtml({state,step,isHost,myPlayerId}){
   const finalAction=isHost
     ? `<button id="begin-tutorial-practice" class="tutorial-primary">Begin guided practice</button><span>${ready.size}/${state.players.length} players ready</span>`
     : `<button id="tutorial-ready" class="tutorial-primary" ${amReady?'disabled':''}>${amReady?'Ready — waiting for host':'I understand — ready'}</button>`;
-  return `<div class="tutorial-shell"><div class="tutorial-aurora" aria-hidden="true"></div><header class="tutorial-header"><div><div class="brand">WALLBREAKER</div><div class="meta">Guided mission briefing · Room ${esc(state.code)}</div></div><button class="tutorial-exit" id="leave">${isHost?'End game':'Leave game'}</button></header><main class="tutorial-stage" aria-live="polite"><section class="tutorial-copy"><div class="tutorial-eyebrow">${slide.eyebrow}</div><h1>${slide.title}</h1><p class="tutorial-lede">${slide.copy}</p><ul>${slide.facts.map(fact=>`<li>${fact}</li>`).join('')}</ul></section><section class="tutorial-art" aria-label="Illustration for ${esc(slide.title)}">${slide.art}</section></main><footer class="tutorial-controls"><button class="tutorial-back" id="tutorial-prev" ${index===0?'disabled':''}>← Back</button><div class="tutorial-dots">${dots}</div>${index<slides.length-1?'<button class="tutorial-primary" id="tutorial-next">Continue →</button>':`<div class="tutorial-final-action">${finalAction}</div>`}</footer>${index===slides.length-1?`<aside class="tutorial-ready-roster"><strong>${isHost?'Briefing status':'Your group'}</strong><div>${roster}</div></aside>`:''}</div>`;
+  return `<div class="tutorial-shell"><div class="tutorial-aurora" aria-hidden="true"></div><header class="tutorial-header"><div><div class="brand">WALLBREAKER</div><div class="meta">Guided rules · Room ${esc(state.code)}</div></div><button class="tutorial-exit" id="leave">${isHost?'End game':'Leave game'}</button></header><main class="tutorial-stage" aria-live="polite"><section class="tutorial-copy"><div class="tutorial-eyebrow">${slide.eyebrow}</div><h1>${slide.title}</h1><p class="tutorial-lede">${slide.copy}</p><ul>${slide.facts.map(fact=>`<li>${fact}</li>`).join('')}</ul></section><section class="tutorial-art" aria-label="Illustration for ${esc(slide.title)}">${slide.art}</section></main><footer class="tutorial-controls"><button class="tutorial-back" id="tutorial-prev" ${index===0?'disabled':''}>← Back</button><div class="tutorial-dots">${dots}</div>${index<slides.length-1?'<button class="tutorial-primary" id="tutorial-next">Continue →</button>':`<div class="tutorial-final-action">${finalAction}</div>`}</footer>${index===slides.length-1?`<aside class="tutorial-ready-roster"><strong>${isHost?'Briefing status':'Your group'}</strong><div>${roster}</div></aside>`:''}</div>`;
 }
 
 function roleDetail(role,names){
@@ -88,6 +88,7 @@ function selectionText(selection,names){
 function resolvedActionText(action,names){
   if(action.type==='spy') return `Observed ${names.get(action.targetId)||'the target'}`;
   if(action.type==='arrest') return `Arrested ${names.get(action.targetId)||'a player'}`;
+  if(action.type==='private') return 'Private Police action';
   if(action.type==='skipped') return 'Skipped after disconnect';
   const effect=Number(action.effect||0);
   return `${action.color||'No dial'} ${effect>0?'+':''}${effect}`;
@@ -99,7 +100,7 @@ export function tutorialAidHtml({state}){
   const names=new Map(disclosure.roles.map(role=>[role.playerId,role.name]));
   const roles=disclosure.roles.map(role=>{
     const copy=ROLE_COPY[role.kind]||{label:role.label||'Unknown',team:'',mark:'?'};
-    return `<article class="tutorial-intel-card ${copy.team==='Saboteur'?'is-saboteur':'is-loyal'}"><span class="intel-mark">${copy.mark}</span><div><strong>${esc(role.name)}</strong><span>${esc(role.kind==='civilian'&&role.profession?role.profession:copy.label)} · ${copy.team}</span><small>${esc(roleDetail(role,names))}</small></div></article>`;
+    return `<article class="tutorial-intel-card ${copy.team==='Saboteur'?'is-saboteur':'is-loyal'}"><span class="intel-mark">${copy.mark}</span><div><strong>${esc(role.name)}</strong><span>${esc(role.kind==='civilian'&&role.profession?`${role.profession} Specialist`:copy.label)} · ${copy.team}</span><small>${esc(roleDetail(role,names))}</small></div></article>`;
   }).join('');
   const locks=disclosure.lockedMoves.map(move=>`<div class="tutorial-lock"><span>${esc(move.name)}</span><strong>${esc(selectionText(move.selection,names))}</strong></div>`).join('')||'<div class="tutorial-empty-locks">No one has locked an action yet.</div>';
   const lastRound=disclosure.lastRound;

@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#05090a" />
+  <meta name="description" content="The complete visual rulebook for Mathbreaker." />
+  <title>Mathbreaker rules</title>
+  <link rel="stylesheet" href="/rules.css" />
+</head>
+<body class="rules-page math-rules-page">
+  <a class="rules-skip" href="#rules-slide-start">Skip to the rulebook</a>
+  <div class="rules-deck" data-rules-deck data-rules-label="mathbreaker rules">
+    <header class="rules-topbar">
+      <a class="rules-wordmark" href="/" aria-label="Wallbreaker home">mathbreaker</a>
+      <div class="rules-chapter" aria-live="polite"><span>Variant rulebook</span><strong id="rules-current-title">Mathbreaker briefing</strong></div>
+      <div class="rules-top-actions">
+        <button class="rules-icon-button" id="rules-menu" type="button" aria-label="Open table of contents" aria-expanded="false" aria-controls="rules-toc"><span></span><span></span><span></span></button>
+        <button class="rules-icon-button rules-print" id="rules-print" type="button" aria-label="Print the rulebook with a white background"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8V3h10v5M7 17H4V9h16v8h-3M7 14h10v7H7z" /></svg></button>
+        <button class="rules-icon-button rules-fullscreen" id="rules-fullscreen" type="button" aria-label="Enter fullscreen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5m13 5h5v-5" /></svg></button>
+      </div>
+    </header>
+
+    <aside class="rules-toc" id="rules-toc" aria-label="Rulebook chapters" aria-hidden="true">
+      <div class="rules-toc-heading"><div><span>Jump to</span><strong>Contents</strong></div><button id="rules-menu-close" type="button" aria-label="Close table of contents">×</button></div>
+      <nav id="rules-toc-links"></nav>
+      <div class="rules-toc-note">Use <kbd>←</kbd> <kbd>→</kbd>, swipe, or the controls below.</div>
+    </aside>
+    <button class="rules-scrim" id="rules-scrim" type="button" aria-label="Dismiss table of contents" tabindex="-1"></button>
+
+    <main class="rules-stage" id="rulebook" tabindex="-1">
+      <section class="rules-slide rules-cover rules-math-slide is-current" id="rules-slide-start" data-title="Mathbreaker briefing" data-chapter="Start" aria-hidden="false">
+        <div class="rules-slide-inner rules-cover-layout">
+          <div class="rules-copy">
+            <div class="rules-kicker"><span>Experimental field manual</span><i></i><span>v1</span></div>
+            <h1>Advance the fields.<br><em>Break the pattern.</em></h1>
+            <p class="rules-lede">A focused guide to Mathbreaker’s Specialists, hidden three-field plan, precommitted decay, and private combination guesses.</p>
+            <div class="rules-cover-actions"><button class="rules-primary" type="button" data-rules-next>Begin the briefing <span aria-hidden="true">→</span></button><span>About 5 minutes</span></div>
+          </div>
+          <div class="rules-visual rules-hero-machine math-hero-machine" aria-label="Six Mathbreaker fields surrounding a hidden three-field plan">
+            <div class="hero-orbit hero-orbit-one"></div><div class="hero-orbit hero-orbit-two"></div>
+            <div class="hero-secret"><span>Three secret fields</span><strong>?</strong><strong>?</strong><strong>?</strong></div>
+            <div class="hero-dial hero-yellow"><span>Yellow</span><b>3</b></div><div class="hero-dial hero-pink"><span>Pink</span><b>3</b></div>
+            <div class="hero-dial hero-orange"><span>Orange</span><b>3</b></div><div class="hero-dial hero-red"><span>Red</span><b>3</b></div>
+            <div class="hero-dial hero-blue"><span>Blue</span><b>3</b></div><div class="hero-dial hero-green"><span>Green</span><b>2</b></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="rules-slide rules-math-slide" id="rules-slide-objective" data-title="The threshold plan" data-chapter="Objective" aria-hidden="true">
+        <div class="rules-slide-inner">
+          <div class="rules-copy">
+            <div class="rules-kicker">01 · Objective</div>
+            <h2>Raise three secret fields to 7—and keep them there.</h2>
+            <p class="rules-lede">The Wallfacer secretly receives three named fields. The Loyal team wins only when all three remain at or above 7 after the Wallbreaker’s decay resolves.</p>
+            <ul class="rules-points math-points">
+              <li><span>01</span><p><strong>The plan names fields, not exact values.</strong> A plan might be Panopticon, Lemon, and Game Theory.</p></li>
+              <li><span>02</span><p><strong>Every value at 7 or higher counts.</strong> The three fields do not need to match each other.</p></li>
+              <li><span>03</span><p><strong>Decay gets the final word.</strong> Touching 7 during advancement is not enough if decay pulls a plan field back down.</p></li>
+            </ul>
+          </div>
+          <div class="rules-visual math-secret-card">
+            <div class="math-secret-heading"><span>Wallfacer plan</span><b>Threshold 7</b></div>
+            <article class="yellow"><span>Yellow</span><strong>Panopticon Theory</strong><b>7+</b></article>
+            <article class="blue"><span>Blue</span><strong>Lemon Theory</strong><b>7+</b></article>
+            <article class="green"><span>Green</span><strong>Game Theory</strong><b>7+</b></article>
+            <div class="math-secret-footer">All three must survive decay.</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="rules-slide rules-math-slide" id="rules-slide-board" data-title="The six fields" data-chapter="Setup" aria-hidden="true">
+        <div class="rules-slide-inner">
+          <div class="rules-copy">
+            <div class="rules-kicker">02 · Setup · The board</div>
+            <h2>Six colors become six fields of study.</h2>
+            <p class="rules-lede">Every field begins at 2, 3, or 4. The six opening values always add up to exactly 17, and values remain bounded from 0 to 9.</p>
+            <div class="math-rule-strip"><span>Opening rule</span><strong>Each field: 2–4</strong><i></i><strong>Total: 17</strong></div>
+          </div>
+          <div class="rules-visual math-field-board">
+            <article class="yellow"><span>Yellow</span><strong>Panopticon Theory</strong><b>3</b></article>
+            <article class="pink"><span>Pink</span><strong>Far Lands Theory</strong><b>3</b></article>
+            <article class="orange"><span>Orange</span><strong>Logic</strong><b>3</b></article>
+            <article class="red"><span>Red</span><strong>Algebra</strong><b>3</b></article>
+            <article class="blue"><span>Blue</span><strong>Lemon Theory</strong><b>3</b></article>
+            <article class="green"><span>Green</span><strong>Game Theory</strong><b>2</b></article>
+            <div class="math-total"><span>Opening total</span><strong>17</strong></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="rules-slide rules-math-slide" id="rules-slide-roles" data-title="Three jobs at the table" data-chapter="Roles" aria-hidden="true">
+        <div class="rules-slide-inner rules-stack-layout">
+          <div class="rules-copy rules-copy-wide">
+            <div class="rules-kicker">03 · Roles</div>
+            <h2>One Wallfacer. One Wallbreaker. Everyone else specializes.</h2>
+            <p class="rules-lede">Mathbreaker needs at least three players. There is no Police role, no Civilians, and no round limit.</p>
+          </div>
+          <div class="math-role-lanes">
+            <article><div class="math-role-mark loyal">WF</div><span>Wallfacer</span><h3>Advance any one field by +1.</h3><p>Knows the three-field plan and guides the table without revealing it.</p></article>
+            <article><div class="math-role-mark specialist">SP</div><span>Specialist</span><h3>Specialty +2, or any other field +1.</h3><p>Knows only a private specialty and tries to infer which fields matter.</p></article>
+            <article><div class="math-role-mark danger">WB</div><span>Wallbreaker</span><h3>Assign one −1 decay per good player.</h3><p>May stack multiple decay on one field, then privately test a three-field combination.</p></article>
+          </div>
+          <div class="decay-formula"><span>Decay budget</span><strong>Total players − 1</strong><i>=</i><b>everyone except the Wallbreaker</b></div>
+        </div>
+      </section>
+
+      <section class="rules-slide rules-math-slide" id="rules-slide-round" data-title="One turn, two reveals" data-chapter="Turn flow" aria-hidden="true">
+        <div class="rules-slide-inner rules-stack-layout">
+          <div class="rules-copy rules-copy-wide">
+            <div class="rules-kicker">04 · Turn flow</div>
+            <h2>Everything locks before anything moves.</h2>
+            <p class="rules-lede">The Wallbreaker cannot watch the advancements and then place decay. All advancement and decay choices are already committed before the first reveal.</p>
+          </div>
+          <div class="rules-timeline math-timeline">
+            <article><b>01</b><div class="timeline-icon chat"><i></i><i></i><i></i></div><h3>Discuss</h3><p>Good players signal priorities; the Wallbreaker listens for the pattern.</p></article><span class="timeline-arrow">→</span>
+            <article><b>02</b><div class="timeline-icon lock"><i></i></div><h3>Lock</h3><p>Good players choose advancements while the Wallbreaker assigns the full decay budget.</p></article><span class="timeline-arrow">→</span>
+            <article class="is-live"><b>03</b><div class="timeline-icon resolve"><i></i><i></i></div><h3>Advance</h3><p>All Wallfacer and Specialist advancements appear together.</p></article><span class="timeline-arrow">→</span>
+            <article><b>04</b><div class="timeline-icon choose"><i></i></div><h3>Decay</h3><p>The precommitted −1 effects apply, then the game checks the Wallfacer plan.</p></article>
+          </div>
+          <div class="rules-banner"><strong>Decay may stack.</strong><span>With five players, the Wallbreaker assigns four separate −1 effects and may place several on one field.</span></div>
+        </div>
+      </section>
+
+      <section class="rules-slide rules-math-slide" id="rules-slide-example" data-title="Advancement before decay" data-chapter="Worked example" aria-hidden="true">
+        <div class="rules-slide-inner rules-example-layout">
+          <div class="rules-copy">
+            <div class="rules-kicker">05 · Worked example · Interactive</div>
+            <h2>Two reveals. One precommitted turn.</h2>
+            <p class="rules-lede">Lemon Theory begins at 4. Every choice locks first; advancements appear together, then the already-chosen decay applies immediately.</p>
+            <div class="math-example-actions">
+              <div><span>Wallfacer</span><strong>Lemon Theory +1</strong></div>
+              <div><span>Lemon Specialist</span><strong>Lemon Theory +2</strong></div>
+              <div><span>Wallbreaker</span><strong>Lemon Theory −2 decay</strong></div>
+            </div>
+            <div class="example-controls"><button class="rules-primary" id="math-example-next" type="button">Reveal advancements</button><button class="rules-text-button" id="math-example-reset" type="button">Reset</button></div>
+          </div>
+          <div class="rules-visual math-example-result" aria-live="polite">
+            <div class="math-phase-track"><span class="is-active" data-math-phase="0">Locked</span><i></i><span data-math-phase="1">Advancement</span><i></i><span data-math-phase="2">Decay</span></div>
+            <div class="math-example-dial blue"><span>Lemon Theory</span><strong id="math-example-value">4</strong><b id="math-example-change">Ready</b></div>
+            <div class="math-example-equation" id="math-example-equation">Waiting for every player to lock.</div>
+            <p id="math-example-copy">The Wallbreaker cannot wait to see advancements before placing decay.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="rules-slide rules-math-slide" id="rules-slide-guess" data-title="The private combination hunt" data-chapter="Guessing" aria-hidden="true">
+        <div class="rules-slide-inner">
+          <div class="rules-copy">
+            <div class="rules-kicker">06 · Wallbreaker guesses</div>
+            <h2>Test one unused combination per turn.</h2>
+            <ul class="rules-points math-points">
+              <li><span>01</span><p><strong>Choose exactly three different fields.</strong> Values do not matter; only the field combination matters.</p></li>
+              <li><span>02</span><p><strong>Wrong guesses stay private.</strong> The table is not told, but that combination can never be submitted again.</p></li>
+              <li><span>03</span><p><strong>One guess each turn.</strong> Guessing remains available after decay is locked, but closes when resolution begins.</p></li>
+              <li><span>04</span><p><strong>Decay and guessing are independent.</strong> One never consumes or replaces the other.</p></li>
+            </ul>
+          </div>
+          <div class="rules-visual combination-visual">
+            <div class="combination-heading"><span>Private notebook</span><strong>3 of 20 field combinations tested</strong></div>
+            <div class="combination-grid">
+              <span class="yellow is-picked">Yellow</span><span class="pink">Pink</span><span class="orange">Orange</span><span class="red">Red</span><span class="blue is-picked">Blue</span><span class="green is-picked">Green</span>
+            </div>
+            <div class="combination-result"><span>Panopticon · Lemon · Game</span><strong>Not the plan</strong><p>This result is private. Cross it off and try a different combination on a later turn.</p></div>
+            <div class="combination-count"><i style="--tested:15%"></i><span>17 combinations remain</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="rules-slide rules-math-slide" id="rules-slide-victory" data-title="Thresholds and declarations" data-chapter="Victory" aria-hidden="true">
+        <div class="rules-slide-inner">
+          <div class="rules-copy">
+            <div class="rules-kicker">07 · Victory</div>
+            <h2>Hold three fields at 7—or name all three.</h2>
+            <ul class="rules-points math-points">
+              <li><span>01</span><p><strong>Loyal victory.</strong> After decay, all three secret plan fields are at 7 or higher.</p></li>
+              <li><span>02</span><p><strong>Wallbreaker victory.</strong> A correct private combination alerts the Wallbreaker and Wallfacer.</p></li>
+              <li><span>03</span><p><strong>The declaration finishes it.</strong> The Wallbreaker names the Wallfacer and reveals all three fields aloud before confirming.</p></li>
+              <li><span>04</span><p><strong>No clock runs out.</strong> Mathbreaker has no round-limit victory condition.</p></li>
+            </ul>
+          </div>
+          <div class="rules-visual threshold-visual">
+            <div class="threshold-line"><span>Victory threshold</span><strong>7</strong></div>
+            <div class="threshold-columns"><article class="yellow"><span>Panopticon</span><div><i style="--height:78%"></i></div><b>7</b></article><article class="blue"><span>Lemon</span><div><i style="--height:90%"></i></div><b>8</b></article><article class="green"><span>Game</span><div><i style="--height:78%"></i></div><b>7</b></article></div>
+            <blockquote>“Ava, I am your Wallbreaker.”</blockquote><p>Then reveal the three fields aloud.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="rules-slide rules-finale rules-math-slide" id="rules-slide-ready" data-title="Ready for Mathbreaker" data-chapter="Finish" aria-hidden="true">
+        <div class="rules-slide-inner rules-finale-layout">
+          <div class="rules-copy">
+            <div class="rules-kicker">08 · Final check</div>
+            <h2>You are ready when the table knows four things.</h2>
+            <ol class="ready-list">
+              <li><span>1</span><p>The plan is <strong>three fields at 7+</strong>, checked after decay.</p></li>
+              <li><span>2</span><p>Specialists use <strong>+2 on their specialty</strong> or +1 elsewhere.</p></li>
+              <li><span>3</span><p>The Wallbreaker precommits <strong>one −1 per good player</strong>.</p></li>
+              <li><span>4</span><p>One unused three-field guess is allowed per turn.</p></li>
+            </ol>
+            <div class="final-actions"><a class="rules-primary" href="/mathbreaker/host">Host Mathbreaker <span aria-hidden="true">↗</span></a><a class="rules-secondary" href="/rules">Wallbreaker rules</a></div>
+          </div>
+          <div class="rules-visual finale-visual"><div class="finale-ring ring-one"></div><div class="finale-ring ring-two"></div><div class="finale-ring ring-three"></div><div class="finale-mark"><span>MB</span><strong>Ready</strong></div><p><kbd>Home</kbd> restart · <kbd>←</kbd> <kbd>→</kbd> navigate · print for a PDF handout</p></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="rules-controls">
+      <button class="rules-nav-button" id="rules-prev" type="button" aria-label="Previous slide"><span aria-hidden="true">←</span><b>Back</b></button>
+      <div class="rules-progress-wrap"><div class="rules-progress-label"><span id="rules-slide-number">01 / 09</span><strong id="rules-progress-title">Mathbreaker briefing</strong></div><div class="rules-progress" role="progressbar" aria-label="Rulebook progress" aria-valuemin="1" aria-valuemax="9" aria-valuenow="1"><i id="rules-progress-bar"></i></div></div>
+      <button class="rules-nav-button is-next" id="rules-next" type="button" aria-label="Next slide"><b>Next</b><span aria-hidden="true">→</span></button>
+    </footer>
+    <div class="sr-only" id="rules-announcer" aria-live="polite"></div>
+  </div>
+  <script type="module" src="/rules.js"></script>
+</body>
+</html>

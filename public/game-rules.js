@@ -14,12 +14,13 @@ export function clampDial(value){
   return Math.max(0,Math.min(9,value));
 }
 
-export function roleComposition(playerCount,requestedWallfacers,policeEnabled=true){
-  if(playerCount<2) return {wallfacers:0,wallbreakers:0,police:0,civilians:Math.max(0,playerCount)};
-  const wallfacers=Math.max(1,Math.min(Number(requestedWallfacers)||1,Math.floor(playerCount/2)));
-  const wallbreakers=wallfacers;
-  const remaining=Math.max(0,playerCount-wallfacers-wallbreakers);
-  const police=policeEnabled&&remaining>0?1:0;
+export function roleComposition(playerCount){
+  const count=Math.max(0,Number(playerCount)||0);
+  if(count<2) return {wallfacers:0,wallbreakers:0,police:0,civilians:count};
+  const wallfacers=1;
+  const wallbreakers=1;
+  const remaining=Math.max(0,count-wallfacers-wallbreakers);
+  const police=remaining>0?1:0;
   return {wallfacers,wallbreakers,police,civilians:remaining-police};
 }
 
@@ -173,25 +174,54 @@ export function resolveRoundState({dials,selections,players,roles,round}){
   return {before,after,net,arrested,record:{round,before,after:{...after},net:{...net},actions}};
 }
 
-export function isExactPlanGuess(planValues,guess){
-  const named=Object.keys(guess).sort().join(',');
-  const actual=Object.keys(planValues).sort().join(',');
-  return named===actual&&Object.entries(planValues).every(([color,value])=>guess[color]===value);
+export function isPlanFieldGuess(planValues,guessColors){
+  if(!Array.isArray(guessColors)||guessColors.length!==3||new Set(guessColors).size!==3||!guessColors.every(color=>COLORS.includes(color))) return false;
+  const guessed=[...guessColors].sort().join(',');
+  const actual=Object.keys(planValues||{}).sort().join(',');
+  return guessed===actual;
 }
 
-export function buildPostgameDisclosure(phase,players,roles,history,finalGuess){
-  if(phase!=='ended') return undefined;
+export function privateArrestOutcome(playerId,role,players,arrested,history=[]){
+  const outcome={arrested:Boolean(arrested?.[playerId])};
+  if(role?.kind!=='police') return outcome;
+  const policeAction=history.at(-1)?.actions?.find(item=>item.playerId===playerId)?.action;
+  if(policeAction?.type!=='arrest') return outcome;
+  outcome.arrestedPlayerName=players.find(player=>player.id===policeAction.targetId)?.name||'Unknown player';
+  return outcome;
+}
+
+function privateHistoryForViewer(history,roles,viewerId){
+  return (history||[]).map(entry=>{
+    const policeAction=entry.actions?.find(item=>roles[item.playerId]?.kind==='police');
+    if(!policeAction||viewerId===policeAction.playerId||(policeAction.action?.type==='arrest'&&viewerId===policeAction.action.targetId)) return entry;
+    return {
+      ...entry,
+      actions:entry.actions.map(item=>({
+        ...item,
+        arrested:false,
+        action:roles[item.playerId]?.kind==='police'?{type:'private'}:item.action
+      }))
+    };
+  });
+}
+
+export function buildPostgameDisclosure(phase,players,roles,history,finalGuess,recap,viewerId=null){
+  if(phase!=='ended'||recap?.active!==true) return undefined;
+  const completedRounds=history||[];
+  const roundIndex=Math.max(0,Math.min(Number(recap.roundIndex)||0,Math.max(0,completedRounds.length-1)));
+  const complete=completedRounds.length===0||roundIndex===completedRounds.length-1;
   return {
     roles:players.map(player=>{
       const role=roles[player.id]||{};
       return {playerId:player.id,name:player.name,kind:role.kind,label:role.label,profession:role.profession,specialty:role.specialty,plan:role.plan,targetId:role.targetId};
     }),
-    history:history||[],
-    finalGuess:finalGuess||null
+    history:completedRounds[roundIndex]?[completedRounds[roundIndex]]:[],
+    finalGuess:complete?(finalGuess||null):null,
+    recap:{roundIndex,totalRounds:completedRounds.length,complete}
   };
 }
 
-export function buildTutorialDisclosure(mode,players,roles,selections,tutorialReady,history=[]){
+export function buildTutorialDisclosure(mode,players,roles,selections,tutorialReady,history=[],viewerId=null){
   if(mode!=='tutorial') return undefined;
   return {
     readyPlayerIds:Object.keys(tutorialReady||{}),
@@ -199,11 +229,11 @@ export function buildTutorialDisclosure(mode,players,roles,selections,tutorialRe
       const role=roles[player.id]||{};
       return {playerId:player.id,name:player.name,kind:role.kind,label:role.label,profession:role.profession,plan:role.plan,targetId:role.targetId};
     }),
-    lockedMoves:players.filter(player=>selections[player.id]).map(player=>({
+    lockedMoves:players.filter(player=>selections[player.id]&&(roles[player.id]?.kind!=='police'||player.id===viewerId)).map(player=>({
       playerId:player.id,
       name:player.name,
       selection:{...selections[player.id]}
     })),
-    lastRound:history.at(-1)||null
+    lastRound:privateHistoryForViewer(history,roles,viewerId).at(-1)||null
   };
 }

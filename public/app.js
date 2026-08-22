@@ -1,13 +1,15 @@
-import { BRAND, storageKey } from './brand.js';
-import { COLORS, SUBJECTS, MATHBREAKER_FIELDS, MATHBREAKER_THRESHOLD, clampDial, roleComposition, mathbreakerDecayBudget, createMathbreakerDials, mathbreakerEffectFor, isLegalMathbreakerAdvancement, isLegalMathbreakerDecay, resolveMathbreakerAdvancement, resolveMathbreakerDecay, isMathbreakerPlanComplete, isMathbreakerGuessWindowOpen, validateMathbreakerGuess, legalEffectsFor, isLegalSelection as selectionIsLegal, tryLockSelection, resolveRoundState, isExactPlanGuess, buildPostgameDisclosure, buildTutorialDisclosure } from './game-rules.js';
+import { BRAND, hostModeForPath as modeForHostPath, hostStorageName, storageKey } from './brand.js';
+import { COLORS, SUBJECTS, MATHBREAKER_FIELDS, MATHBREAKER_THRESHOLD, clampDial, roleComposition, mathbreakerRoleComposition, mathbreakerDecayBudget, createMathbreakerDials, mathbreakerEffectFor, isLegalMathbreakerAdvancement, isLegalMathbreakerDecay, resolveMathbreakerAdvancement, resolveMathbreakerDecay, isMathbreakerPlanComplete, isMathbreakerGuessWindowOpen, validateMathbreakerGuess, legalEffectsFor, isLegalSelection as selectionIsLegal, tryLockSelection, resolveRoundState, isPlanFieldGuess, privateArrestOutcome, buildPostgameDisclosure, buildTutorialDisclosure } from './game-rules.js';
 
 const DIAL_GROUPS = [{name:'Mathematics',colors:['yellow','pink']},{name:'Science',colors:['blue','green']},{name:'Agriculture',colors:['orange','red']}];
-const DIAL_SYMBOLS = {yellow:'△',pink:'○',orange:'□',red:'◆',blue:'✦',green:'⬡'};
 const EFFECTS = [-2,-1,0,1,2];
 const MAX_ROUNDS = 10;
 
 const app = document.querySelector('#app');
 const query = new URLSearchParams(location.search);
+function hostModeForPath(){ return modeForHostPath(location.pathname); }
+function isHostRoute(){ return Boolean(hostModeForPath()); }
+function hostStorageKey(){ return storageKey(hostStorageName(location.pathname)); }
 let peer = null;
 let hostConn = null;
 let conns = new Map();
@@ -26,10 +28,9 @@ let lastCountdownSound = null;
 let revealAnimationTimer = null;
 let countdownTimer = null;
 let mathRevealTimer = null;
-let highContrast = localStorage.getItem(storageKey('high-contrast'))==='true';
 let tutorialUI = null;
 let tutorialLoadPromise = null;
-let localView = { screen:location.pathname === '/host' ? 'host' : 'home', state:null, role:null, error:'', modal:null, revealKey:'', revealAnimationPending:false, tutorialStep:0 };
+let localView = { screen:isHostRoute() ? 'host' : 'home', state:null, role:null, error:'', modal:null, revealKey:'', revealAnimationPending:false, tutorialStep:0 };
 
 function roomPeerId(code){ return `${BRAND.peerNamespace}-${code}`; }
 function fourDigit(){ return String(Math.floor(100000 + Math.random()*900000)); }
@@ -51,15 +52,19 @@ function send(conn, msg){
   else conn.once?.('open',()=>{ if(conn.open) conn.send(msg); });
 }
 function saveClientSession(){ const code=localView.state?.code||game.code; if(code&&myName) localStorage.setItem(storageKey('session'),JSON.stringify({code,name:myName})); }
-function clearSession(){ localStorage.removeItem(storageKey('session')); localStorage.removeItem(storageKey('host')); }
-function saveHost(){ localStorage.setItem(storageKey('host'),JSON.stringify({code:game.code,game})); }
+function clearSession(){ localStorage.removeItem(storageKey('session')); }
+function clearHostSession(){
+  localStorage.removeItem(hostStorageKey());
+  if(hostModeForPath()==='standard') localStorage.removeItem(storageKey('host'));
+}
+function saveHost(){ localStorage.setItem(hostStorageKey(),JSON.stringify({code:game.code,game})); }
 function broadcast(){
   if(isHost) saveHost();
   for(const [pid,conn] of conns){
     const player = game.players.find(p=>p.id===pid);
-    send(conn,{type:'state', state:publicState(), role:roleFor(player)});
+    send(conn,{type:'state', state:publicState(pid), role:roleFor(player)});
   }
-  const nextState=publicState();
+  const nextState=publicState(myPlayerId);
   const nextRevealKey=`${nextState.round}:${JSON.stringify(nextState.revealed)}`;
   if(nextState.revealed && nextRevealKey!==localView.revealKey){
     localView.revealKey=nextRevealKey; localView.revealAnimationPending=true;
@@ -70,9 +75,9 @@ function broadcast(){
   localView.role = roleFor(game.players.find(p=>p.id===myPlayerId));
   render();
 }
-function publicState(){
+function publicState(viewerId=null){
   const state={
-    code:game.code, mode:game.mode||'standard', phase:game.phase, countdown:game.countdown||0, round:game.round, maxRounds:game.maxRounds, dials:game.dials, playerCount:game.players.length, wallfacerCount:game.wallfacerCount, policeEnabled:game.policeEnabled,
+    code:game.code, mode:game.mode||'standard', phase:game.phase, countdown:game.countdown||0, round:game.round, maxRounds:game.maxRounds, dials:game.dials, playerCount:game.players.length, wallfacerCount:game.wallfacerCount, includeMessaging:game.includeMessaging===true,
     players:game.players.map(p=>({id:p.id,name:p.name,ready:!!game.selections[p.id],connected:Boolean(conns.get(p.id)?.open)})),
     adminPlaying:game.adminPlaying, paused:game.mode==='mathbreaker'?false:game.paused, breakerName:game.mode==='mathbreaker'?'':game.breakerName,
     revealed:game.revealed, winner:game.winner, reason:game.reason
@@ -87,21 +92,23 @@ function publicState(){
     }:null;
     state.goodPlayerCount=mathbreakerDecayBudget(game.players.length);
   }
-  state.postgame=buildPostgameDisclosure(game.phase,game.players,game.roles,game.history,game.finalGuess);
+  if(game.phase==='ended') state.recap={active:game.recap?.active===true,roundIndex:game.recap?.roundIndex||0,totalRounds:game.history?.length||0};
+  state.postgame=buildPostgameDisclosure(game.phase,game.players,game.roles,game.history,game.finalGuess,game.recap,viewerId);
   if(!state.postgame) delete state.postgame;
-  if(game.mode==='tutorial') state.tutorial=buildTutorialDisclosure(game.mode,game.players,game.roles,game.selections,game.tutorialReady,game.history);
+  if(game.mode==='tutorial') state.tutorial=buildTutorialDisclosure(game.mode,game.players,game.roles,game.selections,game.tutorialReady,game.history,viewerId);
   return state;
 }
 function roleFor(player){
   if(!player || !game.roles[player.id]) return null;
   const r=game.roles[player.id];
-  if(r.kind==='wallfacer') return {...r,arrested:!!game.arrested?.[player.id],otherWallfacers:game.players.filter(p=>p.id!==player.id&&game.roles[p.id]?.kind==='wallfacer').map(p=>p.name),mathBreakPending:game.mode==='mathbreaker'&&game.mathBreakPending?{kind:'wallfacer'}:null};
+  const arrestOutcome=privateArrestOutcome(player.id,r,game.players,game.arrested,game.history);
+  if(r.kind==='wallfacer') return {...r,...arrestOutcome,mathBreakPending:game.mode==='mathbreaker'&&game.mathBreakPending?{kind:'wallfacer'}:null};
   if(r.kind==='wallbreaker'){
     const target=game.players.find(p=>p.id===r.targetId);
     const pending=game.mode==='mathbreaker'&&game.mathBreakPending?.breakerId===player.id?{kind:'wallbreaker',targetName:target?.name||'Unknown',fields:[...game.mathBreakPending.fields]}:null;
-    return {...r,targetName:target?.name||'Unknown',arrested:!!game.arrested?.[player.id],mathBreakPending:pending};
+    return {...r,...arrestOutcome,targetName:target?.name||'Unknown',mathBreakPending:pending};
   }
-  return {...r,arrested:!!game.arrested?.[player.id]};
+  return {...r,...arrestOutcome};
 }
 function roleSvg(kind){
   const icon = kind==='wallfacer' ? '<path d="M12 3 4.5 6v5.2c0 4.4 3.1 7.6 7.5 9.8 4.4-2.2 7.5-5.4 7.5-9.8V6L12 3Z"/><path d="m8.5 12 2.2 2.2 4.8-5"/>' : kind==='wallbreaker' ? '<path d="m5 4 14 8-14 8 3-8-3-8Z"/><path d="M10 12h8"/>' : '<circle cx="12" cy="12" r="8"/><path d="M8 12h8M12 8v8"/>';
@@ -111,7 +118,7 @@ function eyeSvg(){ return '<svg class="eye-svg" viewBox="0 0 24 24" aria-hidden=
 
 let game = freshGame();
 function randomDials(){ return Object.fromEntries(COLORS.map(c=>[c,Math.floor(Math.random()*10)])); }
-function freshGame(){ return {code:'',mode:'standard',phase:'lobby',round:1,maxRounds:MAX_ROUNDS,wallfacerCount:1,policeEnabled:true,dials:randomDials(),players:[],roles:{},selections:{},arrested:{},history:[],finalGuess:null,tutorialReady:{},mathThreshold:MATHBREAKER_THRESHOLD,mathReveal:null,mathBreakPending:null,adminPlaying:false,paused:false,breakerName:'',revealed:null,winner:null,reason:''}; }
+function freshGame(){ return {code:'',mode:'standard',phase:'lobby',round:1,maxRounds:MAX_ROUNDS,wallfacerCount:1,includeMessaging:false,dials:randomDials(),players:[],roles:{},selections:{},arrested:{},history:[],finalGuess:null,recap:{active:false,roundIndex:0},tutorialReady:{},mathThreshold:MATHBREAKER_THRESHOLD,mathReveal:null,mathBreakPending:null,adminPlaying:false,paused:false,breakerName:'',revealed:null,winner:null,reason:''}; }
 
 function createPlan(){
   const values={};
@@ -120,9 +127,8 @@ function createPlan(){
 }
 function assignRoles(){
   const players=[...game.players];
-  if(players.length<2) throw new Error('At least 2 players are required.');
+  if(players.length<3) throw new Error(game.mode==='mathbreaker'?'Mathbreaker requires at least 3 players.':'At least 3 players are required so Police is always included.');
   if(game.mode==='mathbreaker'){
-    if(players.length<3) throw new Error('Mathbreaker requires at least 3 players.');
     const shuffled=[...players].sort(()=>Math.random()-.5);
     const wallfacer=shuffled[0];
     const wallbreaker=shuffled[1];
@@ -135,7 +141,7 @@ function assignRoles(){
     shuffled.slice(2).forEach((player,index)=>{ game.roles[player.id]={kind:'specialist',label:'Specialist',specialty:specialties[index%specialties.length]}; });
     return;
   }
-  const composition=roleComposition(players.length,game.wallfacerCount,game.policeEnabled);
+  const composition=roleComposition(players.length);
   const wallfacerCount=composition.wallfacers;
   const shuffled=[...players].sort(()=>Math.random()-.5);
   const wallfacers=shuffled.slice(0,wallfacerCount);
@@ -146,14 +152,14 @@ function assignRoles(){
   wallbreakers.forEach((p,i)=>{ game.roles[p.id]={kind:'wallbreaker',label:'Wallbreaker',targetId:wallfacers[i % wallfacers.length].id,sophonResult:null}; });
   const civilianKinds=Object.keys(SUBJECTS);
   if(police) game.roles[police.id]={kind:'police',label:'Shi Qiang'};
-  shuffled.slice(wallfacerCount*2+(police?1:0)).forEach(p=>{ game.roles[p.id]={kind:'civilian',label:'Civilian',profession:civilianKinds[Math.floor(Math.random()*civilianKinds.length)]}; });
+  shuffled.slice(wallfacerCount*2+(police?1:0)).forEach(p=>{ game.roles[p.id]={kind:'civilian',label:'Specialist',profession:civilianKinds[Math.floor(Math.random()*civilianKinds.length)]}; });
 }
 function checkWallfacerWin(){
   for(const p of game.players){
     const r=game.roles[p.id];
     if(r?.kind==='wallfacer'){
       const ok=Object.entries(r.plan.values).every(([c,v])=>game.dials[c]===v);
-      if(ok){ game.winner='Loyal team'; game.reason=`${p.name} completed a Wallfacer plan.`; game.phase='ended'; return true; }
+      if(ok){ game.winner='Loyal team'; game.reason=`${p.name} completed the plan.`; game.phase='ended'; return true; }
     }
   }
   return false;
@@ -179,7 +185,7 @@ function resolveRound(){
   game.history.push(resolution.record);
   game.selections={};
   if(checkWallfacerWin()){ broadcast(); return; }
-  if(game.round>=game.maxRounds){ game.winner='Wallbreakers'; game.reason=`Round ${game.maxRounds} ended without a Wallfacer completing a plan.`; game.phase='ended'; }
+  if(game.round>=game.maxRounds){ game.winner='Wallbreaker'; game.reason=`Round ${game.maxRounds} ended without the Wallfacer completing the plan.`; game.phase='ended'; }
   else game.round++;
   broadcast();
 }
@@ -256,14 +262,15 @@ function confirmMathbreakerDeclaration(playerId){
   game.phase='ended'; game.paused=false; game.mathBreakPending=null;
   broadcast();
 }
-function attemptBreak(playerId, guess){
+function attemptBreak(playerId, colors){
   const role=game.roles[playerId];
   if(role?.kind!=='wallbreaker') return;
   const targetRole=game.roles[role.targetId];
   const plan=targetRole.plan;
-  const correct=isExactPlanGuess(plan.values,guess);
-  game.finalGuess={playerId,targetId:role.targetId,guess:{...guess},correct};
-  game.winner=correct?'Wallbreakers':'Loyal team';
+  const guessColors=Array.isArray(colors)?[...colors]:[];
+  const correct=isPlanFieldGuess(plan.values,guessColors);
+  game.finalGuess={playerId,targetId:role.targetId,colors:guessColors,correct};
+  game.winner=correct?'Wallbreaker':'Loyal team';
   game.reason=correct?`${game.players.find(p=>p.id===playerId).name} correctly broke the wall.`:`${game.players.find(p=>p.id===playerId).name} guessed incorrectly.`;
   game.phase='ended'; game.paused=false;
   broadcast();
@@ -382,13 +389,13 @@ function handleHostMessage(conn,msg){
     game.tutorialReady[msg.playerId]=true;
     broadcast();
   }
-  if(msg.type==='breakGuess' && game.mode!=='mathbreaker' && game.phase==='playing') attemptBreak(msg.playerId,msg.guess);
+  if(msg.type==='breakGuess' && game.mode!=='mathbreaker' && game.phase==='playing') attemptBreak(msg.playerId,msg.colors);
   if(msg.type==='mathbreakerGuess' && game.mode==='mathbreaker' && game.phase==='playing'){
     const result=attemptMathbreakerGuess(msg.playerId,msg.fields);
     if(!result.ok) send(conn,{type:'error',message:result.error});
   }
   if(msg.type==='mathbreakerDeclaration' && game.mode==='mathbreaker') confirmMathbreakerDeclaration(msg.playerId);
-  if(msg.type==='chat' && typeof msg.text==='string'){
+  if(msg.type==='chat' && game.includeMessaging===true && typeof msg.text==='string'){
     const player=game.players.find(p=>p.id===msg.playerId);
     if(!player || !msg.text.trim()) return;
     chatMessages.push({from:player.name,text:msg.text.trim(),playerId:player.id});
@@ -418,7 +425,7 @@ function handleClientMessage(msg){
     localView={screen:'home',state:null,role:null,error:msg.message||'You were removed from the room.',modal:null};
     render();
   }
-  if(msg.type==='chat' && typeof msg.text==='string'){
+  if(msg.type==='chat' && localView.state?.includeMessaging===true && typeof msg.text==='string'){
     chatMessages.push({from:msg.from||'Observer',text:msg.text}); render();
   }
 }
@@ -427,7 +434,7 @@ async function createRoom(){
   myName=document.querySelector('#name')?.value.trim() || '';
   localView.error=''; const code=fourDigit();
   try{
-    await setupPeerAsHost(code); isHost=true; game=freshGame(); game.code=code; game.adminPlaying=false;
+    await setupPeerAsHost(code); isHost=true; game=freshGame(); game.code=code; game.mode=hostModeForPath()||'standard'; game.adminPlaying=false;
     saveHost();
     localView.screen='lobby'; localView.state=publicState(); render();
   }catch(e){ peer?.destroy(); localView.error=`Could not create room: ${peerError(e)}`; render(); }
@@ -449,6 +456,7 @@ async function copyInvite(){
   render();
 }
 function sendChat(){
+  if((isHost?game.includeMessaging:localView.state?.includeMessaging)!==true) return;
   const input=document.querySelector('#chat-input');
   const text=input?.value.trim(); if(!text) return;
   if(isHost){
@@ -469,13 +477,9 @@ function skipDisconnectedPlayer(playerId){
   if(!isHost||!playerId) return;
   handleHostMessage(null,{type:'skipPlayer',playerId});
 }
-function toggleHighContrast(){
-  highContrast=!highContrast;
-  localStorage.setItem(storageKey('high-contrast'),String(highContrast));
-  render();
-}
 function chatInitials(name=''){ return name.split(/\s+/).filter(Boolean).map(part=>part[0]).join('').slice(0,2).toUpperCase()||'?'; }
 function chatHtml(){
+  if((isHost?game.includeMessaging:localView.state?.includeMessaging)!==true) return '';
   if(isHost){
     const players=game.players;
     const active=chatReplyTo||players[0]?.id||null;
@@ -500,10 +504,14 @@ function chatHtml(){
   return `<section class="panel chat-panel"><div class="chat-header"><strong>Message the observer</strong></div><div class="chat-messages">${messages}</div><div class="chat-composer"><input id="chat-input" placeholder="Ask the observer a question..."><button id="chat-send">Send</button></div></section>`;
 }
 async function resumeHost(attempt=0){
-  const saved=JSON.parse(localStorage.getItem(storageKey('host'))||'null');
+  const currentSaved=localStorage.getItem(hostStorageKey());
+  const legacySaved=hostModeForPath()==='standard'?localStorage.getItem(storageKey('host')):null;
+  const saved=JSON.parse(currentSaved||legacySaved||'null');
   if(!saved?.code||!saved.game) return;
+  if((saved.game.mode||'standard')!==hostModeForPath()) return;
   try {
-    await setupPeerAsHost(saved.code); isHost=true; game=saved.game; game.mode ||= 'standard'; game.wallfacerCount ||= 1; game.maxRounds ||= MAX_ROUNDS; game.policeEnabled ??= true; game.history ||= []; game.finalGuess ||= null; game.tutorialReady ||= {}; game.mathThreshold ||= MATHBREAKER_THRESHOLD; game.mathReveal ||= null; game.mathBreakPending ||= null;
+    await setupPeerAsHost(saved.code); isHost=true; game=saved.game; game.mode ||= 'standard'; game.wallfacerCount=1; game.maxRounds ||= MAX_ROUNDS; game.includeMessaging=game.includeMessaging===true; game.history ||= []; game.finalGuess ||= null; game.recap ||= {active:false,roundIndex:0}; game.tutorialReady ||= {}; game.mathThreshold ||= MATHBREAKER_THRESHOLD; game.mathReveal ||= null; game.mathBreakPending ||= null;
+    if(!currentSaved){ saveHost(); localStorage.removeItem(storageKey('host')); }
     localView.screen=['lobby','countdown'].includes(game.phase)?'lobby':'game'; localView.state=publicState(); if(game.mode==='tutorial') loadTutorialUI(); render();
     if(game.phase==='countdown') beginCountdown();
     if(game.phase==='math-reveal') scheduleMathbreakerDecayReveal(500);
@@ -519,20 +527,40 @@ async function resumeHost(attempt=0){
 }
 async function resumeClient(){
   const saved=JSON.parse(localStorage.getItem(storageKey('session'))||'null');
-  if(!saved?.code||!saved.name||location.pathname==='/host') return;
+  if(!saved?.code||!saved.name||isHostRoute()) return;
   myName=saved.name; document.querySelector('#name')?.setAttribute('value',myName); localView.error='';
   try { await setupPeerAsClient(); attachClientConnection(peer.connect(roomPeerId(saved.code),{reliable:true})); localView.screen='connecting'; render(); } catch { localView.error='Unable to reconnect yet. Retrying…'; localView.screen='connecting'; render(); retryClientConnection(1500); }
 }
-function leaveGame(){ if(isHost){ peer?.destroy(); clearSession(); location.href='/host'; return; } send(hostConn,{type:'leave',playerId:myPlayerId}); peer?.destroy(); clearSession(); localView={screen:'home',state:null,role:null,error:'',modal:null}; render(); }
+function leaveGame(){ if(isHost){ peer?.destroy(); clearHostSession(); location.href=location.pathname; return; } send(hostConn,{type:'leave',playerId:myPlayerId}); peer?.destroy(); clearSession(); localView={screen:'home',state:null,role:null,error:'',modal:null}; render(); }
+function startPostgameRecap(){
+  if(!isHost||game.phase!=='ended'||game.recap?.active) return;
+  game.recap={active:true,roundIndex:0};
+  broadcast();
+}
+function advancePostgameRecap(){
+  if(!isHost||game.phase!=='ended'||game.recap?.active!==true) return;
+  const lastIndex=Math.max(0,(game.history?.length||0)-1);
+  if(game.recap.roundIndex>=lastIndex) return;
+  game.recap.roundIndex++;
+  broadcast();
+}
+function returnToLobby(){
+  if(!isHost||game.phase!=='ended') return;
+  const room={code:game.code,mode:game.mode,players:game.players,wallfacerCount:game.wallfacerCount,maxRounds:game.maxRounds,includeMessaging:game.includeMessaging,adminPlaying:game.adminPlaying};
+  game=Object.assign(freshGame(),room);
+  pendingSelection={color:null,effect:null,sophonMode:'affect',policeMode:'affect',arrestTarget:null,decays:[]};
+  localView.screen='lobby'; localView.role=null; localView.modal=null; localView.error='';
+  broadcast();
+}
 function resetGameStart(mode){
-  game.mode=mode; game.round=1; game.selections={}; game.arrested={}; game.history=[]; game.finalGuess=null; game.revealed=null; game.winner=null; game.reason=''; game.tutorialReady={}; game.mathThreshold=MATHBREAKER_THRESHOLD; game.mathReveal=null; game.mathBreakPending=null; game.paused=false;
+  game.mode=mode; game.round=1; game.selections={}; game.arrested={}; game.history=[]; game.finalGuess=null; game.recap={active:false,roundIndex:0}; game.revealed=null; game.winner=null; game.reason=''; game.tutorialReady={}; game.mathThreshold=MATHBREAKER_THRESHOLD; game.mathReveal=null; game.mathBreakPending=null; game.paused=false;
   if(mode==='mathbreaker') game.dials=createMathbreakerDials();
   pendingSelection={color:null,effect:null,sophonMode:'affect',policeMode:'affect',arrestTarget:null,decays:[]}; localView.modal=null; localView.tutorialStep=0;
 }
-function startGame(mode='standard'){
+function startGame(){
+  const mode=game.mode||'standard';
   try{
-    if(game.players.length<2) throw new Error('At least 2 players are required.');
-    if(mode==='mathbreaker'&&game.players.length<3) throw new Error('Mathbreaker requires at least 3 players.');
+    if(game.players.length<3) throw new Error(mode==='mathbreaker'?'Mathbreaker requires at least 3 players.':'At least 3 players are required so Police is always included.');
     resetGameStart(mode);
     if(mode==='tutorial'){
       game.phase='tutorial'; localView.screen='game'; loadTutorialUI(); broadcast(); return;
@@ -576,10 +604,9 @@ function submitSelection(){
 }
 function pauseForBreak(){ localView.modal='break'; render(); }
 function sendBreak(){
-  const checks=[...document.querySelectorAll('.break-dial:checked')].map(x=>x.value);
-  if(checks.length!==3){ alert('Choose exactly three dials.'); return; }
-  const guess={}; for(const c of checks){ guess[c]=Number(document.querySelector(`#guess-${c}`).value); }
-  if(isHost) attemptBreak(myPlayerId,guess); else send(hostConn,{type:'breakGuess',playerId:myPlayerId,guess});
+  const colors=[...document.querySelectorAll('.break-dial:checked')].map(input=>input.value);
+  if(colors.length!==3){ alert('Choose exactly three dial colors.'); return; }
+  if(isHost) attemptBreak(myPlayerId,colors); else send(hostConn,{type:'breakGuess',playerId:myPlayerId,colors});
   localView.modal=null; render();
 }
 function sendMathbreakerGuess(){
@@ -592,6 +619,12 @@ function confirmMathbreakerReveal(){
   if(isHost) confirmMathbreakerDeclaration(myPlayerId); else send(hostConn,{type:'mathbreakerDeclaration',playerId:myPlayerId});
 }
 
+function arrestOutcomeHtml(role){
+  if(role?.arrested) return '<div class="arrest-notice" role="status">Police arrested you last round. Any dial effect you chose was cancelled.</div>';
+  if(role?.kind==='police'&&role.arrestedPlayerName) return `<div class="arrest-notice arrest-confirmation" role="status">You arrested ${escapeHtml(role.arrestedPlayerName)} last round. Any dial effect they chose was cancelled.</div>`;
+  return '';
+}
+
 function roleHtml(role){
   if(!role) return '<p>No role assigned.</p>';
   if(localView.state?.mode==='mathbreaker'){
@@ -599,17 +632,15 @@ function roleHtml(role){
     if(role.kind==='wallbreaker') return `<div class="role-heading">${roleSvg(role.kind)}<div><h2 class="role-title">Wallbreaker</h2><p>Assign ${Math.max(0,(localView.state?.playerCount||0)-1)} decay effects each turn, then privately test one unused three-field combination.</p></div></div><button class="danger" id="break-now" ${role.lastGuessRound===localView.state?.round?'disabled':''}>${role.lastGuessRound===localView.state?.round?'Guess used this turn':'Guess the three fields'}</button>`;
     if(role.kind==='specialist') return `<div class="role-heading">${roleSvg('civilian')}<div><h2 class="role-title">${escapeHtml(mathFieldName(role.specialty))} Specialist</h2><p>Advance your specialty by +2, or advance any other field by +1. Discover and support the Wallfacer’s plan.</p></div></div>`;
   }
-  const arrested=role.arrested?'<div class="arrest-notice">You were arrested this turn. Your dial effect did not happen.</div>':'';
-  if(role.kind==='police') return `${arrested}<div class="role-heading">${roleSvg(role.kind)}<div><h2 class="role-title">Shi Qiang</h2><p>You are Police. Each round, choose whether to affect a dial by 1 or secretly arrest one player.</p></div></div>`;
-  if(role.kind==='civilian') return `${arrested}<div class="role-heading">${roleSvg(role.kind)}<div><h2 class="role-title">${escapeHtml(role.profession)}</h2><p>Subject area: ${SUBJECTS[role.profession].join(' and ')}. Adjust one of these by 1 or 2, or any other dial by 1.</p></div></div>`;
-  if(role.kind==='wallbreaker') return `${arrested}<div class="role-heading">${roleSvg(role.kind)}<div><h2 class="role-title">Wallbreaker</h2><p>Each round, choose one Sophon action: adjust one dial by -1, 0, or +1, or observe your target Wallfacer's move.</p></div><button class="danger" id="break-now">Guess the complete plan</button>${role.sophonResult?`<div class="card-list"><strong>Observed move</strong><div class="card-line">${role.sophonResult.systemSkipped?'No move · disconnected':`${role.sophonResult.color} ${role.sophonResult.effect>0?'+':''}${role.sophonResult.effect}`}</div></div>`:''}`;
+  if(role.kind==='police') return `<div class="role-heading">${roleSvg(role.kind)}<div><h2 class="role-title">Shi Qiang</h2><p>You are Police. Each round, choose whether to affect a dial by 1 or secretly arrest one player.</p></div></div>`;
+  if(role.kind==='civilian') return `<div class="role-heading">${roleSvg(role.kind)}<div><h2 class="role-title">${escapeHtml(role.profession)} Specialist</h2><p>Your subject was assigned independently at random. Adjust either of its dials by 1 or 2, or any other dial by 1.</p></div></div>`;
+  if(role.kind==='wallbreaker') return `<div class="role-heading">${roleSvg(role.kind)}<div><h2 class="role-title">Wallbreaker</h2><p>Each round, choose one action: adjust one dial by -1, 0, or +1, or use the Sophon to observe the Wallfacer's move.</p></div><button class="danger" id="break-now">Guess the plan's three colors</button>${role.sophonResult?`<div class="card-list"><strong>Observed move</strong><div class="card-line">${role.sophonResult.systemSkipped?'No move · disconnected':`${role.sophonResult.color} ${role.sophonResult.effect>0?'+':''}${role.sophonResult.effect}`}</div></div>`:''}`;
   const rows=Object.entries(role.plan.values).map(([c,v])=>`<div class="card-line">${c.toUpperCase()} = ${v}</div>`).join('');
-  const otherWallfacers=role.otherWallfacers?.length?`<div class="known-wallfacers"><strong>Other Wallfacers</strong><div>${role.otherWallfacers.map(name=>`<div class="card-line">${escapeHtml(name)}</div>`).join('')}</div></div>`:'';
-  return `${arrested}<div class="role-heading">${roleSvg(role.kind)}<div><h2 class="role-title">Wallfacer</h2><p>Adjust a dial by 1 while completing this configuration.</p></div></div>${otherWallfacers}<div class="card-list">${rows}</div>`;
+  return `<div class="role-heading">${roleSvg(role.kind)}<div><h2 class="role-title">Wallfacer</h2><p>Adjust one dial by -1, 0, or +1 each round. The Loyal team wins when all three values in the plan are exact after resolution.</p></div></div><div class="card-list"><strong>The plan</strong>${rows}</div><p class="small">Do not announce all three colors: the Wallbreaker wins by guessing the colors and does not need the values.</p>`;
 }
 function omniscientHtml(state){
   if(!isHost) return '';
-  return `<section class="panel stack omniscient"><div class="section-title">${roleSvg('omniscient')}<div><strong>Observer view</strong><div class="small">All hidden information is visible to the host.</div></div></div><div class="role-grid">${state.players.map(p=>{ const r=game.roles[p.id]; const plan=r?.plan?.values; const mathPlan=r?.plan?.fields; return `<div class="role-card">${roleSvg(r?.kind)}<div class="role-card-copy"><div class="player-name-line"><strong>${escapeHtml(p.name)}</strong>${connectionBadgeHtml(p)}</div><div class="small">${escapeHtml(r?.label||'Unassigned')}${r?.targetId?` · targets ${escapeHtml(game.players.find(x=>x.id===r.targetId)?.name||'Unknown')}`:''}${r?.specialty?` · ${escapeHtml(mathFieldName(r.specialty))}`:''}</div>${plan?`<div class="small">${Object.entries(plan).map(([c,v])=>`${c} ${v}`).join(' · ')}</div>`:''}${mathPlan?`<div class="small">${mathPlan.map(mathFieldName).map(escapeHtml).join(' · ')} · threshold ${r.plan.threshold}</div>`:''}${!p.connected&&!p.ready&&state.phase==='playing'?`<button class="skip-player" data-skip-player="${escapeHtml(p.id)}">Resolve as no move</button>`:''}</div></div>`; }).join('')}</div></section>`;
+  return `<section class="panel stack omniscient"><div class="section-title">${roleSvg('omniscient')}<div><strong>Observer view</strong><div class="small">Roles and plans are visible; private arrest outcomes stay hidden.</div></div></div><div class="role-grid">${state.players.map(p=>{ const r=game.roles[p.id]; const plan=r?.plan?.values; const mathPlan=r?.plan?.fields; return `<div class="role-card">${roleSvg(r?.kind)}<div class="role-card-copy"><div class="player-name-line"><strong>${escapeHtml(p.name)}</strong>${connectionBadgeHtml(p)}</div><div class="small">${escapeHtml(r?.label||'Unassigned')}${r?.targetId?` · targets ${escapeHtml(game.players.find(x=>x.id===r.targetId)?.name||'Unknown')}`:''}${r?.specialty?` · ${escapeHtml(mathFieldName(r.specialty))}`:''}</div>${plan?`<div class="small">${Object.entries(plan).map(([c,v])=>`${c} ${v}`).join(' · ')}</div>`:''}${mathPlan?`<div class="small">${mathPlan.map(mathFieldName).map(escapeHtml).join(' · ')} · threshold ${r.plan.threshold}</div>`:''}${!p.connected&&!p.ready&&state.phase==='playing'?`<button class="skip-player" data-skip-player="${escapeHtml(p.id)}">Resolve as no move</button>`:''}</div></div>`; }).join('')}</div></section>`;
 }
 function currentRoleFor(playerId){
   return isHost ? game.roles[playerId] : localView.role;
@@ -630,10 +661,10 @@ function dialCardHtml(c,state,role){
   const button=(effect)=>effects.includes(effect)?`<button class="dial-action adjust" data-color="${c}" data-effect="${effect}" aria-label="${effect<0?'Decrease':'Increase'} ${c} by ${Math.abs(effect)}">${effect>0?'+':''}${effect}</button>`:'';
   const lockEffect=locked&&selected&&pendingSelection.sophonMode==='affect'?pendingSelection.effect:null;
   const arrows=lockEffect?`<span class="lock-arrows ${lockEffect>0?'up':'down'}" style="--lock-speed:${Math.abs(lockEffect)===2?'.55s':'1.1s'}" aria-hidden="true">${lockEffect>0?'↑':'↓'}</span>`:'';
-  return `<div class="dial ${c} dial-card ${selected?'selected':''} ${lockEffect?'locked-preview':''} ${dialRevealClass(state,c)}" ${dialRevealStyle(state,c)}><div class="adjust-row">${button(2)}${button(1)}</div><button class="dial-action dial-select" data-color="${c}" aria-label="Select ${c}, symbol ${DIAL_SYMBOLS[c]}, with no change"><span class="name"><span aria-hidden="true">${DIAL_SYMBOLS[c]}</span> ${c}</span>${dialValueHtml(c,state)}</button><div class="adjust-row">${button(-1)}${button(-2)}</div>${arrows}</div>`;
+  return `<div class="dial ${c} dial-card ${selected?'selected':''} ${lockEffect?'locked-preview':''} ${dialRevealClass(state,c)}" ${dialRevealStyle(state,c)}><div class="adjust-row">${button(2)}${button(1)}</div><button class="dial-action dial-select" data-color="${c}" aria-label="Select ${c} with no change"><span class="name">${c}</span>${dialValueHtml(c,state)}</button><div class="adjust-row">${button(-1)}${button(-2)}</div>${arrows}</div>`;
 }
 function observerDialCardHtml(c,state){
-  return `<div class="dial ${c} dial-card observer-dial ${dialRevealClass(state,c)}" ${dialRevealStyle(state,c)}><div></div><div class="dial-select"><span class="name"><span aria-hidden="true">${DIAL_SYMBOLS[c]}</span> ${c}</span>${dialValueHtml(c,state)}</div><div></div></div>`;
+  return `<div class="dial ${c} dial-card observer-dial ${dialRevealClass(state,c)}" ${dialRevealStyle(state,c)}><div></div><div class="dial-select"><span class="name">${c}</span>${dialValueHtml(c,state)}</div><div></div></div>`;
 }
 function mathFieldName(color){ return MATHBREAKER_FIELDS[color]||color; }
 function mathbreakerDialCardHtml(color,state,role){
@@ -642,10 +673,10 @@ function mathbreakerDialCardHtml(color,state,role){
   const effect=mathbreakerEffectFor(role,color);
   const interactive=!locked&&state.phase==='playing'&&effect;
   const arrows=locked&&selected?`<span class="lock-arrows up" style="--lock-speed:${effect===2?'.55s':'1.1s'}" aria-hidden="true">↑</span>`:'';
-  return `<div class="dial ${color} dial-card math-dial-card ${selected?'selected':''} ${locked&&selected?'locked-preview':''} ${dialRevealClass(state,color)}" ${dialRevealStyle(state,color)}><div class="adjust-row">${interactive?`<button class="dial-action math-advance" data-math-advance="${color}" aria-label="Advance ${escapeHtml(mathFieldName(color))} by ${effect}">+${effect}</button>`:''}</div><button class="dial-action dial-select" ${interactive?`data-math-advance="${color}"`:'disabled'} aria-label="${escapeHtml(mathFieldName(color))}, value ${state.dials[color]}"><span class="name"><span aria-hidden="true">${DIAL_SYMBOLS[color]}</span> ${escapeHtml(mathFieldName(color))}</span>${dialValueHtml(color,state)}</button><div></div>${arrows}</div>`;
+  return `<div class="dial ${color} dial-card math-dial-card ${selected?'selected':''} ${locked&&selected?'locked-preview':''} ${dialRevealClass(state,color)}" ${dialRevealStyle(state,color)}><div class="adjust-row">${interactive?`<button class="dial-action math-advance" data-math-advance="${color}" aria-label="Advance ${escapeHtml(mathFieldName(color))} by ${effect}">+${effect}</button>`:''}</div><button class="dial-action dial-select" ${interactive?`data-math-advance="${color}"`:'disabled'} aria-label="${escapeHtml(mathFieldName(color))}, value ${state.dials[color]}"><span class="name">${escapeHtml(mathFieldName(color))}</span>${dialValueHtml(color,state)}</button><div></div>${arrows}</div>`;
 }
 function mathbreakerObserverDialCardHtml(color,state){
-  return `<div class="dial ${color} dial-card math-dial-card observer-dial ${dialRevealClass(state,color)}" ${dialRevealStyle(state,color)}><div></div><div class="dial-select"><span class="name"><span aria-hidden="true">${DIAL_SYMBOLS[color]}</span> ${escapeHtml(mathFieldName(color))}</span>${dialValueHtml(color,state)}</div><div></div></div>`;
+  return `<div class="dial ${color} dial-card math-dial-card observer-dial ${dialRevealClass(state,color)}" ${dialRevealStyle(state,color)}><div></div><div class="dial-select"><span class="name">${escapeHtml(mathFieldName(color))}</span>${dialValueHtml(color,state)}</div><div></div></div>`;
 }
 function revealTotal(revealed,color){
   const value=revealed?.[color];
@@ -692,22 +723,35 @@ function mathbreakerMovePanelHtml(state,role,current){
   const chosen=pendingSelection.color?`${mathFieldName(pendingSelection.color)} +${effect}`:'Choose a field to advance';
   return `<section class="panel stack move-panel mathbreaker-move"><div class="move-summary"><strong>Your advancement</strong><span>${current?`Locked · ${chosen}`:chosen}</span></div><button id="submit" ${current||!pendingSelection.color||state.phase!=='playing'?'disabled':''}>${current?'Advancement locked':'Lock advancement'}</button><div class="small">${state.players.filter(player=>player.ready).length}/${state.players.length} locked</div></section>`;
 }
-function home(){ const inviteCode=new URLSearchParams(location.search).get('room')?.match(/^\d{6}$/)?.[0]||''; return `<div class="shell"><div class="topbar"><div class="brand">${BRAND.name}</div></div><section class="panel stack"><h2>Join game</h2><input id="name" placeholder="Name" value="${escapeHtml(myName)}"><input id="code" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" maxlength="6" placeholder="6-digit room code" value="${inviteCode}"><button id="join">Join room</button></section>${localView.error?`<p class="notice">${escapeHtml(localView.error)}</p>`:''}</div>`; }
-function hostPage(){ return `<div class="shell"><div class="topbar"><div class="brand">${BRAND.name}</div></div><section class="panel stack"><h2>Start a game</h2><p class="small">Create a room, then choose the role balance after players join.</p><button id="create">Create room</button></section>${localView.error?`<p class="notice">${escapeHtml(localView.error)}</p>`:''}</div>`; }
+function home(){ const inviteCode=new URLSearchParams(location.search).get('room')?.match(/^\d{6}$/)?.[0]||''; return `<div class="shell"><div class="topbar"><div class="brand">${BRAND.name}</div><a class="secondary-link" href="/rules">How to play →</a></div><section class="panel stack"><h2>Join game</h2><input id="name" placeholder="Name" value="${escapeHtml(myName)}"><input id="code" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" maxlength="6" placeholder="6-digit room code" value="${inviteCode}"><button id="join">Join room</button></section>${localView.error?`<p class="notice">${escapeHtml(localView.error)}</p>`:''}</div>`; }
+function hostPage(){
+  const mode=hostModeForPath()||'standard';
+  const title=mode==='mathbreaker'?'Host Mathbreaker':mode==='tutorial'?'Host the tutorial':'Host Wallbreaker';
+  const description=mode==='mathbreaker'?'Create an experimental Mathbreaker room for at least three players.':mode==='tutorial'?'Create a guided Wallbreaker teaching room.':'Create a room for the Wallfacer, the Wallbreaker, Shi Qiang, and any additional Specialists.';
+  const rulesHref=mode==='mathbreaker'?'/mathbreaker/rules':'/rules';
+  const navigation=mode==='standard'?`<div class="host-mode-links"><a href="/tutorial/host">Host the guided tutorial</a><details><summary>Experimental modes</summary><a href="/mathbreaker/host">Host Mathbreaker</a></details></div>`:`<a class="secondary-link" href="/host">← Back to Wallbreaker hosting</a>`;
+  return `<div class="shell"><div class="topbar"><div class="brand">${BRAND.name}</div><a class="secondary-link" href="${rulesHref}">How to play →</a></div><section class="panel stack"><span class="mode-kicker">${mode==='mathbreaker'?'EXPERIMENTAL':mode==='tutorial'?'GUIDED':'MAIN GAME'}</span><h2>${title}</h2><p class="small">${description}</p><button id="create">Create room</button>${navigation}</section>${localView.error?`<p class="notice">${escapeHtml(localView.error)}</p>`:''}</div>`;
+}
 function connectionBadgeHtml(player){
   return `<span class="connection-badge ${player.connected?'connected':'disconnected'}"><span aria-hidden="true"></span>${player.connected?'Connected':'Disconnected'}</span>`;
 }
 function lobby(state){
-  const maxRoles=Math.max(1,Math.floor(state.players.length/2));
-  const recommended=Math.max(1,Math.min(Math.floor(state.players.length/4)||1,maxRoles));
-  const composition=roleComposition(state.players.length,state.wallfacerCount,state.policeEnabled);
-  const compositionHtml=`<div class="composition" aria-label="Planned role composition"><div><strong>${composition.wallfacers}</strong><span>Wallfacer${composition.wallfacers===1?'':'s'}</span></div><div><strong>${composition.wallbreakers}</strong><span>Wallbreaker${composition.wallbreakers===1?'':'s'}</span></div><div><strong>${composition.police}</strong><span>Police</span></div><div><strong>${composition.civilians}</strong><span>Civilian${composition.civilians===1?'':'s'}</span></div></div>`;
+  const composition=roleComposition(state.players.length);
+  const mathComposition=mathbreakerRoleComposition(state.players.length);
+  const shownComposition=state.mode==='mathbreaker'?mathComposition:composition;
+  const civilianLabel='Specialist';
+  const civilianCount=state.mode==='mathbreaker'?shownComposition.specialists:shownComposition.civilians;
+  const compositionHtml=`<div class="composition" aria-label="Planned role composition"><div><strong>${shownComposition.wallfacers}</strong><span>Wallfacer${shownComposition.wallfacers===1?'':'s'}</span></div><div><strong>${shownComposition.wallbreakers}</strong><span>Wallbreaker${shownComposition.wallbreakers===1?'':'s'}</span></div><div><strong>${shownComposition.police}</strong><span>Police</span></div><div><strong>${civilianCount}</strong><span>${civilianLabel}${civilianCount===1?'':'s'}</span></div></div>`;
   const countdown=state.phase==='countdown'?`<div class="countdown" role="status" aria-live="polite">Starting in <strong>${state.countdown}</strong>…</div>`:'';
   const playerRows=state.players.map(p=>`<div class="player"><div class="player-name-line"><span>${escapeHtml(p.name)}</span>${connectionBadgeHtml(p)}</div>${isHost?`<button class="secondary remove-player" data-player-id="${escapeHtml(p.id)}">Remove</button>`:''}</div>`).join('')||'<div class="small">Waiting for players…</div>';
-  const canStart=state.players.length>=2&&state.phase==='lobby';
-  const canStartMathbreaker=state.players.length>=3&&state.phase==='lobby';
-  const startChoices=state.phase==='countdown'?'<button disabled>Starting…</button>':`<div class="game-mode-grid"><button class="game-mode-card" id="start" ${canStart?'':'disabled'}><span class="mode-kicker">WALLBREAKER</span><strong>Start the game</strong><small>Exact plans, configurable roles, Police, and a round limit.</small></button><button class="game-mode-card mathbreaker-mode-card" id="start-mathbreaker" ${canStartMathbreaker?'':'disabled'}><span class="mode-kicker">MATHBREAKER</span><strong>Advance the fields</strong><small>One Wallfacer, one Wallbreaker, specialists, and no round limit. Requires 3 players.</small></button><button class="game-mode-card tutorial-mode-card" id="start-tutorial" ${canStart?'':'disabled'}><span class="mode-kicker">GUIDED</span><strong>Wallbreaker tutorial</strong><small>Interactive briefing and open-book practice.</small></button></div>`;
-  const settings=isHost?`<div class="lobby-settings"><div class="setting-heading"><div><strong>Role balance</strong><div class="small">The same number of Wallfacers and Wallbreakers.</div></div><button class="secondary compact" id="recommended-balance" ${state.phase!=='lobby'?'disabled':''}>Recommended · ${recommended}</button></div><label>Wallfacers and Wallbreakers: <strong>${Math.min(state.wallfacerCount,maxRoles)}</strong><input id="role-count" type="range" min="1" max="${maxRoles}" value="${Math.min(state.wallfacerCount,maxRoles)}" ${state.players.length<2||state.phase!=='lobby'?'disabled':''}></label>${compositionHtml}${state.wallfacerCount!==recommended&&state.players.length>=4?'<div class="balance-warning">Custom balance selected. Expect a more chaotic match.</div>':''}<div class="setting-row"><label class="toggle-setting"><input id="police-enabled" type="checkbox" ${state.policeEnabled?'checked':''} ${state.phase!=='lobby'?'disabled':''}><span>Include Police when a slot is available</span></label><label>Round limit<select id="round-limit" ${state.phase!=='lobby'?'disabled':''}><option value="6" ${state.maxRounds===6?'selected':''}>6 · quick</option><option value="8" ${state.maxRounds===8?'selected':''}>8</option><option value="10" ${state.maxRounds===10?'selected':''}>10 · standard</option><option value="12" ${state.maxRounds===12?'selected':''}>12 · long</option></select></label></div></div><button class="secondary" id="copy-invite">Copy invite link</button>${startChoices}<button class="secondary" id="leave">End game</button>`:`${compositionHtml}<button class="secondary" id="leave">Leave game</button>`;
+  const selectedMode=state.mode||'standard';
+  const canStart=state.players.length>=3&&state.phase==='lobby';
+  const modeName=selectedMode==='tutorial'?'Wallbreaker tutorial':selectedMode==='mathbreaker'?'Mathbreaker':'Wallbreaker';
+  const roundChoices=`<div class="discrete-setting"><div><strong>Round limit</strong><div class="small">Choose the game length.</div></div><div class="choice-pills" aria-label="Round limit">${[6,8,10,12].map(rounds=>`<button class="secondary round-choice ${state.maxRounds===rounds?'selected':''}" data-round-limit="${rounds}" aria-pressed="${state.maxRounds===rounds}">${rounds}</button>`).join('')}</div></div>`;
+  const messagingSetting=`<label class="toggle-setting"><input id="include-messaging" type="checkbox" ${state.includeMessaging?'checked':''} ${state.phase!=='lobby'?'disabled':''}><span><strong>Include messaging</strong><span class="small">Allow private messages between each player and the observer.</span></span></label>`;
+  const standardSettings=selectedMode==='mathbreaker'?`<div class="setting-heading"><div><strong>Fixed Mathbreaker roles</strong><div class="small">One Wallfacer, one Wallbreaker, no Police, and no round limit.</div></div></div>${compositionHtml}`:`<div class="setting-heading"><div><strong>Fixed standard roles</strong><div class="small">One Wallfacer, one Wallbreaker, one Shi Qiang, and a Specialist in every remaining seat.</div></div></div>${compositionHtml}${roundChoices}`;
+  const startControl=state.phase==='countdown'?'<button disabled>Starting…</button>':`<button class="start-selected-mode" id="start-game" ${canStart?'':'disabled'}>Start ${modeName}</button>`;
+  const settings=isHost?`<div class="selected-mode-readout"><span class="mode-kicker">HOSTING</span><strong>${modeName}</strong></div><div class="lobby-settings">${standardSettings}${messagingSetting}</div><button class="secondary" id="copy-invite">Copy invite link</button>${startControl}<button class="secondary" id="leave">End game</button>`:`<div class="selected-mode-readout"><span class="mode-kicker">SELECTED MODE</span><strong>${modeName}</strong></div>${compositionHtml}<button class="secondary" id="leave">Leave game</button>`;
   return `<div class="shell"><div class="topbar"><div><div class="brand">${BRAND.name}</div><div class="meta">Room · ${state.playerCount} players</div></div><div class="code">${state.code}</div></div><section class="panel stack">${countdown}<div class="players">${playerRows}</div>${settings}</section>${chatHtml()}${localView.error?`<p class="notice">${escapeHtml(localView.error)}</p>`:''}</div>`;
 }
 function postgameRoleDetail(role,names){
@@ -715,31 +759,48 @@ function postgameRoleDetail(role,names){
   if(role.kind==='wallfacer') return `Plan · ${Object.entries(role.plan?.values||{}).map(([color,value])=>`${color} ${value}`).join(' · ')}`;
   if(role.kind==='wallbreaker') return `Targeted ${names.get(role.targetId)||'Unknown'}`;
   if(role.kind==='specialist') return `Specialist · ${mathFieldName(role.specialty)}`;
-  if(role.kind==='civilian') return `Civilian · ${role.profession||'Unknown profession'}`;
+  if(role.kind==='civilian') return `Specialist · ${role.profession||'Unknown specialty'}`;
   if(role.kind==='police') return 'Police';
   return role.label||'Unknown role';
 }
 function postgameActionText(action,names){
   if(action.type==='spy') return `used the Sophon to observe ${names.get(action.targetId)||'their target'}`;
   if(action.type==='arrest') return `arrested ${names.get(action.targetId)||'a player'}`;
+  if(action.type==='private') return 'kept their action private';
   if(action.type==='skipped') return 'was resolved as no move while disconnected';
   if(action.type==='advance') return `advanced ${mathFieldName(action.color)} ${signed(Number(action.effect||0))}`;
   return `${action.color||'unknown'} ${signed(Number(action.effect||0))}`;
 }
+function postgameActionsHtml(state){
+  if(!isHost){
+    const message=state.recap?.active?'The host is guiding the recap.':'Waiting for the host to choose what happens next.';
+    return `<section class="panel postgame-waiting"><div class="eyebrow">Observer controls</div><strong>${message}</strong></section>`;
+  }
+  if(!state.recap?.active){
+    return `<section class="panel stack postgame-menu"><div><div class="eyebrow">What next?</div><h2>Choose the ending.</h2></div><div class="postgame-menu-actions"><button class="danger" id="leave">End game</button><button id="start-recap">See recap</button><button class="secondary" id="return-lobby">Return to lobby</button></div></section>`;
+  }
+  const recap=state.postgame?.recap;
+  const advance=recap&&!recap.complete?`<button id="advance-recap">Show round ${recap.roundIndex+2}</button>`:'';
+  return `<section class="panel stack postgame-menu"><div><div class="eyebrow">Host controls</div><strong>${recap?.complete?'Recap complete':'Advance when everyone is ready.'}</strong></div><div class="postgame-menu-actions ${advance?'':'two-actions'}">${advance}<button class="danger" id="leave">End game</button><button class="secondary" id="return-lobby">Return to lobby</button></div></section>`;
+}
 function postgameHtml(state){
-  const postgame=state.postgame||{roles:[],history:[],finalGuess:null};
+  const outcome=`<section class="panel stack outcome"><div class="eyebrow">Game over</div><div class="win">${escapeHtml(state.winner)} win</div><div>${escapeHtml(state.reason)}</div></section>`;
+  if(!state.recap?.active) return `${outcome}${postgameActionsHtml(state)}`;
+  const postgame=state.postgame||{roles:[],history:[],finalGuess:null,recap:{roundIndex:0,totalRounds:0,complete:true}};
   const names=new Map(postgame.roles.map(role=>[role.playerId,role.name]));
+  const wallbreaker=postgame.roles.find(role=>role.kind==='wallbreaker');
   const roleCards=postgame.roles.map(role=>`<article class="reveal-role-card">${roleSvg(role.kind)}<div><strong>${escapeHtml(role.name)}</strong><div class="reveal-role-name">${escapeHtml(role.label||role.kind||'Unknown')}</div><div class="small">${escapeHtml(postgameRoleDetail(role,names))}</div></div></article>`).join('');
   const rounds=postgame.history.map(entry=>{
-    const dials=COLORS.map(color=>{ const before=Number(entry.before?.[color]||0); const after=Number(entry.after?.[color]||0); return `<div class="history-dial ${color}"><span><span aria-hidden="true">${DIAL_SYMBOLS[color]}</span> ${escapeHtml(state.mode==='mathbreaker'?mathFieldName(color):color)}</span><strong>${before} → ${after}</strong><small>${signed(after-before)}</small></div>`; }).join('');
+    const dials=COLORS.map(color=>{ const before=Number(entry.before?.[color]||0); const after=Number(entry.after?.[color]||0); return `<div class="history-dial ${color}"><span>${escapeHtml(state.mode==='mathbreaker'?mathFieldName(color):color)}</span><strong>${before} → ${after}</strong><small>${signed(after-before)}</small></div>`; }).join('');
     const actions=entry.actions.map(item=>`<div class="history-action ${item.arrested?'cancelled':''}"><div><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.kind||'')}</span></div><div>${escapeHtml(postgameActionText(item.action,names))}${item.arrested?' · cancelled by arrest':''}</div></div>`).join('');
-    const decayAction=state.mode==='mathbreaker'&&entry.decays?.length?`<div class="history-action"><div><strong>Wallbreaker</strong><span>decay</span></div><div>${COLORS.filter(color=>entry.decays.includes(color)).map(color=>`${mathFieldName(color)} ${signed(-entry.decays.filter(item=>item===color).length)}`).join(' · ')}</div></div>`:'';
-    return `<details class="history-round" ${entry.round===postgame.history.length?'open':''}><summary><span>Round ${entry.round}</span><span>${entry.actions.length+(decayAction?1:0)} actions</span></summary><div class="history-dials">${dials}</div><div class="history-actions">${actions}${decayAction}</div></details>`;
+    const decayAction=state.mode==='mathbreaker'&&entry.decays?.length?`<div class="history-action"><div><strong>${escapeHtml(wallbreaker?.name||'Wallbreaker')}</strong><span>decay</span></div><div>${COLORS.filter(color=>entry.decays.includes(color)).map(color=>`${mathFieldName(color)} ${signed(-entry.decays.filter(item=>item===color).length)}`).join(' · ')}</div></div>`:'';
+    return `<article class="history-round recap-round"><div class="recap-round-heading"><span>Round ${entry.round}</span><span>${entry.actions.length+(decayAction?1:0)} actions</span></div><div class="history-dials">${dials}</div><div class="history-actions">${actions}${decayAction}</div></article>`;
   }).join('');
   const finalGuess=postgame.finalGuess;
-  const guessDescription=finalGuess?.fields?finalGuess.fields.map(mathFieldName).join(' · '):Object.entries(finalGuess?.guess||{}).map(([color,value])=>`${color} ${value}`).join(' · ');
+  const guessDescription=finalGuess?.colors?finalGuess.colors.join(' · '):finalGuess?.fields?finalGuess.fields.map(mathFieldName).join(' · '):'';
   const guessHtml=finalGuess?`<section class="panel stack final-guess"><strong>Final wall break</strong><div>${escapeHtml(names.get(finalGuess.playerId)||'A Wallbreaker')} guessed ${escapeHtml(guessDescription)}.</div><div class="${finalGuess.correct?'guess-correct':'guess-wrong'}">${finalGuess.correct?'The plan was identified.':'The guess was incorrect.'}</div></section>`:'';
-  return `<section class="panel stack outcome"><div class="eyebrow">Game over</div><div class="win">${escapeHtml(state.winner)} win</div><div>${escapeHtml(state.reason)}</div></section><section class="postgame-section"><div class="postgame-heading"><div><div class="eyebrow">The truth</div><h2>Role reveal</h2></div><div class="small">Every identity is now public.</div></div><div class="reveal-role-grid">${roleCards}</div></section>${guessHtml}<section class="postgame-section"><div class="postgame-heading"><div><div class="eyebrow">Replay</div><h2>Round by round</h2></div><div class="small">Open a round to see every move.</div></div><div class="history-list">${rounds||'<div class="panel small">No round was completed before the final guess.</div>'}</div></section>`;
+  const roundLabel=postgame.recap.totalRounds?`Round ${postgame.recap.roundIndex+1} of ${postgame.recap.totalRounds}`:'No completed rounds';
+  return `${outcome}${postgameActionsHtml(state)}<section class="postgame-section"><div class="postgame-heading"><div><div class="eyebrow">The truth</div><h2>Role reveal</h2></div><div class="small">Every identity and special assignment is now public.</div></div><div class="reveal-role-grid">${roleCards}</div></section><section class="postgame-section"><div class="postgame-heading"><div><div class="eyebrow">Recap</div><h2>${roundLabel}</h2></div><div class="small">The host advances each round for the room.</div></div><div class="history-list">${rounds||'<div class="panel small">No round was completed before the final guess.</div>'}</div></section>${guessHtml}`;
 }
 function gameScreen(state,role){
   if(state.mode==='mathbreaker') return mathbreakerGameScreen(state,role);
@@ -747,11 +808,12 @@ function gameScreen(state,role){
   const current=mine?.ready;
   const sophonHeader=role?.kind==='wallbreaker'?`<div class="sophon-inventory" aria-label="Choose one Sophon action each round"><span class="sophon-count">SOPHON · CHOOSE 1</span></div>`:'';
   const tutorialAids=state.mode==='tutorial'&&tutorialUI?tutorialUI.tutorialAidHtml({state,role,myPlayerId,isHost}):'';
-  if(state.winner) return `<div class="shell postgame-shell"><div class="topbar"><div><div class="brand">${BRAND.name}</div><div class="meta">Room ${state.code}</div></div><button class="secondary" id="leave">${isHost?'End game':'Leave game'}</button></div>${postgameHtml(state)}${chatHtml()}</div>`;
+  if(state.winner) return `<div class="shell postgame-shell"><div class="topbar"><div><div class="brand">${BRAND.name}</div><div class="meta">Room ${state.code}</div></div>${isHost?'':`<button class="secondary" id="leave">Leave game</button>`}</div>${!isHost?arrestOutcomeHtml(role):''}${postgameHtml(state)}${chatHtml()}</div>`;
   return `<div class="shell ${state.mode==='tutorial'?'tutorial-game-shell':''}"><div class="topbar"><div><div class="brand">ROUND ${state.round}/${state.maxRounds}</div><div class="meta">Room ${state.code}${state.mode==='tutorial'?' · Guided practice':''}</div></div><div class="row">${sophonHeader}<button class="secondary" id="show-role">Show role</button><button class="secondary" id="leave">${isHost?'End game':'Leave game'}</button></div></div>
   <div class="sr-only" role="status" aria-live="polite">${current?'Your move is locked.':`${state.players.filter(player=>player.ready).length} of ${state.players.length} players locked.`}</div>
   ${localView.error?`<div class="notice connection-notice">${escapeHtml(localView.error)}</div>`:''}
   ${state.paused?`<div class="notice">Game paused: ${escapeHtml(state.breakerName)} is attempting to break the wall.</div>`:''}
+  ${!isHost?arrestOutcomeHtml(role):''}
   ${!isHost?movePanelHtml(state,role,current):''}
   <div class="dial-board">${DIAL_GROUPS.map(group=>`<section class="dial-group"><div class="group-label">${group.name}</div><div class="dials">${group.colors.map(c=>isHost?observerDialCardHtml(c,state):dialCardHtml(c,state,role)).join('')}</div></section>`).join('')}</div>
   ${tutorialAids}
@@ -762,7 +824,7 @@ function gameScreen(state,role){
   ${chatHtml()}
   </div>`;
 }
-function breakModal(){ return `<div class="modal"><div class="modal-card stack"><h2 class="role-title">Break the wall</h2><p class="small">Choose exactly three dials and guess each target.</p>${COLORS.map(c=>`<div class="row"><label style="min-width:110px"><input class="break-dial" type="checkbox" value="${c}" style="width:auto"> ${c}</label><input id="guess-${c}" type="number" min="0" max="9" value="5" style="max-width:100px"></div>`).join('')}<button class="danger" id="send-break">Submit final guess</button><button class="secondary" id="close-modal">Cancel</button></div></div>`; }
+function breakModal(){ return `<div class="modal"><div class="modal-card stack"><h2 class="role-title">Guess the plan</h2><p class="small">Choose the three dial colors in the Wallfacer's plan. You do not guess their values. A correct guess wins; an incorrect guess gives the Loyal team the win.</p><div class="math-guess-grid standard-guess-grid">${COLORS.map(color=>`<label class="${color}"><input class="break-dial" type="checkbox" value="${color}"><span>${color}</span></label>`).join('')}</div><button class="danger" id="send-break">Submit final guess</button><button class="secondary" id="close-modal">Cancel</button></div></div>`; }
 function mathbreakerGuessModal(role){
   const used=new Set(role?.mathGuessKeys||[]);
   return `<div class="modal"><div class="modal-card stack"><div class="eyebrow">Private guess · Round ${localView.state?.round}</div><h2 class="role-title">Which three fields matter?</h2><p class="small">This guess is private. You may guess once this turn, and an incorrect combination cannot be repeated.</p><div class="math-guess-grid">${COLORS.map(color=>`<label><input class="math-guess-field" type="checkbox" value="${color}"><span>${escapeHtml(mathFieldName(color))}</span></label>`).join('')}</div><div class="small">${used.size} of 20 combinations tested.</div><button class="danger" id="send-math-guess">Submit private guess</button><button class="secondary" id="close-modal">Cancel</button></div></div>`;
@@ -775,7 +837,7 @@ function mathbreakerDeclarationHtml(role){
 }
 function mathbreakerGameScreen(state,role){
   const current=state.players.find(player=>player.id===myPlayerId)?.ready;
-  if(state.winner) return `<div class="shell postgame-shell mathbreaker-shell"><div class="topbar"><div><div class="brand">mathbreaker</div><div class="meta">Room ${state.code}</div></div><button class="secondary" id="leave">${isHost?'End game':'Leave game'}</button></div>${postgameHtml(state)}${chatHtml()}</div>`;
+  if(state.winner) return `<div class="shell postgame-shell mathbreaker-shell"><div class="topbar"><div><div class="brand">mathbreaker</div><div class="meta">Room ${state.code}</div></div>${isHost?'':`<button class="secondary" id="leave">Leave game</button>`}</div>${postgameHtml(state)}${chatHtml()}</div>`;
   const reveal=state.mathReveal;
   const revealNotice=state.phase==='math-reveal'?`<div class="notice math-reveal-notice"><strong>${reveal?.stage==='decay'?'Decay revealed':'Advancements revealed'}</strong><span>${reveal?.stage==='decay'?'The precommitted decay now takes effect.':'The Wallbreaker’s precommitted decay follows immediately.'}</span></div>`:'';
   const board=COLORS.map(color=>isHost?mathbreakerObserverDialCardHtml(color,state):mathbreakerDialCardHtml(color,state,role)).join('');
@@ -783,14 +845,13 @@ function mathbreakerGameScreen(state,role){
   return `<div class="shell mathbreaker-shell"><div class="topbar"><div><div class="brand">mathbreaker · round ${state.round}</div><div class="meta">Room ${state.code} · Reach ${state.mathThreshold}</div></div><div class="row"><button class="secondary" id="show-role">Show role</button><button class="secondary" id="leave">${isHost?'End game':'Leave game'}</button></div></div>${localView.error?`<div class="notice connection-notice">${escapeHtml(localView.error)}</div>`:''}${revealNotice}${!isHost?mathbreakerMovePanelHtml(state,role,current):''}<div class="dial-board mathbreaker-board">${board}</div>${omniscientHtml(state)}${lastReveal}${localView.modal==='role'?`<div class="modal"><div class="modal-card">${roleHtml(role)}<hr><button class="secondary" id="close-modal">Close</button></div></div>`:''}${localView.modal==='math-guess'?mathbreakerGuessModal(role):''}${mathbreakerDeclarationHtml(role)}${chatHtml()}</div>`;
 }
 function legalNotice(){ return '<footer class="legal">Unofficial, noncommercial fan project. Not affiliated with or endorsed by the rights holders of <em>The Three-Body Problem</em>.</footer>'; }
-function accessibilityControl(){ return `<button class="accessibility-control" id="toggle-contrast" aria-pressed="${highContrast}" title="Toggle high contrast">${highContrast?'Standard contrast':'High contrast'}</button>`; }
 function loadTutorialUI(){
   if(tutorialUI||tutorialLoadPromise) return tutorialLoadPromise;
   tutorialLoadPromise=import('./tutorial.js').then(module=>{ tutorialUI=module; render(); return module; }).catch(()=>{ localView.error='The tutorial could not be loaded. Refresh and try again.'; render(); });
   return tutorialLoadPromise;
 }
 function tutorialScreen(state){
-  if(!tutorialUI){ loadTutorialUI(); return '<div class="shell"><section class="panel">Loading the mission briefing…</section></div>'; }
+  if(!tutorialUI){ loadTutorialUI(); return '<div class="shell"><section class="panel">Loading the guided rules…</section></div>'; }
   return tutorialUI.briefingHtml({state,step:localView.tutorialStep,isHost,myPlayerId});
 }
 function setTutorialStep(step){
@@ -803,32 +864,27 @@ function markTutorialReady(){
 }
 function render(){
   const s=localView.state;
-  app.classList.toggle('host-view',isHost || location.pathname==='/host');
-  app.classList.toggle('high-contrast',highContrast);
+  app.classList.toggle('host-view',isHost || isHostRoute());
   if(localView.screen==='home') app.innerHTML=home();
   else if(localView.screen==='host') app.innerHTML=hostPage();
   else if(localView.screen==='connecting') app.innerHTML='<div class="shell"><div class="panel">Connecting…</div></div>';
   else if(localView.screen==='lobby') app.innerHTML=lobby(s);
   else if(s?.phase==='tutorial') app.innerHTML=tutorialScreen(s);
   else app.innerHTML=gameScreen(s,localView.role);
-  app.insertAdjacentHTML('beforeend',accessibilityControl()+legalNotice());
+  app.insertAdjacentHTML('beforeend',legalNotice());
   bind();
 }
 function bind(){
   document.querySelector('#create')?.addEventListener('click',createRoom);
   document.querySelector('#join')?.addEventListener('click',joinRoom);
-  document.querySelector('#start')?.addEventListener('click',()=>startGame('standard'));
-  document.querySelector('#start-tutorial')?.addEventListener('click',()=>startGame('tutorial'));
-  document.querySelector('#start-mathbreaker')?.addEventListener('click',()=>startGame('mathbreaker'));
+  document.querySelector('#start-game')?.addEventListener('click',startGame);
   document.querySelector('#tutorial-prev')?.addEventListener('click',()=>setTutorialStep(localView.tutorialStep-1));
   document.querySelector('#tutorial-next')?.addEventListener('click',()=>setTutorialStep(localView.tutorialStep+1));
   document.querySelector('#tutorial-ready')?.addEventListener('click',markTutorialReady);
   document.querySelector('#begin-tutorial-practice')?.addEventListener('click',beginTutorialPractice);
   document.querySelectorAll('[data-tutorial-step]').forEach(element=>element.addEventListener('click',()=>setTutorialStep(Number(element.dataset.tutorialStep))));
-  document.querySelector('#role-count')?.addEventListener('input',e=>{ game.wallfacerCount=Number(e.target.value); broadcast(); });
-  document.querySelector('#recommended-balance')?.addEventListener('click',()=>{ game.wallfacerCount=Math.max(1,Math.min(Math.floor(game.players.length/4)||1,Math.floor(game.players.length/2))); broadcast(); });
-  document.querySelector('#police-enabled')?.addEventListener('change',e=>{ game.policeEnabled=e.target.checked; broadcast(); });
-  document.querySelector('#round-limit')?.addEventListener('change',e=>{ game.maxRounds=Number(e.target.value); broadcast(); });
+  document.querySelectorAll('[data-round-limit]').forEach(element=>element.addEventListener('click',()=>{ game.maxRounds=Number(element.dataset.roundLimit); broadcast(); }));
+  document.querySelector('#include-messaging')?.addEventListener('change',event=>{ if(!isHost||game.phase!=='lobby') return; game.includeMessaging=event.target.checked; broadcast(); });
   document.querySelector('#submit')?.addEventListener('click',submitSelection);
   document.querySelectorAll('.dial-select').forEach(el=>el.addEventListener('click',()=>{ pendingSelection.color=el.dataset.color; pendingSelection.effect=0; pendingSelection.sophonMode='affect'; pendingSelection.policeMode='affect'; render(); }));
   document.querySelectorAll('.dial-action.adjust').forEach(el=>el.addEventListener('click',()=>{ pendingSelection.color=el.dataset.color; pendingSelection.effect=Number(el.dataset.effect); pendingSelection.sophonMode='affect'; pendingSelection.policeMode='affect'; render(); }));
@@ -845,14 +901,16 @@ function bind(){
   document.querySelector('#send-break')?.addEventListener('click',sendBreak);
   document.querySelector('#send-math-guess')?.addEventListener('click',sendMathbreakerGuess);
   document.querySelector('#confirm-math-declaration')?.addEventListener('click',confirmMathbreakerReveal);
+  document.querySelector('#start-recap')?.addEventListener('click',startPostgameRecap);
+  document.querySelector('#advance-recap')?.addEventListener('click',advancePostgameRecap);
+  document.querySelector('#return-lobby')?.addEventListener('click',returnToLobby);
   document.querySelector('#leave')?.addEventListener('click',leaveGame);
   document.querySelector('#copy-invite')?.addEventListener('click',copyInvite);
   document.querySelectorAll('.remove-player').forEach(el=>el.addEventListener('click',event=>{ event.stopPropagation(); removePlayer(el.dataset.playerId); }));
   document.querySelectorAll('.skip-player').forEach(el=>el.addEventListener('click',()=>skipDisconnectedPlayer(el.dataset.skipPlayer)));
-  document.querySelector('#toggle-contrast')?.addEventListener('click',toggleHighContrast);
   document.querySelector('#chat-send')?.addEventListener('click',sendChat);
   document.querySelector('#chat-input')?.addEventListener('keydown',event=>{ if(event.key==='Enter') sendChat(); });
   document.querySelectorAll('.chat-contact').forEach(el=>el.addEventListener('click',()=>{ chatReplyTo=el.dataset.chatContact||null; if(chatReplyTo) delete chatUnread[chatReplyTo]; render(); }));
 }
 render();
-if(location.pathname==='/host') resumeHost(); else resumeClient();
+if(isHostRoute()) resumeHost(); else resumeClient();

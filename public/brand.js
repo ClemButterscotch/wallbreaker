@@ -5,6 +5,20 @@ export const BRAND = Object.freeze({
   peerNamespace: 'wallbreaker',
 });
 
+export const HOST_MODES = Object.freeze({
+  '/host': 'standard',
+  '/tutorial/host': 'tutorial',
+  '/mathbreaker/host': 'mathbreaker',
+});
+
+export function hostModeForPath(pathname) {
+  return HOST_MODES[pathname] || null;
+}
+
+export function hostStorageName(pathname) {
+  return `host-${hostModeForPath(pathname) || 'standard'}`;
+}
+
 export function storageKey(name) {
   return `${BRAND.storageNamespace}-${name}`;
 }

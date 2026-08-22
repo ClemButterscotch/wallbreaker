@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#050505" />
+  <meta name="description" content="The complete standard-game rulebook for Wallbreaker." />
+  <title>Standard game rules · wallbreaker</title>
+  <link rel="stylesheet" href="/rules.css" />
+</head>
+<body class="rules-page">
+  <a class="rules-skip" href="#rules-slide-start">Skip to the rulebook</a>
+  <div class="rules-deck" data-rules-deck data-rules-label="standard game rules">
+    <header class="rules-topbar">
+      <a class="rules-wordmark" href="/" aria-label="Wallbreaker home">wallbreaker</a>
+      <div class="rules-chapter" aria-live="polite"><span>Standard game rulebook</span><strong id="rules-current-title">Rules overview</strong></div>
+      <div class="rules-top-actions">
+        <button class="rules-icon-button" id="rules-menu" type="button" aria-label="Open table of contents" aria-expanded="false" aria-controls="rules-toc"><span></span><span></span><span></span></button>
+        <button class="rules-icon-button rules-print" id="rules-print" type="button" aria-label="Print the rulebook with a white background"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8V3h10v5M7 17H4V9h16v8h-3M7 14h10v7H7z" /></svg></button>
+        <button class="rules-icon-button rules-fullscreen" id="rules-fullscreen" type="button" aria-label="Enter fullscreen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5m13 5h5v-5" /></svg></button>
+      </div>
+    </header>
+    <aside class="rules-toc" id="rules-toc" aria-label="Rulebook chapters" aria-hidden="true">
+      <div class="rules-toc-heading"><div><span>Jump to</span><strong>Contents</strong></div><button id="rules-menu-close" type="button" aria-label="Close table of contents">×</button></div>
+      <nav id="rules-toc-links"></nav>
+      <div class="rules-toc-note">Use <kbd>←</kbd> <kbd>→</kbd>, swipe, or the controls below.</div>
+    </aside>
+    <button class="rules-scrim" id="rules-scrim" type="button" aria-label="Dismiss table of contents" tabindex="-1"></button>
+
+    <main class="rules-stage" id="rulebook" tabindex="-1">
+      <section class="rules-slide rules-cover is-current" id="rules-slide-start" data-title="Rules overview" data-chapter="Introduction" aria-hidden="false">
+        <div class="rules-slide-inner rules-cover-layout">
+          <div class="rules-copy">
+            <div class="rules-kicker"><span>Standard game</span><i></i><span>Complete rules</span></div>
+            <h1>Standard game<br><em>rulebook</em></h1>
+            <p class="rules-lede">This rulebook explains the objective, all six dials, every role, round resolution, special actions, and every way the game can end.</p>
+            <div class="rules-cover-actions"><button class="rules-primary" type="button" data-rules-next>Start reading <span aria-hidden="true">→</span></button></div>
+          </div>
+          <div class="rules-visual game-board-visual cover-game-board" aria-label="The six-dial game board">
+            <div class="game-board-top"><span>PUBLIC BOARD</span><strong>Round 3 / 10</strong></div>
+            <section class="game-subject"><header>Mathematics</header><div><article class="game-dial yellow"><span>Yellow</span><strong>1</strong></article><article class="game-dial pink"><span>Pink</span><strong>7</strong></article></div></section>
+            <section class="game-subject"><header>Science</header><div><article class="game-dial blue"><span>Blue</span><strong>3</strong></article><article class="game-dial green"><span>Green</span><strong>4</strong></article></div></section>
+            <section class="game-subject"><header>Agriculture</header><div><article class="game-dial orange"><span>Orange</span><strong>5</strong></article><article class="game-dial red"><span>Red</span><strong>1</strong></article></div></section>
+          </div>
+        </div>
+      </section>
+
+      <section class="rules-slide" id="rules-slide-contents" data-title="Rulebook contents" data-chapter="Introduction" aria-hidden="true">
+        <div class="rules-slide-inner rules-stack-layout">
+          <div class="rules-copy rules-copy-wide"><div class="rules-kicker">01 · Contents</div><h2>Read the rules in this order.</h2><p class="rules-lede">The standard game has one Wallfacer, one Wallbreaker, one Shi Qiang, and a Specialist in every remaining player seat.</p></div>
+          <div class="rulebook-contents-grid">
+            <article><span>02–04</span><strong>Objective and setup</strong><p>The plan, the six dials, role composition, and round limit.</p></article>
+            <article><span>05–09</span><strong>Roles</strong><p>The Wallfacer, the Wallbreaker, guessing, Shi Qiang, and Specialists.</p></article>
+            <article><span>10–11</span><strong>Round resolution</strong><p>Locking actions, adding effects, arrests, limits, and public results.</p></article>
+            <article><span>12–15</span><strong>Ending and reference</strong><p>Victory conditions, observer duties, guided practice, and the final checklist.</p></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="rules-slide" id="rules-slide-objective" data-title="The objective" data-chapter="Objective and setup" aria-hidden="true">
+        <div class="rules-slide-inner">
+          <div class="rules-copy">
+            <div class="rules-kicker">02 · Objective</div>
+            <h2>The Wallfacer has a secret plan and must complete it exactly.</h2>
+            <p class="rules-lede">The plan identifies three of the six dial colors and gives an exact target value for each. The Loyal team wins when all three values match after a round resolves.</p>
+            <ul class="rules-points"><li><span>01</span><p><strong>All three targets must match at the same time.</strong> A near miss does not count.</p></li><li><span>02</span><p><strong>The other three dials do not affect completion.</strong> They may have any value.</p></li><li><span>03</span><p><strong>The plan is private.</strong> Only the Wallfacer and the observer see its colors and target values during play.</p></li></ul>
+          </div>
+          <div class="rules-visual rules-plan-visual">
+            <div class="plan-card game-role-panel"><div class="plan-card-head"><span>YOUR ROLE · WALLFACER</span><b>PRIVATE</b></div><h3>The plan</h3><div class="plan-target"><i class="target-dot yellow"></i><span>Yellow</span><strong>6</strong></div><div class="plan-target"><i class="target-dot blue"></i><span>Blue</span><strong>2</strong></div><div class="plan-target"><i class="target-dot red"></i><span>Red</span><strong>8</strong></div><div class="plan-stamp">All three values must be exact</div></div>
+            <div class="plan-shadow-card"><span>Wallbreaker’s task</span><strong>Identify these<br>three colors</strong><small>The values are not guessed.</small></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="rules-slide" id="rules-slide-board" data-title="The six dials" data-chapter="Objective and setup" aria-hidden="true">
+        <div class="rules-slide-inner">
+          <div class="rules-copy"><div class="rules-kicker">03 · Board</div><h2>The board has six colored dials.</h2><p class="rules-lede">Every dial displays a whole number from 0 through 9. The board is public, and every player sees the same current values.</p><ul class="rules-compact-points"><li><strong>Mathematics</strong><span>Yellow and Pink</span></li><li><strong>Science</strong><span>Blue and Green</span></li><li><strong>Agriculture</strong><span>Orange and Red</span></li><li><strong>Dial limits</strong><span>A dial cannot move below 0 or above 9.</span></li></ul></div>
+          <div class="rules-visual game-board-visual" aria-label="Six dials arranged in their normal game layout">
+            <div class="game-board-top"><span>PUBLIC BOARD</span><strong>Current values</strong></div>
+            <section class="game-subject"><header>Mathematics</header><div><article class="game-dial yellow"><span>Yellow</span><strong>1</strong></article><article class="game-dial pink"><span>Pink</span><strong>7</strong></article></div></section>
+            <section class="game-subject"><header>Science</header><div><article class="game-dial blue"><span>Blue</span><strong>3</strong></article><article class="game-dial green"><span>Green</span><strong>4</strong></article></div></section>
+            <section class="game-subject"><header>Agriculture</header><div><article class="game-dial orange"><span>Orange</span><strong>5</strong></article><article class="game-dial red"><span>Red</span><strong>1</strong></article></div></section>
+          </div>
+        </div>
+      </section>
+
+      <section class="rules-slide" id="rules-slide-table" data-title="Game setup" data-chapter="Objective and setup" aria-hidden="true">
+        <div class="rules-slide-inner">
+          <div class="rules-copy"><div class="rules-kicker">04 · Setup</div><h2>Every standard game uses one Wallfacer and one Wallbreaker.</h2><p class="rules-lede">At least three players are required. One player is the Wallfacer, one is the Wallbreaker, one is Shi Qiang, and every additional player is a Specialist. The host is a neutral observer and does not occupy a player seat.</p><ul class="rules-compact-points"><li><strong>Fixed core roles</strong><span>1 Wallfacer + 1 Wallbreaker + 1 Shi Qiang</span></li><li><strong>Additional players</strong><span>Every remaining seat is a Loyal Specialist.</span></li><li><strong>Round limit</strong><span>The host chooses 6, 8, 10, or 12 rounds.</span></li></ul></div>
+          <div class="rules-visual rules-table-visual"><div class="table-example-head"><span>Example composition</span><strong>8 players</strong></div><div class="seat-grid fixed-role-seats"><div class="seat loyal"><b>WF</b><span>The Wallfacer</span></div><div class="seat danger"><b>WB</b><span>The Wallbreaker</span></div><div class="seat police"><b>SQ</b><span>Shi Qiang</span></div><div class="seat civilian"><b>SP</b><span>Specialist</span></div><div class="seat civilian"><b>SP</b><span>Specialist</span></div><div class="seat civilian"><b>SP</b><span>Specialist</span></div><div class="seat civilian"><b>SP</b><span>Specialist</span></div><div class="seat civilian"><b>SP</b><span>Specialist</span></div></div><div class="composition-formula"><span>1 Wallfacer</span><i>+</i><span>1 Wallbreaker</span><i>+</i><span>1 Shi Qiang</span><i>+</i><span>5 Specialists</span></div></div>
+        </div>
+      </section>
+
+      <section class="rules-slide character-slide" id="rules-slide-wallfacer" data-title="The Wallfacer" data-chapter="Roles" aria-hidden="true">
+        <div class="rules-slide-inner character-layout">
+          <div class="rules-copy"><div class="rules-kicker">05 · Role · The Wallfacer</div><h2>The Wallfacer must complete the plan without revealing its three colors.</h2><p class="rules-lede">The Wallfacer is Loyal and is the only player who sees the complete standard-game plan.</p><ul class="character-rules"><li><strong>Private information</strong><span>The three plan colors and the exact target value for each.</span></li><li><strong>Round action</strong><span>Change any one dial by −1, 0, or +1.</span></li><li><strong>Communication</strong><span>Guide the Loyal team without stating all three plan colors.</span></li></ul><div class="rules-callout wallfacer-warning"><span>Why the plan cannot be announced</span><strong>The Wallbreaker can win by guessing the three colors.</strong><p>The Wallbreaker does not need the values, so saying the three colors aloud would reveal everything required for a correct guess.</p></div></div>
+          <div class="rules-visual character-board wallfacer-board game-role-panel"><div class="character-board-head"><span>YOUR ROLE · LOYAL</span><strong>WALLFACER</strong></div><div class="character-plan"><article class="yellow"><span>Yellow</span><strong>6</strong></article><article class="blue"><span>Blue</span><strong>2</strong></article><article class="red"><span>Red</span><strong>8</strong></article></div><div class="game-action-preview"><span>YOUR ROUND ACTION</span><strong>Choose one dial</strong><div><button>−1</button><button>0</button><button>+1</button></div></div><div class="character-intel"><span>Completion check</span><strong>All three plan values must match after resolution.</strong></div></div>
+        </div>
+      </section>
+
+      <section class="rules-slide character-slide" id="rules-slide-wallbreaker" data-title="The Wallbreaker" data-chapter="Roles" aria-hidden="true">
+        <div class="rules-slide-inner character-layout">
+          <div class="rules-copy"><div class="rules-kicker">06 · Role · The Wallbreaker</div><h2>The Wallbreaker tries to identify the three colors in the plan.</h2><p class="rules-lede">The Wallbreaker opposes the Loyal team. During each round, the Wallbreaker chooses one of two actions.</p><ul class="character-rules"><li><strong>Affect a dial</strong><span>Change any one dial by −1, 0, or +1.</span></li><li><strong>Or use the Sophon</strong><span>Do not move a dial. After resolution, privately see which action the Wallfacer locked.</span></li><li><strong>Final guess</strong><span>Choose three dial colors. A correct guess wins; an incorrect guess immediately wins for the Loyal team.</span></li></ul></div>
+          <div class="rules-visual character-board wallbreaker-board game-role-panel"><div class="character-board-head"><span>YOUR ROLE · OPPOSING</span><strong>WALLBREAKER</strong></div><div class="character-choice-grid live-choice-grid"><article><span>Action A</span><strong>Affect one dial</strong><b>−1 · 0 · +1</b></article><i>OR</i><article><span>Action B · Sophon</span><strong>Observe the Wallfacer</strong><b>see one locked action</b></article></div><button class="mock-danger-button" type="button" disabled>Guess the plan’s three colors</button><div class="character-intel"><span>Role summary</span><strong>Find one wall. Misdirect the whole table.</strong></div></div>
+        </div>
+      </section>
+
+      <section class="rules-slide" id="rules-slide-guess" data-title="Wallbreaker guess example" data-chapter="Roles" aria-hidden="true">
+        <div class="rules-slide-inner rules-example-layout">
+          <div class="rules-copy"><div class="rules-kicker">07 · Wallbreaker guess · Interactive example</div><h2>The Wallbreaker guesses colors, not values.</h2><p class="rules-lede">In this example, the plan is Yellow 6, Blue 2, and Red 8. Only Yellow, Blue, and Red must be submitted in the guess.</p><ul class="rules-points"><li><span>01</span><p><strong>A correct color set wins immediately.</strong> The three target values are irrelevant to the guess.</p></li><li><span>02</span><p><strong>An incorrect color set ends the game.</strong> The Loyal team wins immediately.</p></li><li><span>03</span><p><strong>This is why the Wallfacer must be careful.</strong> Publicly naming all three colors supplies the entire guess.</p></li></ul></div>
+          <div class="rules-visual guess-lab color-guess-lab"><div class="guess-lab-head"><span>FINAL GUESS</span><strong>Choose exactly three colors</strong></div><div class="guess-color-grid" aria-label="Example Wallbreaker guess"><span class="yellow is-picked" data-guess-color="yellow">Yellow</span><span class="pink" data-guess-color="pink">Pink</span><span class="orange" data-guess-color="orange">Orange</span><span class="red" data-guess-color="red">Red</span><span class="blue is-picked" data-guess-color="blue">Blue</span><span class="green is-picked" data-guess-color="green">Green</span></div><div class="guess-buttons"><button type="button" data-guess="wrong" class="is-active">Try Yellow · Blue · Green</button><button type="button" data-guess="correct">Try Yellow · Blue · Red</button></div><div class="guess-outcome loyal" id="guess-outcome"><span>Green is not in the plan</span><strong>Loyal team wins immediately.</strong></div></div>
+        </div>
+      </section>
+
+      <section class="rules-slide character-slide" id="rules-slide-police" data-title="Shi Qiang" data-chapter="Roles" aria-hidden="true">
+        <div class="rules-slide-inner character-layout">
+          <div class="rules-copy"><div class="rules-kicker">08 · Role · Shi Qiang</div><h2>Shi Qiang either affects one dial or arrests one player.</h2><p class="rules-lede">Shi Qiang is the single Police role and is Loyal. The arrest replaces Shi Qiang’s dial action for that round.</p><ul class="character-rules"><li><strong>Affect a dial</strong><span>Change any one dial by −1, 0, or +1.</span></li><li><strong>Or arrest</strong><span>Choose one other player. If that player chose a dial effect, omit it from the round total.</span></li><li><strong>Private result</strong><span>Only the arrested player is notified. The arrest and the player’s identity are not announced publicly during play.</span></li><li><strong>Scope</strong><span>An arrest does not cancel anyone else and does not prevent a Sophon observation.</span></li></ul></div>
+          <div class="rules-visual character-board police-board game-role-panel"><div class="character-board-head"><span>YOUR ROLE · LOYAL</span><strong>SHI QIANG</strong></div><div class="character-choice-grid live-choice-grid"><article><span>Action A</span><strong>Affect one dial</strong><b>−1 · 0 · +1</b></article><i>OR</i><article class="cancel-card"><span>Action B</span><strong>Arrest one player</strong><b>omit that dial effect</b></article></div><div class="private-notice"><span>PRIVATE NOTICE TO TARGET</span><strong>Police arrested you last round.</strong><p>Your dial effect was cancelled.</p></div><div class="character-intel"><span>Public board</span><strong>Shows only the resulting net dial changes.</strong></div></div>
+        </div>
+      </section>
+
+      <section class="rules-slide character-slide" id="rules-slide-specialists" data-title="The Specialists" data-chapter="Roles" aria-hidden="true">
+        <div class="rules-slide-inner character-layout specialist-layout">
+          <div class="rules-copy"><div class="rules-kicker">09 · Role · Specialists</div><h2>Each Specialist receives one random subject specialty.</h2><p class="rules-lede">Every remaining player is a Loyal Specialist. Specialties are assigned independently from Mathematics, Science, and Agriculture.</p><div class="specialty-callout"><span>Independent random assignment</span><strong>Duplicates are allowed.</strong><p>Several Specialists may receive the same subject, and a subject may receive no Specialist.</p></div><ul class="character-rules compact-character-rules"><li><strong>Inside the specialty</strong><span>Use −2, −1, 0, +1, or +2 on either of that subject’s two dials.</span></li><li><strong>Outside the specialty</strong><span>Use only −1, 0, or +1.</span></li></ul></div>
+          <div class="rules-visual game-board-visual specialist-game-board" aria-label="The six game dials as seen by a Mathematics Specialist"><div class="game-board-top"><span>EXAMPLE ROLE</span><strong>Mathematics Specialist</strong></div><section class="game-subject is-specialty"><header>Mathematics · specialty</header><div><article class="game-dial yellow"><div class="game-dial-controls"><b>+2</b><b>+1</b></div><span>Yellow</span><strong>1</strong><div class="game-dial-controls"><b>−1</b><b>−2</b></div></article><article class="game-dial pink"><div class="game-dial-controls"><b>+2</b><b>+1</b></div><span>Pink</span><strong>7</strong><div class="game-dial-controls"><b>−1</b><b>−2</b></div></article></div></section><section class="game-subject"><header>Science</header><div><article class="game-dial blue"><div class="game-dial-controls single"><b>+1</b></div><span>Blue</span><strong>3</strong><div class="game-dial-controls single"><b>−1</b></div></article><article class="game-dial green"><div class="game-dial-controls single"><b>+1</b></div><span>Green</span><strong>4</strong><div class="game-dial-controls single"><b>−1</b></div></article></div></section><section class="game-subject"><header>Agriculture</header><div><article class="game-dial orange"><div class="game-dial-controls single"><b>+1</b></div><span>Orange</span><strong>5</strong><div class="game-dial-controls single"><b>−1</b></div></article><article class="game-dial red"><div class="game-dial-controls single"><b>+1</b></div><span>Red</span><strong>1</strong><div class="game-dial-controls single"><b>−1</b></div></article></div></section></div>
+        </div>
+      </section>
+
+      <section class="rules-slide" id="rules-slide-round" data-title="Round sequence and net effects" data-chapter="Round resolution" aria-hidden="true">
+        <div class="rules-slide-inner rules-stack-layout round-rule-layout">
+          <div class="rules-copy rules-copy-wide"><div class="rules-kicker">10 · Round sequence</div><h2>A round has four steps.</h2><p class="rules-lede">All legal dial effects are added together before anything is revealed. The public board shows only each dial’s net change.</p></div>
+          <div class="rules-timeline compact-timeline"><article><b>01</b><h3>Discuss</h3><p>Players may discuss the public board and possible actions.</p></article><span class="timeline-arrow">→</span><article><b>02</b><h3>Choose</h3><p>Each player privately selects one legal dial or special action.</p></article><span class="timeline-arrow">→</span><article><b>03</b><h3>Lock</h3><p>A locked player may switch which action is locked, but cannot return to being unlocked.</p></article><span class="timeline-arrow">→</span><article class="is-live"><b>04</b><h3>Resolve</h3><p>Once everyone is locked, the game submits and resolves whichever action each player currently has locked.</p></article></div>
+          <div class="round-example-grid"><article><span>Effects add</span><strong>+2 + +1 = +3</strong><p>The dial’s public change is +3.</p></article><article><span>Effects cancel</span><strong>+1 + −1 = 0</strong><p>This is indistinguishable from nobody affecting that dial.</p></article><article><span>Dials stop at 0 and 9</span><strong>8 + 3 → 9</strong><p>The value is clamped at 9, not increased to 11.</p></article></div>
+        </div>
+      </section>
+
+      <section class="rules-slide" id="rules-slide-example" data-title="Worked arrest example" data-chapter="Round resolution" aria-hidden="true">
+        <div class="rules-slide-inner rules-example-layout">
+          <div class="rules-copy"><div class="rules-kicker">11 · Worked example · Interactive</div><h2>Worked example: resolving an arrest.</h2><p class="rules-lede">Red starts at 1. The host adds the three Red actions unless Shi Qiang arrests Lin.</p><div class="example-actions" id="standard-example-actions"><div><span class="example-avatar loyal">WF</span><p><strong>Ava · Wallfacer</strong><span>Red +1</span></p></div><div id="example-civilian-row"><span class="example-avatar civilian">SP</span><p><strong>Lin · Agriculture Specialist</strong><span>Red +2</span></p><em>ARRESTED</em></div><div><span class="example-avatar danger">WB</span><p><strong>Mara · Wallbreaker</strong><span>Red −1</span></p></div><div><span class="example-avatar police">SQ</span><p><strong>Shi Qiang</strong><span id="example-police-copy">Green +1</span></p></div></div><div class="example-controls"><button class="rules-toggle" id="example-arrest" type="button" aria-pressed="false"><span></span>Shi Qiang arrests Lin</button><button class="rules-primary" id="example-resolve" type="button">Resolve round</button><button class="rules-text-button" id="example-reset" type="button">Reset</button></div></div>
+          <div class="rules-visual example-result" id="standard-example-result" aria-live="polite"><div class="result-label"><span>PUBLIC BOARD</span><strong id="example-state-label">Waiting for locks</strong></div><div class="example-dial red"><span>Red</span><strong id="example-dial-value">1</strong><i id="example-delta">?</i></div><div class="equation" id="example-equation"><span>+1</span><i>+</i><span>+2</span><i>+</i><span>−1</span><i>=</i><strong>?</strong></div><p id="example-explanation">The public reveal shows the combined dial movement, not the individual actions.</p><small class="example-private-note">If Lin is arrested, Lin receives a private notification. The table is not told who was arrested.</small></div>
+        </div>
+      </section>
+
+      <section class="rules-slide" id="rules-slide-finish" data-title="How the game ends" data-chapter="Ending the game" aria-hidden="true">
+        <div class="rules-slide-inner rules-example-layout">
+          <div class="rules-copy"><div class="rules-kicker">12 · Victory conditions</div><h2>The plan, the guess, or the clock.</h2><div class="victory-list"><article class="loyal"><span>Loyal win</span><strong>The plan is completed</strong><p>After resolution, all three plan dials exactly match their target values.</p></article><article class="danger"><span>Wallbreaker win</span><strong>The three colors are guessed</strong><p>The Wallbreaker correctly identifies all three plan colors. Values are not required.</p></article><article class="loyal"><span>Loyal win</span><strong>The guess is wrong</strong><p>Any incorrect set of three colors ends the game immediately.</p></article><article class="danger"><span>Wallbreaker win</span><strong>The round limit is reached</strong><p>The final configured round ends without the plan being completed.</p></article></div></div>
+          <div class="rules-visual game-over-panel"><div class="game-over-top"><span>GAME OVER</span><strong>Loyal team win</strong></div><p>The plan was completed.</p><div class="completed-plan-board"><article class="yellow"><span>Yellow</span><strong>6</strong><b>Target 6</b></article><article class="blue"><span>Blue</span><strong>2</strong><b>Target 2</b></article><article class="red"><span>Red</span><strong>8</strong><b>Target 8</b></article></div><div class="game-over-note"><span>Completion is checked</span><strong>after every round resolves</strong></div></div>
+        </div>
+      </section>
+
+      <section class="rules-slide" id="rules-slide-observer" data-title="Observer responsibilities" data-chapter="Ending the game" aria-hidden="true">
+        <div class="rules-slide-inner">
+          <div class="rules-copy"><div class="rules-kicker">13 · Observer</div><h2>The observer runs the room but does not play.</h2><p class="rules-lede">The observer browser holds the authoritative game state. It validates locked actions, resolves rounds, checks victory, and broadcasts the public result.</p><ul class="rules-points"><li><span>01</span><p><strong>The observer sees roles and the plan.</strong> This information stays hidden from players during a standard game.</p></li><li><span>02</span><p><strong>Messaging is optional and private.</strong> Each player may message the observer, not the entire table.</p></li><li><span>03</span><p><strong>Disconnected players can be resolved as no move.</strong> This prevents a round from remaining locked indefinitely.</p></li><li><span>04</span><p><strong>Postgame disclosure is public.</strong> Roles, the plan, the final guess, arrests, and round history are revealed during the recap.</p></li></ul></div>
+          <div class="rules-visual host-view-visual"><div class="host-panel-heading"><span>OBSERVER VIEW</span><strong>Roles and plan</strong></div><article><b>WF</b><div><strong>Ava</strong><span>Wallfacer</span><small>Plan · Yellow 6 · Blue 2 · Red 8</small></div></article><article><b>WB</b><div><strong>Mara</strong><span>Wallbreaker</span><small>Targets Ava</small></div></article><article><b>SQ</b><div><strong>Shi</strong><span>Shi Qiang</span><small>Police action private</small></div></article><article><b>SP</b><div><strong>Lin</strong><span>Agriculture Specialist</span><small>Locked</small></div></article><div class="host-public-line"><span>Players receive</span><strong>board · round · lock status · net reveal</strong></div></div>
+        </div>
+      </section>
+
+      <section class="rules-slide" id="rules-slide-tutorial" data-title="Guided practice" data-chapter="Reference" aria-hidden="true">
+        <div class="rules-slide-inner">
+          <div class="rules-copy"><div class="rules-kicker">14 · Guided practice</div><h2>Guided practice uses the same rules with hidden information exposed.</h2><p class="rules-lede">Use guided practice to teach the game. The role composition, legal actions, resolution, and victory conditions remain the same.</p><ul class="rules-points"><li><span>01</span><p><strong>Roles and the plan are visible.</strong> Players can connect each role’s information to its decisions.</p></li><li><span>02</span><p><strong>Locked actions are visible.</strong> The group can inspect how the public net change was produced.</p></li><li><span>03</span><p><strong>Standard games remain private.</strong> The extra teaching information is never sent in a normal game.</p></li></ul><a class="rules-primary rules-inline-link" href="/tutorial/host">Host guided practice <span aria-hidden="true">↗</span></a></div>
+          <div class="rules-visual glass-visual"><div class="glass-grid"></div><article><span>Roles</span><strong>Visible</strong><small>Who is who</small></article><article><span>Plan</span><strong>Visible</strong><small>Colors and values</small></article><article><span>Locks</span><strong>Visible</strong><small>Why the board changed</small></article><div class="glass-note">Guided practice only. Standard-game privacy is unchanged.</div></div>
+        </div>
+      </section>
+
+      <section class="rules-slide rules-finale" id="rules-slide-ready" data-title="Final rules checklist" data-chapter="Reference" aria-hidden="true">
+        <div class="rules-slide-inner rules-finale-layout">
+          <div class="rules-copy"><div class="rules-kicker">15 · Final checklist</div><h2>Before starting, confirm these rules.</h2><ol class="ready-list"><li><span>1</span><p>There is exactly <strong>one Wallfacer and one Wallbreaker</strong>.</p></li><li><span>2</span><p>The plan contains <strong>three colors and three exact target values</strong>.</p></li><li><span>3</span><p>The Wallbreaker guesses <strong>only the three colors</strong>.</p></li><li><span>4</span><p>Every player locks one action; all uncancelled effects are <strong>added before reveal</strong>.</p></li></ol><div class="final-actions"><a class="rules-primary" href="/host">Host standard game <span aria-hidden="true">↗</span></a><a class="rules-secondary" href="/">Join a room</a><a class="rules-secondary" href="/mathbreaker/rules">Mathbreaker rules</a></div></div>
+          <div class="rules-visual final-reference-card"><span>QUICK REFERENCE</span><div><strong>Wallfacer</strong><p>Any dial · −1, 0, +1</p></div><div><strong>Wallbreaker</strong><p>Any dial · −1, 0, +1 · or Sophon</p></div><div><strong>Shi Qiang</strong><p>Any dial · −1, 0, +1 · or arrest</p></div><div><strong>Specialist</strong><p>Specialty · −2 to +2 · elsewhere −1 to +1</p></div><small><kbd>Home</kbd> restart · <kbd>←</kbd> <kbd>→</kbd> navigate · print for a PDF handout</small></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="rules-controls">
+      <button class="rules-nav-button" id="rules-prev" type="button" aria-label="Previous slide"><span aria-hidden="true">←</span><b>Back</b></button>
+      <div class="rules-progress-wrap"><div class="rules-progress-label"><span id="rules-slide-number">01 / 16</span><strong id="rules-progress-title">Rules overview</strong></div><div class="rules-progress" role="progressbar" aria-label="Rulebook progress" aria-valuemin="1" aria-valuemax="16" aria-valuenow="1"><i id="rules-progress-bar"></i></div></div>
+      <button class="rules-nav-button is-next" id="rules-next" type="button" aria-label="Next slide"><b>Next</b><span aria-hidden="true">→</span></button>
+    </footer>
+    <div class="sr-only" id="rules-announcer" aria-live="polite"></div>
+  </div>
+  <script type="module" src="/rules.js"></script>
+</body>
+</html>

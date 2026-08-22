@@ -21,26 +21,26 @@ Mathbreaker is a simpler alternate mode for 3 or more players. It always assigns
 
 ## Current rules implemented
 
-- The host chooses the number of Wallfacers in the lobby; the same number of Wallbreakers is assigned automatically, and all remaining players are Loyal. Any room size with at least two players can start.
+- Every standard game uses exactly one Wallfacer, one Wallbreaker, and one Shi Qiang. Every remaining player is a Loyal Specialist. At least three players are required.
 - Six bounded dials: yellow and pink (mathematics), orange and red (agriculture), blue and green (science); each ranges from 0 to 9.
-- Each Wallfacer has a secret three-dial exact-value plan.
-- Each round, every non-observer player privately selects one dial and one change. Wallfacers and Wallbreakers are limited to -1, 0, or +1. Civilians may use -2 or +2 only on their profession's subject pair; all other civilian dial moves are limited to -1, 0, or +1.
+- The Wallfacer has a secret plan containing three dial colors and one exact target value for each.
+- Each round, every non-observer player privately selects one action. The Wallfacer and Wallbreaker are limited to -1, 0, or +1. Specialists independently receive a random subject; they may use -2 or +2 only on that subject's dial pair, while all their other dial moves are limited to -1, 0, or +1. Duplicate specialties are allowed, and a subject may have no Specialist.
 - The host resolves all committed selections simultaneously.
-- One completed Wallfacer plan immediately wins for the Loyal team.
-- Each Wallbreaker chooses exactly one Sophon action per round: adjust one dial by -1, 0, or +1, or observe their target Wallfacer's locked move. There are no tokens, inventories, combined actions, or regeneration.
-- A Wallbreaker may submit one complete three-dial plan guess. All three values must be exact: a correct guess wins for the Wallbreakers; a wrong guess immediately wins for the Loyal team.
-- Wallbreakers win if the configured final round ends without a Wallfacer completing a plan.
+- Completing the plan exactly immediately wins for the Loyal team.
+- The Wallbreaker chooses exactly one action per round: adjust one dial by -1, 0, or +1, or use the Sophon to observe the Wallfacer's locked move. There are no tokens, inventories, combined actions, or regeneration.
+- The Wallbreaker may guess the three dial colors in the plan; target values are not part of the guess. A correct guess wins for the Wallbreaker, while a wrong guess immediately wins for the Loyal team.
+- The Wallbreaker wins if the configured final round ends without the Wallfacer completing the plan.
 
 ## Match controls and recovery
 
-- The lobby shows the complete planned role composition and offers a recommended balance, an optional Police role, and 6-, 8-, 10-, or 12-round matches.
+- The standard and tutorial lobbies show the fixed core role composition and offer 6-, 8-, 10-, or 12-round matches.
 - Players see connection recovery notices. The host sees each player's live connection state and can resolve a disconnected player as a no-op for the current round so the match does not hang.
 - Host and player sessions attempt to reconnect after reload while preserving the room code and authoritative state.
 - When a game ends, roles and Wallfacer plans become public, followed by an expandable round-by-round replay of dial changes, actions, arrests, Sophon observations, and connection no-ops. This information is not included in public state while a match is active.
 
 ## Accessibility
 
-- Every colored dial also has a distinct symbol.
+- Every dial is identified by its written color name; no dial symbols are used.
 - Keyboard focus is visibly outlined, status changes are announced to assistive technology, and the interface respects the system reduced-motion preference.
 - A persistent high-contrast toggle adds stronger borders and dial patterns.
 
@@ -52,7 +52,15 @@ Start the included server (Node 18+ is enough; no package install is required):
 npm start
 ```
 
-Open `/host` to create a room and share its six-digit code. The normal site address is the player join page. The host watches without taking a player slot.
+Use the host page for the game you intend to run, then share its six-digit room code. The normal site address remains the player join page, and the host watches without taking a player slot.
+
+- `/rules` opens the complete visual Wallbreaker rulebook. It supports slide controls, keyboard and swipe navigation, deep links, fullscreen, and printing to a PDF handout.
+- `/mathbreaker/rules` opens Mathbreaker’s separate visual rulebook.
+- `/host` hosts the standard Wallbreaker game.
+- `/tutorial/host` hosts the guided Wallbreaker tutorial.
+- `/mathbreaker/host` hosts the experimental Mathbreaker mode.
+
+Host recovery is isolated by mode, so a saved room on one host page cannot replace a room from another mode.
 
 To run the checks:
 
@@ -60,7 +68,7 @@ To run the checks:
 npm test
 ```
 
-The test suite imports the same pure rules module used by the browser. It covers role composition, role-specific movement, mutually exclusive Sophon actions, Police arrests, write-once locks, simultaneous resolution, dial bounds, disconnected no-ops, exact plan guesses, replay records, and postgame privacy.
+The test suite imports the same pure rules module used by the browser. It covers fixed role composition, role-specific movement, mutually exclusive Sophon actions, Police arrests, write-once locks, simultaneous resolution, dial bounds, disconnected no-ops, color-only plan guesses, replay records, and postgame privacy.
 
 For a free public version later, deploy this folder as a static site on Cloudflare Pages. The app has no server-side routes or build step; set the build command to empty and the output directory to the project root. PeerJS handles room signaling and WebRTC connections in the browser.
 

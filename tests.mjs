@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { hostModeForPath, hostStorageName } from './public/brand.js';
 import {
   COLORS,
   MATHBREAKER_THRESHOLD,
@@ -20,7 +21,8 @@ import {
   isLegalSelection,
   tryLockSelection,
   resolveRoundState,
-  isExactPlanGuess,
+  isPlanFieldGuess,
+  privateArrestOutcome,
   buildPostgameDisclosure,
   buildTutorialDisclosure
 } from './public/game-rules.js';
@@ -30,18 +32,28 @@ const test=(name,fn)=>{
   catch(error){ console.error(`✗ ${name}`); throw error; }
 };
 
+test('host subpages select and isolate their game modes',()=>{
+  assert.equal(hostModeForPath('/host'),'standard');
+  assert.equal(hostModeForPath('/tutorial/host'),'tutorial');
+  assert.equal(hostModeForPath('/mathbreaker/host'),'mathbreaker');
+  assert.equal(hostModeForPath('/mathbreaker'),null);
+  assert.notEqual(hostStorageName('/host'),hostStorageName('/tutorial/host'));
+  assert.notEqual(hostStorageName('/host'),hostStorageName('/mathbreaker/host'));
+});
+
 test('dial values clamp to the zero-to-nine board',()=>{
   assert.equal(clampDial(-2),0);
   assert.equal(clampDial(11),9);
   assert.equal(clampDial(5),5);
 });
 
-test('role composition accounts for every player and optional Police',()=>{
-  assert.deepEqual(roleComposition(0,1,true),{wallfacers:0,wallbreakers:0,police:0,civilians:0});
-  assert.deepEqual(roleComposition(2,1,true),{wallfacers:1,wallbreakers:1,police:0,civilians:0});
-  assert.deepEqual(roleComposition(7,2,true),{wallfacers:2,wallbreakers:2,police:1,civilians:2});
-  assert.deepEqual(roleComposition(7,2,false),{wallfacers:2,wallbreakers:2,police:0,civilians:3});
-  assert.deepEqual(roleComposition(4,99,true),{wallfacers:2,wallbreakers:2,police:0,civilians:0});
+test('standard role composition always uses one Wallfacer and one Wallbreaker',()=>{
+  assert.deepEqual(roleComposition(0,1),{wallfacers:0,wallbreakers:0,police:0,civilians:0});
+  assert.deepEqual(roleComposition(2,1),{wallfacers:1,wallbreakers:1,police:0,civilians:0});
+  assert.deepEqual(roleComposition(3,1),{wallfacers:1,wallbreakers:1,police:1,civilians:0});
+  assert.deepEqual(roleComposition(7,2),{wallfacers:1,wallbreakers:1,police:1,civilians:4});
+  assert.deepEqual(roleComposition(4,99),{wallfacers:1,wallbreakers:1,police:1,civilians:1});
+  assert.deepEqual(roleComposition(5,99),{wallfacers:1,wallbreakers:1,police:1,civilians:2});
 });
 
 test('Mathbreaker always assigns one Wallfacer, one Wallbreaker, and no Police',()=>{
@@ -181,18 +193,21 @@ test('disconnected no-op selections appear explicitly in replay history',()=>{
   assert.ok(COLORS.every(color=>result.after[color]===4));
 });
 
-test('wall-break guesses require the exact three dials and values',()=>{
+test('wall-break guesses require only the plan\'s three dial colors',()=>{
   const plan={orange:2,blue:7,red:5};
-  assert.equal(isExactPlanGuess(plan,{orange:2,blue:7,red:5}),true);
-  assert.equal(isExactPlanGuess(plan,{orange:2,blue:6,red:5}),false);
-  assert.equal(isExactPlanGuess(plan,{orange:2,blue:7,red:5,green:1}),false);
+  assert.equal(isPlanFieldGuess(plan,['orange','blue','red']),true);
+  assert.equal(isPlanFieldGuess(plan,['orange','blue','green']),false);
+  assert.equal(isPlanFieldGuess(plan,['orange','blue']),false);
+  assert.equal(isPlanFieldGuess(plan,['orange','blue','red','green']),false);
+  assert.equal(isPlanFieldGuess(plan,['orange','blue','blue']),false);
 });
 
 test('roles and history stay private until the game ends',()=>{
   const players=[{id:'wf',name:'Wen'}];
   const roles={wf:{kind:'wallfacer',label:'Wallfacer',plan:{values:{red:4}}}};
   assert.equal(buildPostgameDisclosure('playing',players,roles,[],null),undefined);
-  const disclosure=buildPostgameDisclosure('ended',players,roles,[{round:1}],null);
+  assert.equal(buildPostgameDisclosure('ended',players,roles,[{round:1}],null,{active:false}),undefined);
+  const disclosure=buildPostgameDisclosure('ended',players,roles,[{round:1}],null,{active:true,roundIndex:0});
   assert.equal(disclosure.roles[0].plan.values.red,4);
   assert.equal(disclosure.history[0].round,1);
 });
@@ -204,9 +219,63 @@ test('Mathbreaker plans and specialties stay private until the game ends',()=>{
     s:{kind:'specialist',label:'Specialist',specialty:'blue'}
   };
   assert.equal(buildPostgameDisclosure('playing',players,roles,[],null),undefined);
-  const disclosure=buildPostgameDisclosure('ended',players,roles,[],null);
+  const disclosure=buildPostgameDisclosure('ended',players,roles,[],null,{active:true,roundIndex:0});
   assert.deepEqual(disclosure.roles[0].plan.fields,['yellow','blue','green']);
   assert.equal(disclosure.roles[1].specialty,'blue');
+});
+
+test('postgame recap discloses only the host-selected round',()=>{
+  const players=[{id:'wf',name:'Wen'}];
+  const roles={wf:{kind:'wallfacer',label:'Wallfacer',plan:{values:{red:4}}}};
+  const history=[{round:1,actions:[]},{round:2,actions:[]},{round:3,actions:[]}];
+  const first=buildPostgameDisclosure('ended',players,roles,history,{correct:true},{active:true,roundIndex:0});
+  assert.deepEqual(first.history.map(entry=>entry.round),[1]);
+  assert.equal(first.finalGuess,null);
+  assert.equal(first.recap.complete,false);
+  const last=buildPostgameDisclosure('ended',players,roles,history,{correct:true},{active:true,roundIndex:2});
+  assert.deepEqual(last.history.map(entry=>entry.round),[3]);
+  assert.equal(last.finalGuess.correct,true);
+  assert.equal(last.recap.complete,true);
+});
+
+test('arrest outcomes stay private during play but are revealed in the postgame recap',()=>{
+  const players=[{id:'police',name:'Shi'},{id:'target',name:'Wen'},{id:'other',name:'Bo'}];
+  const roles={police:{kind:'police'},target:{kind:'wallfacer'},other:{kind:'wallbreaker',targetId:'target'}};
+  const history=[{
+    round:1,
+    actions:[
+      {playerId:'police',name:'Shi',kind:'police',arrested:false,action:{type:'arrest',targetId:'target'}},
+      {playerId:'target',name:'Wen',kind:'wallfacer',arrested:true,action:{type:'move',color:'red',effect:1}},
+      {playerId:'other',name:'Bo',kind:'wallbreaker',arrested:false,action:{type:'move',color:'blue',effect:-1}}
+    ]
+  }];
+  assert.deepEqual(privateArrestOutcome('target',roles.target,players,{target:true},history),{arrested:true});
+  assert.deepEqual(privateArrestOutcome('police',roles.police,players,{target:true},history),{arrested:false,arrestedPlayerName:'Wen'});
+  assert.deepEqual(privateArrestOutcome('other',roles.other,players,{target:true},history),{arrested:false});
+
+  const recap={active:true,roundIndex:0};
+  const policeView=buildPostgameDisclosure('ended',players,roles,history,null,recap,'police');
+  const targetView=buildPostgameDisclosure('ended',players,roles,history,null,recap,'target');
+  const otherView=buildPostgameDisclosure('ended',players,roles,history,null,recap,'other');
+  const observerView=buildPostgameDisclosure('ended',players,roles,history,null,recap,null);
+  assert.equal(policeView.history[0].actions[0].action.targetId,'target');
+  assert.equal(targetView.history[0].actions[0].action.targetId,'target');
+  assert.equal(otherView.history[0].actions[0].action.targetId,'target');
+  assert.equal(otherView.history[0].actions[1].arrested,true);
+  assert.equal(observerView.history[0].actions[0].action.targetId,'target');
+
+  const policeMoveHistory=[{round:2,actions:[{playerId:'police',name:'Shi',kind:'police',arrested:false,action:{type:'move',color:'green',effect:1}}]}];
+  const revealedPoliceMove=buildPostgameDisclosure('ended',players,roles,policeMoveHistory,null,recap,'other');
+  assert.deepEqual(revealedPoliceMove.history[0].actions[0].action,{type:'move',color:'green',effect:1});
+
+  const selections={police:{policeMode:'arrest',arrestTarget:'target'},other:{color:'blue',effect:-1}};
+  const targetTutorial=buildTutorialDisclosure('tutorial',players,roles,selections,{},history,'target');
+  const policeTutorial=buildTutorialDisclosure('tutorial',players,roles,selections,{},history,'police');
+  const otherTutorial=buildTutorialDisclosure('tutorial',players,roles,selections,{},history,'other');
+  assert.equal(targetTutorial.lockedMoves.some(move=>move.playerId==='police'),false,'target learns only after resolution');
+  assert.equal(policeTutorial.lockedMoves.some(move=>move.playerId==='police'),true);
+  assert.equal(targetTutorial.lastRound.actions[0].action.targetId,'target');
+  assert.deepEqual(otherTutorial.lastRound.actions[0].action,{type:'private'});
 });
 
 test('tutorial disclosures are isolated from standard games',()=>{
