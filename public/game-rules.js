@@ -34,6 +34,10 @@ export function mathbreakerRoleComposition(playerCount){
   };
 }
 
+export function knownWallfacerNames(players=[],roles={}){
+  return players.filter(player=>roles[player.id]?.kind==='wallfacer').map(player=>player.name);
+}
+
 export function mathbreakerDecayBudget(playerCount){
   return Math.max(0,(Number(playerCount)||0)-1);
 }
@@ -126,7 +130,7 @@ export function maxEffectFor(role,color){
 }
 
 export function legalEffectsFor(role,color){
-  return maxEffectFor(role,color)===2?[-2,-1,0,1,2]:[-1,0,1];
+  return maxEffectFor(role,color)===2?[-2,-1,1,2]:[-1,1];
 }
 
 export function isLegalSelection(role,selection,players,playerId){

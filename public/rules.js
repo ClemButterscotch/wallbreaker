@@ -1,3 +1,5 @@
+import {eyeSvg,roleSvg} from './icons.js';
+
 const deck=document.querySelector('[data-rules-deck]');
 const slides=[...document.querySelectorAll('.rules-slide')];
 const stage=document.querySelector('#rulebook');
@@ -18,6 +20,133 @@ const fullscreenButton=document.querySelector('#rules-fullscreen');
 const printButton=document.querySelector('#rules-print');
 let currentIndex=0;
 let touchStart=null;
+
+const RULE_DIAL_GROUPS=[
+  {name:'Mathematics',colors:['yellow','pink']},
+  {name:'Science',colors:['blue','green']},
+  {name:'Agriculture',colors:['orange','red']},
+];
+const RULE_DIAL_VALUES={yellow:1,pink:7,blue:3,green:4,orange:5,red:1};
+const RULE_PLAN_TARGETS={yellow:6,blue:2,red:8};
+
+function dialValueHtml(value){
+  const above=Math.min(9,value+1);
+  const below=Math.max(0,value-1);
+  return `<div class="value-window dial-flat"><span class="dial-delta dial-delta-up">+1</span><div class="value-reel"><span class="reveal-adjacent">${above}</span><span class="value">${value}</span><span class="reveal-adjacent">${below}</span></div><span class="dial-delta dial-delta-down">-1</span></div>`;
+}
+
+function dialCardHtml(color,{observer=false,targets=false,effects=[1,-1],selection=null,locked=false}={}){
+  const selected=selection?.color===color;
+  const target=targets?RULE_PLAN_TARGETS[color]:undefined;
+  const orderedEffects=effects.length===4?[2,1,-1,-2]:[1,-1];
+  const actions=observer?'':`<div class="dial-actions action-count-${orderedEffects.length}">${orderedEffects.map(effect=>`<button class="dial-action adjust ${selected&&selection.effect===effect?'selected-action':''}" type="button" data-rule-dial-action data-color="${color}" data-effect="${effect}" aria-label="${effect<0?'Decrease':'Increase'} ${color} by ${Math.abs(effect)}" ${locked?'disabled':''}>${effect>0?'+':''}${effect}</button>`).join('')}</div>`;
+  const marker=target===undefined?'':`<span class="plan-target-marker"><i></i>Target ${target}</span>`;
+  const arrows=locked&&selected?`<span class="lock-arrows ${selection.effect>0?'up':'down'}" aria-hidden="true">${selection.effect>0?'↑':'↓'}</span>`:'';
+  return `<div class="dial ${color} dial-card standard-dial-card ${observer?'observer-dial':''} ${selected?'selected':''} ${locked&&selected?'locked-preview':''} ${target===undefined?'':'plan-target'}"><div class="dial-face"><div class="dial-select" aria-label="${color}, value ${RULE_DIAL_VALUES[color]}"><span class="name">${color}</span>${dialValueHtml(RULE_DIAL_VALUES[color])}</div>${marker}</div>${actions}${arrows}</div>`;
+}
+
+function dialBoardHtml({observer=false,targets=false,specialty=null,selection=null,locked=false}={}){
+  return `<div class="dial-board rules-live-dial-board">${RULE_DIAL_GROUPS.map(group=>`<section class="dial-group ${specialty===group.name?'is-specialty':''}"><div class="group-label">${group.name}${specialty===group.name?' · specialty':''}</div><div class="dials">${group.colors.map(color=>dialCardHtml(color,{observer,targets,effects:specialty===group.name?[2,1,-1,-2]:[1,-1],selection,locked})).join('')}</div></section>`).join('')}</div>`;
+}
+
+function gameTopbarHtml({wallbreaker=false,label='ROUND 1/10'}={}){
+  return `<div class="topbar rules-live-topbar"><div><div class="brand">${label}</div><div class="meta">Room 173451</div></div><div class="row">${wallbreaker?`<div class="sophon-inventory"><span class="sophon-count">SOPHON · CHOOSE 1</span></div>`:''}<button class="secondary" type="button" disabled>Show role</button></div></div>`;
+}
+
+function movePanelHtml({role='wallfacer',selection=null,locked=false,playersLocked=3,totalPlayers=6}={}){
+  const isWallbreaker=role==='wallbreaker';
+  const isPolice=role==='police';
+  const special=selection?.kind;
+  const chosen=special==='sophon'?"Spy on Wallfacer's move":special==='arrest'?(selection.target?`Arrest ${selection.target}`:'Choose a player'):selection?.color?`${selection.color} ${selection.effect>0?'+':''}${selection.effect}`:'Select a dial and adjustment';
+  const hasChoice=Boolean(special==='sophon'||(special==='arrest'&&selection.target)||selection?.color);
+  const spy=isWallbreaker?`<button class="spy-choice ${special==='sophon'?'selected':''}" type="button" data-rule-sophon aria-pressed="${special==='sophon'}" ${locked?'disabled':''}>${eyeSvg()}<span>Spy on Wallfacer's move</span></button>`:'';
+  const arrest=isPolice?`<button class="spy-choice ${special==='arrest'?'selected':''}" type="button" data-rule-arrest aria-pressed="${special==='arrest'}" ${locked?'disabled':''}>${roleSvg('police')}<span>${selection?.target?`Arrest ${selection.target}`:'Arrest someone for this turn'}</span></button>`:'';
+  const guess=isWallbreaker?'<button class="danger" type="button" data-rule-open-guess>Guess combination</button>':'';
+  return `<section class="panel stack move-panel"><div class="move-summary"><strong>Your move</strong><span>${locked?`Locked in · ${chosen}`:chosen}</span></div>${spy}${arrest}<button type="button" data-rule-lock ${locked||!hasChoice?'disabled':''}>${locked?`Locked in · ${chosen}`:'Lock selection'}</button>${guess}<div class="small">${locked?playersLocked+1:playersLocked}/${totalPlayers} locked</div></section>`;
+}
+
+function roleCardHtml({kind,name,detail,plan='',team=''}){
+  const iconKind=kind==='specialist'?'civilian':kind;
+  return `<div class="role-card ${team}">${roleSvg(iconKind)}<div class="role-card-copy"><strong>${name}</strong><div class="small">${detail}</div>${plan?`<div class="small">${plan}</div>`:''}</div></div>`;
+}
+
+function mountStaticScreens(){
+  const teamUi=document.querySelector('#rules-team-ui');
+  if(teamUi) teamUi.innerHTML=`<article class="panel stack team-role-card wallfacer-team-ui"><div class="eyebrow">Wallfacer team</div><div class="role-only">${roleSvg('wallfacer')}<h2 class="role-title">The Wallfacer</h2></div><p class="small">Leads Shi Qiang and the Specialists.</p></article><article class="panel stack team-role-card wallbreaker-team-ui"><div class="eyebrow">Wallbreaker team</div><div class="role-only">${roleSvg('wallbreaker')}<h2 class="role-title">The Wallbreaker</h2></div><p class="small">Plays alone.</p></article>`;
+
+  ['#rules-cover-board','#rules-public-board'].forEach(selector=>{
+    const target=document.querySelector(selector);
+    if(target) target.innerHTML=`${gameTopbarHtml({label:'ROUND 1/10'})}${dialBoardHtml({observer:true})}`;
+  });
+
+  const planScreen=document.querySelector('#rules-wallfacer-plan-screen');
+  if(planScreen) planScreen.innerHTML=`${gameTopbarHtml({label:'ROUND 1/10'})}${dialBoardHtml({targets:true})}`;
+
+  const arrestedScreen=document.querySelector('#rules-arrested-screen');
+  if(arrestedScreen) arrestedScreen.innerHTML=`${gameTopbarHtml({label:'ROUND 2/10'})}${dialBoardHtml({observer:true})}<div class="modal rules-embedded-modal rules-arrested-outcome" role="dialog" aria-modal="true" aria-labelledby="rules-arrested-title"><div class="modal-card stack"><div class="modal-icon danger-icon">${roleSvg('police')}</div><div><div class="eyebrow">Private result</div><h2 class="role-title" id="rules-arrested-title">You were arrested</h2></div><p>Police arrested you last round. Your locked dial effect was cancelled.</p><button type="button" tabindex="-1">Dismiss</button></div></div>`;
+
+  const observer=document.querySelector('#rules-observer-screen');
+  if(observer) observer.innerHTML=`${gameTopbarHtml({label:'OBSERVER · ROUND 1/10'})}<section class="panel stack omniscient"><div class="section-title">${roleSvg('omniscient')}<div><strong>Observer view</strong><div class="small">Roles and plans are visible.</div></div></div><div class="role-grid">${roleCardHtml({kind:'wallfacer',name:'Ava',detail:'Wallfacer · Wallfacer team',plan:'yellow 6 · blue 2 · red 8',team:'wallfacer-team-ui'})}${roleCardHtml({kind:'wallbreaker',name:'Mara',detail:'Wallbreaker · Wallbreaker team',plan:'Targets Ava',team:'wallbreaker-team-ui'})}${roleCardHtml({kind:'police',name:'Shi',detail:'Shi Qiang · Wallfacer team',team:'wallfacer-team-ui'})}${roleCardHtml({kind:'specialist',name:'Lin',detail:'Agriculture Specialist · Wallfacer team',team:'wallfacer-team-ui'})}</div></section>`;
+}
+
+function bindActionScreen({selector,role='wallfacer',targets=false,specialty=null,initialSelection=null,initialArrestPickerOpen=false}={}){
+  const screen=document.querySelector(selector);
+  if(!screen) return;
+  let selection=initialSelection;
+  let locked=false;
+  let arrestPickerOpen=initialArrestPickerOpen;
+
+  function render(){
+    screen.innerHTML=`${gameTopbarHtml({wallbreaker:role==='wallbreaker'})}<div class="rules-live-game-body">${movePanelHtml({role,selection,locked})}${dialBoardHtml({targets,specialty,selection,locked})}</div>${arrestPickerOpen?`<div class="modal rules-embedded-modal" role="dialog" aria-modal="true" aria-label="Choose a player to arrest"><div class="modal-card stack"><div class="role-heading">${roleSvg('police')}<div><div class="eyebrow">Private action</div><h2 class="role-title">Who will you arrest?</h2></div></div><p class="small">Their locked dial effect will not count this round.</p><div class="arrest-choices">${['Ava','Mara','Lin'].map(name=>`<button class="arrest-target ${selection?.target===name?'selected':''}" type="button" data-rule-arrest-target="${name}"><span class="chat-avatar">${name.slice(0,2).toUpperCase()}</span><span>${name}</span>${selection?.target===name?'<strong>Selected</strong>':''}</button>`).join('')}</div><button class="secondary" type="button" data-rule-close-arrest>Cancel</button></div></div>`:''}`;
+
+    screen.querySelectorAll('[data-rule-dial-action]').forEach(button=>button.addEventListener('click',()=>{
+      if(locked) return;
+      selection={kind:'dial',color:button.dataset.color,effect:Number(button.dataset.effect)};
+      arrestPickerOpen=false;
+      render();
+    }));
+    screen.querySelector('[data-rule-sophon]')?.addEventListener('click',()=>{
+      if(locked) return;
+      selection={kind:'sophon'};
+      render();
+    });
+    screen.querySelector('[data-rule-arrest]')?.addEventListener('click',()=>{
+      if(locked) return;
+      selection={kind:'arrest',target:selection?.kind==='arrest'?selection.target:null};
+      arrestPickerOpen=true;
+      render();
+    });
+    screen.querySelectorAll('[data-rule-arrest-target]').forEach(button=>button.addEventListener('click',()=>{
+      selection={kind:'arrest',target:button.dataset.ruleArrestTarget};
+      arrestPickerOpen=false;
+      render();
+    }));
+    screen.querySelector('[data-rule-close-arrest]')?.addEventListener('click',()=>{
+      arrestPickerOpen=false;
+      if(selection?.kind==='arrest'&&!selection.target) selection=null;
+      render();
+    });
+    screen.querySelector('[data-rule-lock]')?.addEventListener('click',()=>{
+      if(!selection) return;
+      locked=true;
+      render();
+    });
+    screen.querySelector('[data-rule-open-guess]')?.addEventListener('click',()=>{
+      const guessIndex=slides.findIndex(slide=>slide.id==='rules-slide-guess');
+      if(guessIndex>=0) showSlide(guessIndex);
+    });
+  }
+
+  render();
+}
+
+function mountGameScreens(){
+  mountStaticScreens();
+  bindActionScreen({selector:'#rules-wallfacer-action-screen',role:'wallfacer',targets:true,initialSelection:{kind:'dial',color:'blue',effect:1}});
+  bindActionScreen({selector:'#rules-wallbreaker-action-screen',role:'wallbreaker',initialSelection:{kind:'dial',color:'blue',effect:-1}});
+  bindActionScreen({selector:'#rules-police-action-screen',role:'police',initialSelection:{kind:'arrest',target:null},initialArrestPickerOpen:true});
+  bindActionScreen({selector:'#rules-specialist-screen',role:'specialist',specialty:'Mathematics',initialSelection:{kind:'dial',color:'yellow',effect:2}});
+}
 
 function slideHash(slide){
   return slide.id.replace('rules-slide-','');
@@ -43,14 +172,16 @@ function showSlide(index,{updateHash=true,announce=true}={}){
   });
   const slide=slides[currentIndex];
   const title=slide.dataset.title||`Slide ${currentIndex+1}`;
-  const padded=String(currentIndex+1).padStart(2,'0');
-  const total=String(slides.length).padStart(2,'0');
+  const ruleCount=Math.max(0,slides.length-1);
+  const ruleNumber=currentIndex;
+  const padded=String(ruleNumber).padStart(2,'0');
+  const total=String(ruleCount).padStart(2,'0');
   currentTitle.textContent=title;
   progressTitle.textContent=title;
-  slideNumber.textContent=`${padded} / ${total}`;
-  progressBar.style.width=`${((currentIndex+1)/slides.length)*100}%`;
-  progress.setAttribute('aria-valuemax',String(slides.length));
-  progress.setAttribute('aria-valuenow',String(currentIndex+1));
+  slideNumber.textContent=currentIndex===0?'INTRO':`${padded} / ${total}`;
+  progressBar.style.width=`${ruleCount?(ruleNumber/ruleCount)*100:0}%`;
+  progress.setAttribute('aria-valuemax',String(ruleCount));
+  progress.setAttribute('aria-valuenow',String(ruleNumber));
   previousButton.disabled=currentIndex===0;
   nextButton.disabled=currentIndex===slides.length-1;
   nextButton.querySelector('b').textContent=currentIndex===slides.length-2?'Finish':'Next';
@@ -63,7 +194,7 @@ function showSlide(index,{updateHash=true,announce=true}={}){
     const nextHash=`#${slideHash(slide)}`;
     if(location.hash!==nextHash) history.replaceState(null,'',nextHash);
   }
-  if(announce) announcer.textContent=`Slide ${currentIndex+1} of ${slides.length}: ${title}`;
+  if(announce) announcer.textContent=currentIndex===0?`Introduction: ${title}`:`Rule ${ruleNumber} of ${ruleCount}: ${title}`;
 }
 
 function changeSlide(delta){
@@ -118,21 +249,25 @@ function bindStandardExample(){
   const civilianRow=document.querySelector('#example-civilian-row');
   const policeCopy=document.querySelector('#example-police-copy');
   const stateLabel=document.querySelector('#example-state-label');
-  const dial=document.querySelector('#standard-example-result .example-dial');
-  const dialValue=document.querySelector('#example-dial-value');
-  const delta=document.querySelector('#example-delta');
+  const dial=document.querySelector('#example-live-dial');
   const equation=document.querySelector('#example-equation');
   const explanation=document.querySelector('#example-explanation');
   if(!arrestButton||!resolveButton||!resetButton||!dial) return;
   let arrested=false;
 
+  function renderDial(value,deltaText='?',animate=false){
+    dial.innerHTML=`${dialCardHtml('red',{observer:true})}<span class="rules-example-delta">${deltaText}</span>`;
+    const values=[Math.min(9,value+1),value,Math.max(0,value-1)];
+    dial.querySelectorAll('.value-reel>span').forEach((item,index)=>{ item.textContent=String(values[index]); });
+    dial.classList.remove('is-resolved');
+    if(animate) requestAnimationFrame(()=>dial.classList.add('is-resolved'));
+  }
+
   function resetResult(){
     stateLabel.textContent='Waiting for locks';
-    dialValue.textContent='1';
-    delta.textContent='?';
+    renderDial(1);
     equation.innerHTML='<span>+1</span><i>+</i><span>+2</span><i>+</i><span>−1</span><i>=</i><strong>?</strong>';
     explanation.textContent='The public reveal will show the combined dial movement—not who caused it.';
-    dial.classList.remove('is-resolved');
   }
 
   function syncArrest(){
@@ -149,16 +284,13 @@ function bindStandardExample(){
   resolveButton.addEventListener('click',()=>{
     const net=arrested?0:2;
     stateLabel.textContent='Round resolved';
-    dialValue.textContent=String(1+net);
-    delta.textContent=net===0?'±0':`+${net}`;
+    renderDial(1+net,net===0?'±0':`+${net}`,true);
     equation.innerHTML=arrested
       ? '<span>+1</span><i>+</i><span class="cancelled">+2</span><i>+</i><span>−1</span><i>=</i><strong>0</strong>'
       : '<span>+1</span><i>+</i><span>+2</span><i>+</i><span>−1</span><i>=</i><strong>+2</strong>';
     explanation.textContent=arrested
       ? 'Lin’s +2 is omitted. Ava’s +1 and Mara’s −1 cancel, so Red stays at 1.'
       : 'The three Red moves add to +2. Shi Qiang’s Green move affects a different dial.';
-    dial.classList.remove('is-resolved');
-    requestAnimationFrame(()=>dial.classList.add('is-resolved'));
   });
   resetButton.addEventListener('click',()=>{
     arrested=false;
@@ -168,19 +300,38 @@ function bindStandardExample(){
 }
 
 function bindGuessExample(){
-  const buttons=[...document.querySelectorAll('[data-guess]')];
-  const colors=[...document.querySelectorAll('[data-guess-color]')];
-  const outcome=document.querySelector('#guess-outcome');
-  if(!buttons.length||!colors.length||!outcome) return;
-  buttons.forEach(button=>button.addEventListener('click',()=>{
-    const correct=button.dataset.guess==='correct';
-    const picked=new Set(correct?['yellow','blue','red']:['yellow','blue','green']);
-    buttons.forEach(candidate=>candidate.classList.toggle('is-active',candidate===button));
-    colors.forEach(color=>color.classList.toggle('is-picked',picked.has(color.dataset.guessColor)));
-    outcome.classList.toggle('danger',correct);
-    outcome.querySelector('span').textContent=correct?'All three colors match':'Green is not in the plan';
-    outcome.querySelector('strong').textContent=correct?'Wallbreaker wins immediately.':'Loyal team wins immediately.';
-  }));
+  const checkboxes=[...document.querySelectorAll('.rules-break-dial')];
+  const submit=document.querySelector('#rules-submit-guess');
+  const reset=document.querySelector('#rules-reset-guess');
+  const feedback=document.querySelector('#rules-guess-feedback');
+  if(!checkboxes.length||!submit||!reset||!feedback) return;
+
+  function selected(){
+    return checkboxes.filter(checkbox=>checkbox.checked).map(checkbox=>checkbox.value);
+  }
+
+  function sync(){
+    const picked=selected();
+    checkboxes.forEach(checkbox=>{
+      checkbox.disabled=!checkbox.checked&&picked.length>=3;
+    });
+    submit.disabled=picked.length!==3;
+    feedback.hidden=true;
+  }
+
+  checkboxes.forEach(checkbox=>checkbox.addEventListener('change',sync));
+  submit.addEventListener('click',()=>{
+    const picked=selected().sort();
+    const correct=picked.join(',')===['blue','red','yellow'].sort().join(',');
+    feedback.className=`notice ${correct?'wallbreaker-team-feedback':'wallfacer-team-feedback'}`;
+    feedback.innerHTML=`<strong>${correct?'Wallbreaker team wins.':'Wallfacer team wins.'}</strong><span>${correct?'The three colors match the plan.':'The final guess contains the wrong set of colors.'}</span>`;
+    feedback.hidden=false;
+  });
+  reset.addEventListener('click',()=>{
+    checkboxes.forEach(checkbox=>{ checkbox.checked=false; checkbox.disabled=false; });
+    sync();
+  });
+  sync();
 }
 
 function bindMathExample(){
@@ -233,10 +384,62 @@ function bindMathExample(){
   renderPhase();
 }
 
+function bindWallbreakerChoiceExample(){
+  const buttons=[...document.querySelectorAll('[data-wallbreaker-choice]')];
+  const title=document.querySelector('#wallbreaker-choice-title');
+  const copy=document.querySelector('#wallbreaker-choice-copy');
+  if(!buttons.length||!title||!copy) return;
+
+  function select(choice){
+    buttons.forEach(button=>{
+      const selected=button.dataset.wallbreakerChoice===choice;
+      button.classList.toggle('is-selected',selected);
+      button.setAttribute('aria-pressed',String(selected));
+    });
+    if(choice==='sophon'){
+      title.textContent='Use Sophon observation';
+      copy.textContent='No dial is moved. After resolution, the Wallbreaker privately sees the action the Wallfacer locked.';
+    } else {
+      title.textContent='Affect Blue by −1';
+      copy.textContent='Blue would move from 3 to 2. Sophon observation is not used this round.';
+    }
+  }
+
+  buttons.forEach(button=>button.addEventListener('click',()=>select(button.dataset.wallbreakerChoice)));
+}
+
+function bindPoliceChoiceExample(){
+  const buttons=[...document.querySelectorAll('[data-police-choice]')];
+  const title=document.querySelector('#police-choice-title');
+  const copy=document.querySelector('#police-choice-copy');
+  const notice=document.querySelector('#police-private-notice');
+  if(!buttons.length||!title||!copy||!notice) return;
+
+  function select(choice){
+    buttons.forEach(button=>{
+      const selected=button.dataset.policeChoice===choice;
+      button.classList.toggle('is-selected',selected);
+      button.setAttribute('aria-pressed',String(selected));
+    });
+    if(choice==='arrest'){
+      title.textContent='Arrest Lin';
+      copy.textContent='Lin’s dial effect is omitted. Shi Qiang does not move a dial this round.';
+      notice.hidden=false;
+    } else {
+      title.textContent='Affect Green by +1';
+      copy.textContent='Green would move from 4 to 5. No player is arrested this round.';
+      notice.hidden=true;
+    }
+  }
+
+  buttons.forEach(button=>button.addEventListener('click',()=>select(button.dataset.policeChoice)));
+}
+
 function isTypingTarget(target){
   return ['INPUT','TEXTAREA','SELECT'].includes(target.tagName)||target.isContentEditable;
 }
 
+mountGameScreens();
 buildToc();
 deck.classList.add('is-enhanced');
 showSlide(indexForHash(),{updateHash:false,announce:false});
@@ -244,6 +447,8 @@ requestAnimationFrame(()=>deck.classList.add('is-ready'));
 bindStandardExample();
 bindGuessExample();
 bindMathExample();
+bindWallbreakerChoiceExample();
+bindPoliceChoiceExample();
 
 previousButton.addEventListener('click',()=>changeSlide(-1));
 nextButton.addEventListener('click',()=>changeSlide(1));

@@ -24,10 +24,10 @@ Mathbreaker is a simpler alternate mode for 3 or more players. It always assigns
 - Every standard game uses exactly one Wallfacer, one Wallbreaker, and one Shi Qiang. Every remaining player is a Loyal Specialist. At least three players are required.
 - Six bounded dials: yellow and pink (mathematics), orange and red (agriculture), blue and green (science); each ranges from 0 to 9.
 - The Wallfacer has a secret plan containing three dial colors and one exact target value for each.
-- Each round, every non-observer player privately selects one action. The Wallfacer and Wallbreaker are limited to -1, 0, or +1. Specialists independently receive a random subject; they may use -2 or +2 only on that subject's dial pair, while all their other dial moves are limited to -1, 0, or +1. Duplicate specialties are allowed, and a subject may have no Specialist.
+- Each round, every non-observer player privately selects one action; passing and zero-effect dial moves are not legal. The Wallfacer and Wallbreaker are limited to -1 or +1. Specialists independently receive a random subject; they may use -2 or +2 only on that subject's dial pair, while all their other dial moves are limited to -1 or +1. Duplicate specialties are allowed, and a subject may have no Specialist.
 - The host resolves all committed selections simultaneously.
 - Completing the plan exactly immediately wins for the Loyal team.
-- The Wallbreaker chooses exactly one action per round: adjust one dial by -1, 0, or +1, or use the Sophon to observe the Wallfacer's locked move. There are no tokens, inventories, combined actions, or regeneration.
+- The Wallbreaker chooses exactly one action per round: adjust one dial by -1 or +1, or use the Sophon to observe the Wallfacer's locked move. There are no tokens, inventories, combined actions, or regeneration.
 - The Wallbreaker may guess the three dial colors in the plan; target values are not part of the guess. A correct guess wins for the Wallbreaker, while a wrong guess immediately wins for the Loyal team.
 - The Wallbreaker wins if the configured final round ends without the Wallfacer completing the plan.
 

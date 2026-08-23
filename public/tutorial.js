@@ -18,14 +18,14 @@ const slides=[
     title:'A standard game always uses the same core roles.',
     copy:'There is one Wallfacer, one Wallbreaker, and one Shi Qiang. Every remaining player is a Specialist.',
     art:`<div class="tutorial-role-orbit"><div class="orbit-card loyal"><b>WF</b><span>Wallfacer</span></div><div class="orbit-card danger"><b>WB</b><span>Wallbreaker</span></div><div class="orbit-card loyal"><b>SQ</b><span>Shi Qiang</span></div><div class="orbit-card loyal"><b>SP</b><span>Specialist</span></div></div>`,
-    facts:['The Wallfacer knows the complete plan and may change any dial by −1, 0, or +1.','The Wallbreaker may change a dial by −1, 0, or +1, or use the Sophon to observe the Wallfacer’s move.','Shi Qiang may change a dial by −1, 0, or +1, or secretly arrest one other player for the round.','Each Specialist independently receives a random subject. Duplicates are allowed. They may use −2 through +2 on that subject’s two dials, but only −1 through +1 elsewhere.']
+    facts:['The Wallfacer knows the complete plan and must change one dial by −1 or +1.','The Wallbreaker must change a dial by −1 or +1, or use the Sophon to observe the Wallfacer’s move.','Shi Qiang must change a dial by −1 or +1, or secretly arrest one other player for the round.','Each Specialist independently receives a random subject. Duplicates are allowed. They may use −2, −1, +1, or +2 on that subject’s two dials, but only −1 or +1 elsewhere.']
   },
   {
     eyebrow:'03 · EACH ROUND',
     title:'Every player locks one action before resolution.',
     copy:'Players may discuss the board first. Each player then chooses a legal action privately and locks it. A locked action cannot be changed during that round.',
     art:`<div class="tutorial-flow"><div><b>1</b><span>Discuss</span></div><i>→</i><div><b>2</b><span>Choose</span></div><i>→</i><div><b>3</b><span>Lock</span></div><i>→</i><div class="flow-live"><b>4</b><span>Resolve</span></div></div>`,
-    facts:['The host waits until every player is locked, then adds all legal effects together before revealing the result.','On one dial, +2 and +1 produce a public change of +3. A +1 and a −1 produce 0, which looks the same as no one changing that dial.','The public reveal shows only each dial’s net change, not the individual actions that produced it.','A 0 move is legal. Optional messaging is private between each player and the observer.']
+    facts:['The host waits until every player is locked, then adds all legal effects together before revealing the result.','On one dial, +2 and +1 produce a public change of +3. A +1 and a −1 produce 0, even though both players had to act.','The public reveal shows only each dial’s net change, not the individual actions that produced it.','Passing and zero-effect moves are not legal. Optional messaging is private between each player and the observer.']
   },
   {
     eyebrow:'04 · SPECIAL ACTIONS',

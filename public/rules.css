@@ -85,6 +85,104 @@ kbd { display:inline-grid; min-width:22px; min-height:22px; place-items:center; 
 .rules-inline-link { margin-top:26px; width:max-content; }
 .rules-visual { position:relative; min-width:0; }
 
+.team-short-list { display:grid; gap:12px; margin-top:28px; }
+.team-short-list article { display:grid; gap:5px; padding:18px 20px; border:1px solid #34342f; border-left-width:5px; border-radius:14px; background:#0c0d0c; }
+.team-short-list strong { font-size:1.25rem; }
+.team-short-list p { margin:0; color:#aaa89e; line-height:1.45; }
+.team-short-list .wallfacer-team { border-left-color:var(--rules-green); background:#08150f; }
+.team-short-list .wallbreaker-team { border-left-color:var(--rules-red); background:#190a0a; }
+.team-ui-pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.team-role-card { min-height:330px; align-content:center; text-align:center; }
+.team-role-card .role-only { padding:4px; }
+.team-role-card .role-only .role-title { font-size:clamp(1.55rem,2.5vw,2.35rem); }
+.team-role-card>p { margin:0; }
+.wallfacer-team-ui { border-color:#315f51!important; background:#08150f!important; }
+.wallfacer-team-ui .eyebrow,.wallfacer-team-ui .role-svg { color:var(--rules-green); }
+.wallbreaker-team-ui { border-color:#8b3030!important; background:#190a0a!important; }
+.wallbreaker-team-ui .eyebrow,.wallbreaker-team-ui .role-svg { color:var(--rules-red); }
+
+/* The teaching screens use the production game classes and markup. */
+.rules-live-player-screen { min-height:430px; padding:14px; overflow:hidden; border:1px solid #303640; border-radius:20px; background:#0b0d10; color:#f4f4f5; box-shadow:0 24px 60px rgba(0,0,0,.35); }
+.rules-live-topbar { margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid #262a31; }
+.rules-live-topbar .brand { font-size:.78rem; }
+.rules-live-topbar .meta { font-size:.68rem; }
+.rules-live-topbar button { padding:8px 10px; font-size:.68rem; opacity:1; }
+.rules-live-topbar .sophon-inventory { padding:5px 8px; }
+.rules-live-topbar .sophon-count { font-size:.62rem; }
+.rules-live-game-body { display:grid; gap:10px; }
+.rules-live-player-screen .move-panel { gap:8px; padding:11px 13px; border-radius:13px; }
+.rules-live-player-screen .move-summary,.rules-live-player-screen .move-panel>button { font-size:.72rem; }
+.rules-live-player-screen .move-panel>button { min-height:34px; padding:8px 10px; }
+.rules-live-player-screen .move-panel .small { font-size:.62rem; }
+.rules-live-player-screen .spy-choice .role-svg,.rules-live-player-screen .spy-choice .eye-svg { width:18px; height:18px; }
+.rules-live-player-screen .dial-board { grid-template-columns:repeat(3,1fr); gap:8px; }
+.rules-live-player-screen .dial-group { gap:5px; }
+.rules-live-player-screen .group-label { padding:0 2px; font-size:.55rem; }
+.rules-live-player-screen .dials { gap:5px; }
+.rules-live-player-screen .standard-dial-card { min-height:132px; padding:4px; border-radius:12px; }
+.rules-live-player-screen .standard-dial-card .dial-face { padding:6px 34px 6px 4px; }
+.rules-live-player-screen .standard-dial-card.observer-dial .dial-face { padding:6px; }
+.rules-live-player-screen .standard-dial-card .dial-select { min-height:82px; overflow:visible; border:0; background:transparent; box-shadow:none; }
+.rules-live-player-screen .standard-dial-card .dial-select::before,
+.rules-live-player-screen .standard-dial-card .dial-select::after { display:none; }
+.rules-live-player-screen .standard-dial-card .value-window { border:0; background:transparent; box-shadow:none; }
+.rules-live-player-screen .dial-select .name { font-size:.55rem; }
+.rules-live-player-screen .value-window { width:62px; height:40px; margin-top:2px; }
+.rules-live-player-screen .value-reel { grid-template-rows:repeat(3,40px); height:120px; transform:translateY(-40px); }
+.rules-live-player-screen .value-reel .value,.rules-live-player-screen .reveal-adjacent { height:40px; font-size:2rem; }
+.rules-live-player-screen .dial-actions .dial-action { padding-right:8px; font-size:.72rem; }
+.rules-live-player-screen .dial.plan-target { outline:3px solid #fff; outline-offset:1px; }
+.rules-live-player-screen .plan-target-marker { bottom:4px; left:4px; font-size:.44rem; }
+.rules-live-player-screen .plan-target-marker i { width:10px; border-top-width:2px; }
+.rules-live-player-screen .lock-arrows { font-size:1.35rem; }
+.rules-public-board-screen { min-height:420px; }
+.rules-public-board-screen .standard-dial-card { min-height:145px; }
+#rules-slide-board .rules-public-board-screen .group-label { color:#fff; font-size:clamp(.95rem,1.35vw,1.3rem); letter-spacing:.02em; text-transform:none; }
+.cover-game-board { min-height:430px; transform:rotate(1deg); }
+.dial-group.is-specialty { padding:5px; border:2px solid #fff; border-radius:11px; }
+.dial-group.is-specialty .group-label { color:#fff; }
+.rules-embedded-modal { position:absolute; inset:0; padding:12px; background:rgba(0,0,0,.82); }
+.rules-embedded-modal .modal-card { width:min(410px,100%); max-height:100%; padding:16px; }
+.rules-embedded-modal .role-title { font-size:1.35rem; }
+.rules-embedded-modal .arrest-choices { gap:6px; padding:8px; }
+.rules-embedded-modal .arrest-target { padding:6px 8px; }
+.rules-embedded-modal .chat-avatar { width:30px; height:30px; }
+#rules-police-action-screen { min-height:500px; }
+#rules-police-action-screen .rules-embedded-modal { padding:18px; }
+#rules-police-action-screen .rules-embedded-modal .modal-card { width:min(540px,100%); padding:22px; }
+#rules-police-action-screen .rules-embedded-modal .role-title { font-size:clamp(1.65rem,2.4vw,2rem); }
+#rules-police-action-screen .rules-embedded-modal .arrest-choices { gap:10px; padding:12px; }
+#rules-police-action-screen .rules-embedded-modal .arrest-target { min-height:66px; padding:10px 12px; font-size:1rem; }
+#rules-police-action-screen .rules-embedded-modal .chat-avatar { width:42px; height:42px; font-size:.78rem; }
+.rules-arrested-screen { min-height:500px; }
+.rules-arrested-outcome .modal-card { width:min(500px,100%); padding:24px; }
+.rules-arrested-outcome .role-title { font-size:clamp(1.75rem,2.8vw,2.35rem); }
+.rules-arrested-outcome p { font-size:1rem; line-height:1.5; }
+.rulebook-real-guess { display:grid; place-items:center; min-height:430px; padding:20px; border:1px solid #303640; border-radius:20px; background:#0b0d10; }
+.rulebook-real-guess .modal-card { width:100%; max-height:none; }
+.rulebook-real-guess .notice { display:grid; gap:4px; }
+.rulebook-real-guess .notice[hidden] { display:none; }
+.rulebook-real-guess .wallfacer-team-feedback { border:1px solid #315f51; background:#08150f; color:var(--rules-green); }
+.rulebook-real-guess .wallbreaker-team-feedback { border:1px solid #8b3030; background:#190a0a; color:var(--rules-red); }
+.rulebook-real-guess .notice span { color:#d4d4d0; font-size:.78rem; }
+.victory-list article.wallfacer-team span { color:var(--rules-green); }
+.victory-list article.wallbreaker-team span { color:var(--rules-red); }
+.example-avatar.danger { color:var(--rules-red); }
+#rules-slide-wallfacer-action .rules-callout.wallfacer-warning { grid-template-columns:1fr; gap:6px; }
+#rules-slide-wallfacer-action .rules-callout.wallfacer-warning strong { grid-row:auto; grid-column:auto; font-size:1.08rem; }
+#rules-slide-wallfacer-action .rules-callout.wallfacer-warning p { font-size:.76rem; }
+#rules-wallfacer-plan-screen,#rules-wallfacer-action-screen,#rules-police-action-screen,#rules-specialist-screen { border-color:#315f51; }
+#rules-wallbreaker-action-screen { border-color:#8b3030; }
+.rules-worked-dial { position:relative; display:grid; place-items:center; width:210px; min-height:190px; padding:12px; overflow:visible; }
+.rules-worked-dial .standard-dial-card { width:100%; min-height:165px; }
+.rules-worked-dial .standard-dial-card.observer-dial .dial-face { padding:8px; }
+.rules-worked-dial .dial-select { min-height:115px; }
+.rules-worked-dial .value-window { width:82px; height:52px; }
+.rules-worked-dial .value-reel { grid-template-rows:repeat(3,52px); height:156px; transform:translateY(-52px); }
+.rules-worked-dial .value-reel .value,.rules-worked-dial .reveal-adjacent { height:52px; font-size:2.7rem; }
+.rules-example-delta { position:absolute; right:-12px; top:-12px; display:grid; place-items:center; min-width:48px; height:48px; padding:0 8px; border:2px solid #0b0d10; border-radius:50%; background:#f4f4f5; color:#111318; font-size:.85rem; font-weight:900; }
+.rules-worked-dial.is-resolved { animation:example-resolve .7s cubic-bezier(.2,.8,.2,1); }
+
 .rules-cover-layout { grid-template-columns:minmax(0,1.03fr) minmax(420px,.97fr); }
 .rules-cover-actions { display:flex; align-items:center; gap:18px; margin-top:32px; }
 .rules-cover-actions>span { color:#74736b; font-size:.75rem; font-weight:750; }
@@ -151,6 +249,7 @@ kbd { display:inline-grid; min-width:22px; min-height:22px; place-items:center; 
 .wallfacer-warning p { font-size:.72rem; line-height:1.4; }
 .live-choice-grid { margin-top:18px; }
 .private-notice { display:grid; gap:5px; margin-top:15px; padding:13px; border:1px solid #716600; border-radius:11px; background:#171500; }
+.private-notice[hidden] { display:none; }
 .private-notice span { color:var(--rules-yellow); font-size:.58rem; font-weight:900; letter-spacing:.11em; }
 .private-notice strong { font-size:.86rem; }
 .private-notice p { margin:0; color:#9e9980; font-size:.7rem; }
@@ -173,8 +272,9 @@ kbd { display:inline-grid; min-width:22px; min-height:22px; place-items:center; 
 .round-rule-layout { gap:16px; }
 .round-rule-layout .rules-copy h2 { font-size:clamp(2rem,3.4vw,3.4rem); }
 .round-rule-layout .rules-lede { margin-top:12px; }
-.compact-timeline article { min-height:150px; padding:14px; }
-.compact-timeline article>h3 { margin-top:14px; }
+.compact-timeline article { grid-template-rows:auto auto 1fr; min-height:165px; padding:16px; }
+.compact-timeline article>h3 { margin-top:14px; font-size:1.5rem; }
+.compact-timeline article>p { font-size:.9rem; line-height:1.4; }
 .round-example-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
 .round-example-grid article { display:grid; gap:6px; min-height:105px; padding:13px 15px; border:1px solid #35332a; border-radius:11px; background:#0b0b09; }
 .round-example-grid span { color:#8b887e; font-size:.58rem; font-weight:900; letter-spacing:.1em; text-transform:uppercase; }
@@ -207,24 +307,27 @@ kbd { display:inline-grid; min-width:22px; min-height:22px; place-items:center; 
 .final-reference-card>div { display:grid; grid-template-columns:120px 1fr; align-items:center; gap:12px; padding:13px; border:1px solid #2d2c26; border-radius:9px; background:#0d0d0b; }
 .final-reference-card p { margin:0; color:#9d9a91; font-size:.72rem; }.final-reference-card small { margin-top:auto; color:#77746b; font-size:.64rem; line-height:1.5; }
 
-#rules-slide-wallfacer .rules-copy h2,#rules-slide-wallbreaker .rules-copy h2,#rules-slide-police .rules-copy h2,#rules-slide-specialists .rules-copy h2 { font-size:clamp(2rem,3.25vw,3.25rem); }
-#rules-slide-wallfacer .rules-lede,#rules-slide-wallbreaker .rules-lede,#rules-slide-police .rules-lede { margin-top:14px; font-size:.98rem; }
-#rules-slide-wallfacer .character-rules,#rules-slide-wallbreaker .character-rules,#rules-slide-police .character-rules { margin-top:14px; }
-#rules-slide-wallfacer .character-rules li,#rules-slide-wallbreaker .character-rules li,#rules-slide-police .character-rules li { padding:8px 0; }
+#rules-slide-wallfacer .rules-copy h2,#rules-slide-wallbreaker .rules-copy h2,#rules-slide-police .rules-copy h2,#rules-slide-arrested .rules-copy h2,#rules-slide-specialists .rules-copy h2 { font-size:clamp(2rem,3.25vw,3.25rem); }
+#rules-slide-wallfacer .rules-lede,#rules-slide-wallbreaker .rules-lede,#rules-slide-police .rules-lede,#rules-slide-arrested .rules-lede { margin-top:14px; font-size:.98rem; }
+#rules-slide-wallfacer .character-rules,#rules-slide-wallbreaker .character-rules,#rules-slide-police .character-rules,#rules-slide-arrested .character-rules { margin-top:14px; }
+#rules-slide-wallfacer .character-rules li,#rules-slide-wallbreaker .character-rules li,#rules-slide-police .character-rules li,#rules-slide-arrested .character-rules li { padding:8px 0; }
 #rules-slide-police .character-rules span { line-height:1.36; }
-#rules-slide-objective .rules-copy h2,#rules-slide-table .rules-copy h2,#rules-slide-tutorial .rules-copy h2 { font-size:clamp(2rem,3.45vw,3.45rem); }
-#rules-slide-objective .rules-lede,#rules-slide-table .rules-lede,#rules-slide-tutorial .rules-lede { margin-top:14px; font-size:.98rem; line-height:1.48; }
-#rules-slide-objective .rules-points,#rules-slide-tutorial .rules-points { gap:0; margin-top:14px; }
-#rules-slide-objective .rules-points li,#rules-slide-tutorial .rules-points li { padding-top:8px; }
-#rules-slide-objective .rules-points p,#rules-slide-tutorial .rules-points p { font-size:.8rem; line-height:1.38; }
-#rules-slide-objective .rules-plan-visual { min-height:480px; }
-#rules-slide-objective .plan-card { left:0; top:1%; width:min(68%,380px); padding:22px; }
-#rules-slide-objective .plan-card h3 { margin:30px 0 18px; }
-#rules-slide-objective .plan-target { padding:10px 0; }
-#rules-slide-objective .plan-stamp { margin-top:20px; }
-#rules-slide-objective .plan-shadow-card { right:0; bottom:4%; width:58%; min-height:190px; align-content:end; justify-items:end; padding:22px; text-align:right; }
-#rules-slide-objective .plan-shadow-card span,#rules-slide-objective .plan-shadow-card strong,#rules-slide-objective .plan-shadow-card small { width:min(100%,150px); }
-#rules-slide-objective .plan-shadow-card strong { font-size:clamp(1.15rem,2vw,1.65rem); }
+#rules-slide-teams .rules-copy h2,#rules-slide-round-overview .rules-copy h2,#rules-slide-table .rules-copy h2,#rules-slide-tutorial .rules-copy h2 { font-size:clamp(2rem,3.45vw,3.45rem); }
+#rules-slide-teams .rules-lede,#rules-slide-round-overview .rules-lede,#rules-slide-table .rules-lede,#rules-slide-tutorial .rules-lede { margin-top:14px; font-size:.98rem; line-height:1.48; }
+#rules-slide-teams .rules-points,#rules-slide-round-overview .rules-points,#rules-slide-tutorial .rules-points { gap:0; margin-top:14px; }
+#rules-slide-teams .rules-points li,#rules-slide-round-overview .rules-points li,#rules-slide-tutorial .rules-points li { padding-top:8px; }
+#rules-slide-teams .rules-points p,#rules-slide-round-overview .rules-points p,#rules-slide-tutorial .rules-points p { font-size:.8rem; line-height:1.38; }
+#rules-slide-teams .rules-plan-visual { min-height:480px; }
+#rules-slide-teams .plan-card { left:0; top:1%; width:min(68%,380px); padding:22px; }
+#rules-slide-teams .plan-card h3 { margin:30px 0 18px; }
+#rules-slide-teams .plan-card .plan-target { padding:10px 0; }
+#rules-slide-teams .plan-stamp { margin-top:20px; }
+#rules-slide-teams .plan-shadow-card { right:0; bottom:4%; width:58%; min-height:190px; align-content:end; justify-items:end; padding:22px; text-align:right; }
+#rules-slide-teams .plan-shadow-card span,#rules-slide-teams .plan-shadow-card strong,#rules-slide-teams .plan-shadow-card small { width:min(100%,150px); }
+#rules-slide-teams .plan-shadow-card strong { font-size:clamp(1.15rem,2vw,1.65rem); }
+#rules-slide-round-overview .round-overview-card { min-height:455px; }
+#rules-slide-round-overview .round-overview-card>div { grid-template-columns:145px 1fr; padding:11px 13px; }
+#rules-slide-round-overview .round-overview-card p { line-height:1.42; }
 #rules-slide-table .rules-compact-points { margin-top:14px; }
 #rules-slide-table .rules-compact-points li { padding:8px 0; }
 #rules-slide-tutorial .rules-inline-link { margin-top:14px; }
@@ -259,11 +362,11 @@ kbd { display:inline-grid; min-width:22px; min-height:22px; place-items:center; 
 .plan-card-head { display:flex; justify-content:space-between; gap:10px; color:#8d8975; font-size:.61rem; font-weight:900; letter-spacing:.12em; text-transform:uppercase; }
 .plan-card-head b { color:var(--rules-yellow); }
 .plan-card h3 { margin:40px 0 22px; font-size:clamp(1.8rem,3vw,2.8rem); letter-spacing:-.04em; }
-.plan-target { display:grid; grid-template-columns:14px 1fr 46px; gap:11px; align-items:center; padding:12px 0; border-top:1px solid #302e25; }
+.plan-card .plan-target { display:grid; grid-template-columns:14px 1fr 46px; gap:11px; align-items:center; padding:12px 0; border-top:1px solid #302e25; }
 .target-dot { display:block; width:11px; height:11px; border:1px solid rgba(255,255,255,.65); border-radius:50%; }
 .target-dot.yellow{background:#b99e00}.target-dot.blue{background:#1a6da7}.target-dot.red{background:#a82c2c}.target-dot.green{background:#28885b}
-.plan-target span { color:#c8c5b9; font-size:.82rem; font-weight:750; text-transform:uppercase; }
-.plan-target strong { font-size:1.65rem; text-align:right; }
+.plan-card .plan-target span { color:#c8c5b9; font-size:.82rem; font-weight:750; text-transform:uppercase; }
+.plan-card .plan-target strong { font-size:1.65rem; text-align:right; }
 .plan-stamp { width:max-content; margin-top:26px; padding:8px 11px; border:1px solid #685f00; color:var(--rules-yellow); font-size:.62rem; font-weight:900; letter-spacing:.12em; text-transform:uppercase; transform:rotate(-2deg); }
 .plan-shadow-card { position:absolute; right:3%; bottom:2%; display:grid; gap:9px; width:58%; padding:28px; border:1px solid #63394f; border-radius:18px; background:linear-gradient(145deg,#29121f,#090708); box-shadow:0 20px 60px rgba(0,0,0,.42); transform:rotate(4deg); }
 .plan-shadow-card span { color:var(--rules-magenta); font-size:.62rem; font-weight:900; letter-spacing:.13em; text-transform:uppercase; }
@@ -333,14 +436,20 @@ kbd { display:inline-grid; min-width:22px; min-height:22px; place-items:center; 
 .character-emblem { display:grid; place-items:center; width:104px; height:104px; margin:auto; border:1px solid currentColor; border-radius:50%; font-size:2.25rem; font-weight:950; box-shadow:0 0 0 15px rgba(255,255,255,.018),0 0 50px rgba(255,255,255,.05); }
 .wallbreaker-board .character-emblem{color:var(--rules-magenta)}.wallfacer-board .character-emblem{color:var(--rules-green)}.police-board .character-emblem{color:var(--rules-yellow)}
 .character-choice-grid { display:grid; grid-template-columns:1fr auto 1fr; gap:12px; align-items:center; }
-.character-choice-grid>article { display:grid; gap:5px; min-height:105px; align-content:center; padding:15px; border:1px solid #37342c; border-radius:12px; background:rgba(0,0,0,.3); }
+.character-choice-grid>article,.role-choice-card { display:grid; gap:5px; min-height:105px; align-content:center; padding:15px; border:1px solid #37342c; border-radius:12px; background:rgba(0,0,0,.3); }
 .character-choice-grid>i { color:#66635b; font-size:.62rem; font-style:normal; font-weight:900; }
 .character-choice-grid span,.character-intel span { color:#77756c; font-size:.59rem; font-weight:900; letter-spacing:.1em; text-transform:uppercase; }
 .character-choice-grid strong { font-size:.86rem; }
 .character-choice-grid b { color:#96938a; font-size:.7rem; font-weight:750; }
 .character-choice-grid .cancel-card { border-color:#5e3432; }
+.role-choice-card { width:100%; color:#ece9df; font:inherit; text-align:left; cursor:pointer; transition:border-color .18s ease,background .18s ease,transform .18s ease; }
+.role-choice-card:hover { transform:translateY(-2px); background:rgba(255,255,255,.045); }
+.role-choice-card:focus-visible { outline:2px solid #fff; outline-offset:3px; }
+.wallbreaker-board .role-choice-card.is-selected { border-color:var(--rules-magenta); background:rgba(244,90,171,.13); box-shadow:inset 0 0 0 1px rgba(244,90,171,.18); }
+.police-board .role-choice-card.is-selected { border-color:var(--rules-yellow); background:rgba(245,217,10,.1); box-shadow:inset 0 0 0 1px rgba(245,217,10,.14); }
 .character-intel { display:grid; gap:5px; padding:13px 15px; border:1px solid #37342c; border-radius:10px; background:rgba(0,0,0,.32); }
 .character-intel strong { font-size:.78rem; }
+.role-choice-result p { margin:1px 0 0; color:#96938a; font-size:.7rem; line-height:1.4; }
 .character-plan { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; }
 .character-plan article { display:grid; place-items:center; gap:5px; min-height:115px; border:1px solid rgba(255,255,255,.3); border-radius:12px; }
 .character-plan span { font-size:.6rem; font-weight:850; text-transform:uppercase; }
@@ -353,7 +462,8 @@ kbd { display:inline-grid; min-width:22px; min-height:22px; place-items:center; 
 #rules-slide-specialists .rules-copy h2 { font-size:clamp(2rem,3.6vw,3.6rem); }
 #rules-slide-specialists .rules-kicker { margin-bottom:10px; }
 #rules-slide-specialists .rules-lede { margin-top:14px; font-size:1rem; line-height:1.45; }
-#rules-slide-specialists .specialty-callout { margin-top:13px; padding:12px; }
+#rules-slide-specialists .specialty-callout { margin-top:13px; padding:18px; }
+#rules-slide-specialists .specialty-callout strong { font-size:clamp(1.35rem,2.35vw,1.85rem); }
 #rules-slide-specialists .compact-character-rules { margin-top:9px; }
 #rules-slide-specialists .compact-character-rules li { padding:9px 0; }
 .specialty-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; align-self:center; }
@@ -395,7 +505,7 @@ kbd { display:inline-grid; min-width:22px; min-height:22px; place-items:center; 
 .example-actions { display:grid; gap:7px; margin-top:24px; }
 .example-actions>div { position:relative; display:grid; grid-template-columns:38px 1fr auto; gap:10px; align-items:center; padding:9px 12px; border:1px solid #2e2d27; border-radius:10px; background:#0b0b0a; }
 .example-avatar { display:grid; place-items:center; width:34px; height:34px; border:1px solid currentColor; border-radius:10px; font-size:.57rem; font-weight:900; }
-.example-avatar.loyal{color:var(--rules-green)}.example-avatar.civilian{color:var(--rules-cyan)}.example-avatar.danger{color:var(--rules-magenta)}.example-avatar.police{color:var(--rules-yellow)}
+.example-avatar.loyal{color:var(--rules-green)}.example-avatar.civilian{color:var(--rules-cyan)}.example-avatar.danger{color:var(--rules-red)}.example-avatar.police{color:var(--rules-yellow)}
 .example-actions p { display:grid; gap:2px; margin:0; }
 .example-actions strong { font-size:.77rem; }
 .example-actions p span { color:#8f8d84; font-size:.7rem; }
@@ -609,7 +719,7 @@ kbd { display:inline-grid; min-width:22px; min-height:22px; place-items:center; 
 .rules-progress-label { display:flex; justify-content:space-between; gap:20px; color:#77756d; font-size:.61rem; font-weight:850; letter-spacing:.08em; text-transform:uppercase; }
 .rules-progress-label strong { overflow:hidden; color:#aaa89e; text-overflow:ellipsis; white-space:nowrap; }
 .rules-progress { height:2px; overflow:hidden; background:#26251f; }
-.rules-progress i { display:block; width:6.25%; height:100%; background:var(--rules-yellow); box-shadow:0 0 8px var(--rules-yellow); transition:width .35s ease; }
+.rules-progress i { display:block; width:0; height:100%; background:var(--rules-yellow); box-shadow:0 0 8px var(--rules-yellow); transition:width .35s ease; }
 
 @media (max-width:1080px) {
   .rules-slide-inner,.rules-cover-layout,.rules-example-layout,.rules-finale-layout,.character-layout { grid-template-columns:minmax(0,.92fr) minmax(360px,1.08fr); gap:34px; }
@@ -680,9 +790,10 @@ kbd { display:inline-grid; min-width:22px; min-height:22px; place-items:center; 
   .rules-plan-visual { min-height:430px; }
   .plan-card { left:0; width:92%; padding:20px; }
   .plan-shadow-card { right:0; width:64%; padding:19px; }
-  #rules-slide-objective .rules-plan-visual { min-height:620px; }
-  #rules-slide-objective .plan-card { top:0; width:92%; max-width:none; padding:20px; }
-  #rules-slide-objective .plan-shadow-card { right:0; bottom:0; width:78%; min-height:150px; align-content:center; padding:18px; }
+  #rules-slide-teams .rules-plan-visual { min-height:620px; }
+  #rules-slide-teams .plan-card { top:0; width:92%; max-width:none; padding:20px; }
+  #rules-slide-teams .plan-shadow-card { right:0; bottom:0; width:78%; min-height:150px; align-content:center; padding:18px; }
+  #rules-slide-round-overview .round-overview-card>div { grid-template-columns:1fr; }
   .rules-board-visual section>div,.math-field-board { grid-template-columns:1fr; }
   .mini-board-dial { min-height:76px; }
   .math-total { grid-column:auto; }
@@ -750,8 +861,11 @@ kbd { display:inline-grid; min-width:22px; min-height:22px; place-items:center; 
   .rules-copy h1,.rules-copy h2,.rules-copy h3,.rules-points strong,.character-rules strong,.ready-list strong,.rules-compact-points strong,.victory-list strong { color:#111!important; }
   .rules-lede,.rules-points p,.character-rules span,.ready-list p,.rules-compact-points span,.victory-list p { color:#333!important; }
   .rules-kicker,.rules-kicker span { color:#6a5700!important; }
-  .rulebook-contents-grid article,.game-board-visual,.plan-card,.plan-shadow-card,.character-board,.guess-lab,.example-result,.game-over-panel,.host-view-visual,.glass-visual,.final-reference-card,.round-example-grid article,.math-secret-card,.threshold-visual,.combination-visual,.math-example-result,.math-rule-strip article,.math-role-lane,.math-field-board { border-color:#aaa!important; background:#fff!important; color:#111!important; box-shadow:none!important; }
+  .rulebook-contents-grid article,.game-board-visual,.plan-card,.plan-shadow-card,.character-board,.role-choice-card,.guess-lab,.example-result,.game-over-panel,.host-view-visual,.glass-visual,.final-reference-card,.round-example-grid article,.math-secret-card,.threshold-visual,.combination-visual,.math-example-result,.math-rule-strip article,.math-role-lane,.math-field-board,.rules-live-player-screen,.rulebook-real-guess,.team-role-card,.rules-live-player-screen .panel,.rulebook-real-guess .modal-card { border-color:#aaa!important; background:#fff!important; color:#111!important; box-shadow:none!important; }
+  .role-choice-card span,.role-choice-card strong,.role-choice-card b,.role-choice-result p { color:#111!important; }
   .rulebook-contents-grid p,.game-board-top strong,.game-subject header,.plan-shadow-card small,.example-result p,.example-private-note,.host-view-visual article span,.host-view-visual article small,.final-reference-card p,.final-reference-card small { color:#333!important; }
   .rulebook-contents-grid strong,.game-board-top strong,.plan-shadow-card strong,.host-view-visual article strong,.final-reference-card strong { color:#111!important; }
   .game-dial,.completed-plan-board article { color:#fff!important; }
+  .rules-live-player-screen .dial,.rules-live-player-screen .dial *,.rulebook-real-guess .standard-guess-grid span { color:#fff!important; }
+  .rules-live-player-screen .meta,.rules-live-player-screen .small,.rulebook-real-guess .small { color:#333!important; }
 }

@@ -6,6 +6,7 @@ import {
   clampDial,
   roleComposition,
   mathbreakerRoleComposition,
+  knownWallfacerNames,
   mathbreakerDecayBudget,
   createMathbreakerDials,
   mathbreakerEffectFor,
@@ -60,6 +61,12 @@ test('Mathbreaker always assigns one Wallfacer, one Wallbreaker, and no Police',
   assert.deepEqual(mathbreakerRoleComposition(2),{wallfacers:1,wallbreakers:1,specialists:0,police:0});
   assert.deepEqual(mathbreakerRoleComposition(7),{wallfacers:1,wallbreakers:1,specialists:5,police:0});
   assert.equal(mathbreakerDecayBudget(7),6,'the Wallfacer counts as good and only the Wallbreaker is excluded');
+});
+
+test('the public identity list reveals only Wallfacers',()=>{
+  const players=[{id:'wf',name:'Ava'},{id:'wb',name:'Mara'},{id:'sq',name:'Shi'}];
+  const roles={wf:{kind:'wallfacer',plan:{values:{red:4}}},wb:{kind:'wallbreaker',targetId:'wf'},sq:{kind:'police'}};
+  assert.deepEqual(knownWallfacerNames(players,roles),['Ava']);
 });
 
 test('Mathbreaker boards start between two and four with exactly seventeen points',()=>{
@@ -136,7 +143,9 @@ test('role-specific dial limits are enforced',()=>{
   assert.equal(maxEffectFor({kind:'police'},'yellow'),1);
   assert.equal(maxEffectFor({kind:'civilian',profession:'mathematics'},'yellow'),2);
   assert.equal(maxEffectFor({kind:'civilian',profession:'mathematics'},'blue'),1);
-  assert.deepEqual(legalEffectsFor({kind:'civilian',profession:'mathematics'},'yellow'),[-2,-1,0,1,2]);
+  assert.deepEqual(legalEffectsFor({kind:'civilian',profession:'mathematics'},'yellow'),[-2,-1,1,2]);
+  assert.deepEqual(legalEffectsFor({kind:'wallfacer'},'yellow'),[-1,1]);
+  assert.equal(isLegalSelection({kind:'wallfacer'},{color:'yellow',effect:0},[],'wf'),false,'passing with a zero move is illegal');
 });
 
 test('the simple Sophon rule permits exactly one action',()=>{
