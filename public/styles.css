@@ -38,7 +38,11 @@ button:disabled { opacity:.45; cursor:not-allowed; }
 .toggle-setting { display:flex; align-items:center; gap:10px; }
 .toggle-setting input { width:22px; height:22px; flex:0 0 auto; accent-color:#fff; }
 .toggle-setting > span { display:grid; gap:3px; }
-.composition { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+.participation-setting { display:grid; gap:12px; padding-top:2px; }
+.role-toggle { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.role-toggle button { min-height:48px; }
+.role-toggle button.selected { background:#f4f4f5; color:#111318; box-shadow:0 0 0 2px #f4f4f5; }
+.composition { display:grid; grid-template-columns:repeat(auto-fit,minmax(88px,1fr)); gap:8px; }
 .composition > div { display:grid; gap:2px; padding:10px; border-radius:10px; background:#191d24; text-align:center; }
 .composition strong { font-size:1.35rem; font-weight:800; }
 .composition span { color:#a1a1aa; font-size:.7rem; }
@@ -77,6 +81,7 @@ button.chat-message { cursor:pointer; }
 .chat-composer input { min-width:0; }
 .chat-composer button { min-width:76px; }
 @media (max-width:520px){ .chat-message{max-width:92%;} .chat-composer{grid-template-columns:1fr;} }
+@media (max-width:520px){ .role-toggle{grid-template-columns:1fr;} }
 .adjust-row { display:grid; grid-template-rows:1fr 1fr; gap:2px; }
 .dial-card.selected { outline:3px solid #fff; }
 .dial-card.locked-preview { position:relative; }
@@ -107,6 +112,14 @@ button.chat-message { cursor:pointer; }
 .dial-delta-down { bottom:-18px; }
 .dial-select .value { font-size:3.3rem; font-weight:800; line-height:1; }
 .standard-dial-card { grid-template-columns:1fr; grid-template-rows:1fr; gap:0; min-height:224px; overflow:hidden; }
+.extremist-target { box-shadow:0 0 22px rgba(167,139,250,.24); }
+.extremist-edge-indicator { position:absolute; z-index:5; right:0; left:0; height:8px; background:#a78bfa; box-shadow:0 0 8px #8b5cf6,0 0 20px rgba(167,139,250,.95),0 0 38px rgba(139,92,246,.62); pointer-events:none; }
+.extremist-edge-indicator.up { top:0; border-radius:18px 18px 5px 5px; }
+.extremist-edge-indicator.down { bottom:0; border-radius:5px 5px 18px 18px; }
+.extremist-target::after { position:absolute; z-index:5; left:50%; width:max-content; color:#c4b5fd; font-size:1rem; font-weight:900; line-height:1.05; letter-spacing:.08em; text-align:center; white-space:pre; text-shadow:0 0 8px #8b5cf6,0 0 18px rgba(167,139,250,.85); transform:translateX(-50%); pointer-events:none; }
+.extremist-up::after { content:"9\A↑  ↑  ↑"; top:12px; }
+.extremist-down::after { content:"↓  ↓  ↓\A0"; bottom:12px; }
+.moderate-target { outline:4px solid #a78bfa; outline-offset:2px; box-shadow:0 0 18px rgba(167,139,250,.22); }
 .dial-face { position:relative; display:grid; place-items:center; min-width:0; padding:14px 52px 14px 12px; pointer-events:none; }
 .standard-dial-card .dial-select { width:100%; min-width:0; }
 .standard-dial-card.observer-dial .dial-face { padding:14px; }
@@ -211,6 +224,78 @@ button.chat-message { cursor:pointer; }
 .role-only { display:grid; justify-items:center; gap:14px; padding:18px 8px 10px; text-align:center; }
 .role-only .role-svg { width:72px; height:72px; }
 .role-only .role-title { margin:0; font-size:clamp(2rem,8vw,3.4rem); }
+.wild-role-badge { padding:6px 10px; border:1px solid #7657d8; border-radius:999px; color:#d9ceff; background:#211a39; font-size:.72rem; font-weight:800; letter-spacing:.08em; }
+.wild-role-objective { display:grid; gap:8px; margin:4px 0 14px; padding:16px; border:1px solid #7657d8; border-radius:14px; background:linear-gradient(135deg,#211a39,#15131d); }
+.wild-role-objective p { margin:0; line-height:1.5; }
+.wild-guide-modal { width:min(720px,100%); }
+.wild-guide-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.wild-guide-role { display:grid; grid-template-columns:38px 1fr; align-items:start; gap:10px; min-width:0; padding:11px; border:1px solid #49415f; border-radius:11px; background:#111318; }
+.wild-guide-role .role-svg { width:38px; height:38px; color:#c6b7ff; }
+.wild-guide-role>div { display:grid; gap:4px; }
+.wild-timing-label { width:max-content; padding:3px 6px; border:1px solid #6d5c98; border-radius:999px; color:#c6b7ff; font-size:.58rem; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+.wild-timing-label.end-state { border-color:#9b693e; color:#f1bd87; }
+.wild-guide-role strong { display:block; margin:2px 0 4px; }
+.wild-guide-role p { margin:0; color:#a1a1aa; font-size:.76rem; line-height:1.4; }
+.wild-progress { display:grid; gap:7px; margin-top:4px; }
+.wild-progress > div:first-child { display:flex; justify-content:space-between; gap:12px; font-size:.8rem; }
+.wild-progress meter { width:100%; height:12px; accent-color:#9c83f4; }
+.wild-progress-evidence { line-height:1.45; }
+.wild-role-svg { color:#c6b7ff; }
+.wild-mission-panel { display:grid; gap:13px; border-color:#7657d8; background:linear-gradient(135deg,#211a39,#15131d 62%); }
+.wild-mission-panel>p { margin:0; color:#d4cdea; line-height:1.45; }
+.wild-mission-heading { display:flex; align-items:center; gap:12px; padding-bottom:12px; border-bottom:1px solid rgba(198,183,255,.2); }
+.wild-mission-heading .role-svg { width:44px; height:44px; }
+.wild-mission-heading strong { display:block; margin-top:3px; font-size:1.25rem; }
+.wild-mission-progress { display:grid; gap:10px; }
+.wild-status-panel { display:grid; gap:10px; width:min(680px,100%); border-color:#49415f; background:#14131b; }
+.wild-status-panel.subtle { width:min(360px,100%); padding:11px 13px; border-color:#303640; background:#111318; }
+.wild-subtle-progress { display:flex; align-items:center; justify-content:space-between; gap:12px; color:#a1a1aa; font-size:.72rem; font-weight:850; letter-spacing:.08em; text-transform:uppercase; }
+.wild-subtle-progress strong { color:#d4cdea; font-size:.78rem; }
+.wild-status-panel.subtle .wild-progress-segments i { height:5px; box-shadow:none; }
+.wild-progress-segments { display:grid; grid-template-columns:repeat(var(--wild-goal),1fr); gap:7px; }
+.wild-progress-segments i { height:10px; border:1px solid #5a526d; border-radius:999px; background:#17151f; }
+.wild-progress-segments i.complete { border-color:#a68cf8; background:linear-gradient(90deg,#7657d8,#b39cff); box-shadow:0 0 16px rgba(156,131,244,.24); }
+.wild-bounty-targets { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.wild-bounty-target { position:relative; display:grid; grid-template-columns:54px 1fr; align-items:center; gap:12px; min-width:0; padding:13px; border:1px solid #49415f; border-radius:13px; background:#14131b; overflow:hidden; }
+.wild-bounty-target .chat-avatar { width:54px; height:54px; }
+.wild-bounty-target strong { min-width:0; overflow:hidden; font-size:1rem; text-overflow:ellipsis; white-space:nowrap; }
+.wild-bounty-target.arrested { border-color:#7f1d1d; }
+.wild-bounty-target.arrested strong { color:#fecaca; }
+.wild-target-arrest-x { position:absolute; z-index:2; top:50%; right:14%; color:#ef4444; font-size:4.4rem; font-weight:900; line-height:1; text-shadow:0 2px 0 #450a0a,0 0 12px rgba(239,68,68,.4); transform:translate(50%,-50%) rotate(-8deg); pointer-events:none; }
+.wild-extremist-readout span,.wild-total-readout span { color:#a998e7; font-size:.63rem; font-weight:900; letter-spacing:.1em; text-transform:uppercase; }
+.wild-extremist-readout { display:grid; grid-template-columns:1fr 1fr 1.35fr; gap:8px; }
+.wild-extremist-readout>div,.wild-total-readout>div { display:grid; gap:4px; padding:11px; border:1px solid #49415f; border-radius:11px; background:#14131b; }
+.wild-extremist-readout strong { text-transform:capitalize; }
+.wild-dial-track { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:10px; font-weight:900; }
+.wild-dial-track i { position:relative; height:12px; border-radius:999px; background:#302b3d; }
+.wild-dial-track b { position:absolute; top:50%; width:18px; height:18px; border:3px solid #fff; border-radius:50%; background:#211a39; transform:translate(-50%,-50%); box-shadow:0 0 0 4px rgba(156,131,244,.25); }
+.wild-track-current { color:#d4cdea; font-size:.78rem; font-weight:800; text-align:center; }
+.wild-total-readout { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.wild-total-readout strong { font-size:1.45rem; }
+.wild-conservation-balance { display:grid; gap:10px; padding:5px 2px; }
+.wild-conservation-balance>div { display:flex; align-items:end; justify-content:space-between; color:#8f879f; font-size:.7rem; }
+.wild-conservation-balance strong { color:#e8e0ff; font-size:1.8rem; }
+.wild-conservation-balance>i { position:relative; height:8px; border-radius:999px; background:linear-gradient(90deg,#236942,#9c83f4 50%,#236942); }
+.wild-conservation-balance>i>b { position:absolute; top:50%; width:20px; height:20px; border:3px solid #fff; border-radius:50%; background:#7657d8; box-shadow:0 0 14px rgba(156,131,244,.65); transform:translate(-50%,-50%); }
+.wild-moderate-dials { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.wild-moderate-dials>div { display:grid; justify-items:center; gap:4px; padding:11px 6px; border:1px solid #49415f; border-radius:12px; background:#14131b; text-align:center; }
+.wild-moderate-dials span { font-size:.62rem; font-weight:900; text-transform:uppercase; }
+.wild-moderate-dials strong { font-size:1.75rem; }
+.wild-moderate-dials b { color:#fca5a5; font-size:.58rem; text-transform:uppercase; }
+.wild-moderate-dials .in-range { border-color:#236942; }
+.wild-moderate-dials .in-range b { color:#a7f3d0; }
+.wild-round-progress { display:grid; justify-items:center; padding:13px; border:1px solid #49415f; border-radius:13px; background:#14131b; }
+.wild-round-progress strong { color:#e8e0ff; font-size:3rem; line-height:1; }
+.wild-round-progress strong span { color:#857b96; font-size:1.15rem; }
+.wild-round-progress div { margin-top:4px; color:#a998e7; font-size:.65rem; font-weight:850; letter-spacing:.1em; text-transform:uppercase; }
+.wild-arrest-note { color:#f0dca1; }
+.wild-pack-notice { border-color:#7657d8; background:#211a39; }
+.wild-result-grid { display:grid; gap:10px; }
+.wild-result { display:flex; align-items:flex-start; gap:14px; }
+.wild-result .role-svg { flex:0 0 auto; width:40px; height:40px; }
+.wild-result.met { border-color:#42b883; }
+.wild-result.missed { border-color:#7657d8; }
+@media (max-width:560px){ .wild-bounty-targets,.wild-guide-grid{grid-template-columns:1fr}.wild-extremist-readout{grid-template-columns:1fr 1fr}.wild-extremist-readout>div:first-child{grid-column:1/-1}.wild-moderate-dials{grid-template-columns:1fr}.wild-total-readout{grid-template-columns:1fr} }
 .modal-icon { display:grid; place-items:center; width:68px; height:68px; border:1px solid #665d00; border-radius:18px; background:#171500; color:#fff3a1; }
 .modal-icon .role-svg { width:42px; height:42px; }
 .modal-icon .eye-svg { width:38px; height:38px; }

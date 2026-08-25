@@ -1,60 +1,64 @@
 # TODO
 
-## Wild Roles advanced play pack
+## Wild Roles advanced play pack — implemented
 
-Add a free, optional **Wild Roles** host setting for standard games. When enabled, a
-single eligible non-core player is dealt one secret Wild Role from the bank below.
-The lobby and in-game UI should disclose that a Wild Role is present, but not its
-identity or the specific role. The Wild Role keeps a normal `+1` / `-1` dial action;
-its private objective is evaluated in addition to the normal Loyal/Wallbreaker game
-result.
+The free, optional **Wild Roles** host setting is implemented for standard games with
+4–9 players. When enabled, every Specialist seat receives a different secret Wild
+Role. Wild Roles are Loyal: each Wild player must satisfy a private goal and also
+help the Wallfacer complete a plan that remains hidden from the Wild player.
+Wild Roles normally keep a `+1` / `-1` dial action; Moderate also gets `+2` / `-2` on
+its three assigned dials.
 
 ### Role bank
 
-- **Bounty** — At setup, receive one player; win if Police arrests that player at
-  least once.
-- **Archivist** — Win if the Loyal team wins and no arrest occurs in either of the
-  final two rounds.
-- **Doomsayer** — Receive one secret dial; win if it reaches `0` or `9` before the
-  game ends.
-- **Conservationist** — Win if the final sum of all six dials is within `1` of the
-  sum at game start.
-- **Curator** — Learn the three colors excluded from the Wallfacer's plan; win if
-  all three finish in the inclusive `4`–`6` range.
-- **Contrarian** — Win after, in three separate rounds, moving a dial opposite the
-  combined uncancelled moves by every other player on that dial.
-- **Hermit** — Win after, in three separate rounds, choosing a dial color no other
-  player chose that round.
+- **Bounty — happens once** — At setup, receive two players who are neither Police nor
+  Wallfacer; complete the goal if Police arrests both of them at least once each. The role is
+  omitted from four-player draws because there are not two valid targets.
+- **Extremist — happens once** — Receive the most extreme dial outside the Wallfacer's plan;
+  complete the goal after it reaches the opposite endpoint (`0` or `9`) at least once.
+- **Conservationist — at finish** — The sum of all six dials must be within `3`
+  of the starting sum when the game ends.
+- **Moderate — at finish** — Learn the three colors excluded from the Wallfacer's plan;
+  all three must be in the inclusive `4`–`6` range when the game ends. Those colors permit
+  specialist-strength `-2`, `-1`, `+1`, and `+2` moves.
+- **Disruptor — happens once** — Complete the goal after an uncancelled move goes away from the target
+  on each of the three hidden plan dials. The Disruptor does not know the plan and
+  may need trial and error; repeated successes on one dial and arrested moves do not add progress.
+- **Loner — happens once** — Complete the goal after, in four separate rounds, choosing a dial color no other
+  player chose that round. A round does not count if Police arrests the Loner.
 
-### Design and implementation tasks
+### Implemented design
 
-- Decide and document the eligibility threshold and which current non-core role is
-  replaced; do not alter the fixed core roles (Wallfacer, Wallbreaker, and Police).
-- Add the host lobby control, persist its setting in authoritative game state, and
-  include it in reconnect/reload recovery.
-- Randomly assign exactly one Wild Role only when the option is enabled and an
-  eligible seat exists.
-- Keep role cards, setup targets, and progress private in active-game public state;
-  add only the chosen role's private state to that player's view.
-- Define a post-game Wild Role results panel that reports the personal objective,
-  whether it was met, and the evidence needed to understand the result.
-- Keep the existing simultaneous, write-once selection and Police arrest semantics
-  intact. Record whatever extra per-round facts are needed for Wild Role evaluation
-  in the authoritative round history.
-- Decide whether a Wild Role can co-win independently of the main faction result
-  (current working assumption) and make the final winner UI unambiguous.
+- The pack requires 4–9 players and replaces every Specialist with a unique Wild
+  Role; it never alters the Wallfacer, Wallbreaker, or Police seats.
+- The setting is host-controlled, persisted in authoritative state, and restored
+  after reload or return to the lobby.
+- Assignments, setup data, and progress stay private. Police and Wallbreaker receive
+  no partial Wild information. A public reference popup lists all six generic roles.
+- The private role card shows live progress meters for countable objectives and
+  exact board requirements for Conservationist and Moderate.
+- Wild players never receive a Wallfacer plan display or its target values. Bounty,
+  Extremist, Disruptor, and Loner stay complete once achieved; Conservationist and
+  Moderate are evaluated from the board state when the game ends.
+  A Loyal result from a wrong Wallbreaker guess is not sufficient.
+- Wild players use normal `+1` / `-1` dial actions; simultaneous resolution,
+  write-once selections, and Police arrests retain their standard behavior.
 
-### Tests to add
+### Automated test coverage added
 
-- Role-bank assignment: disabled games have no Wild Role; enabled, eligible games
-  have exactly one; assigned setup data is valid and private.
-- Public-state privacy: players, observers, reconnecting clients, and postgame
-  recap reveal only what their view is allowed to reveal.
-- One focused pure-rules test suite for each of the seven objective conditions,
-  including boundary values, cancellation by arrest, simultaneous dial changes,
-  repeated-round counters, and final-round timing.
-- Integration tests for host setting propagation, role assignment, end-of-game
-  evaluation, and the post-game explanation.
-- Regression coverage proving standard games with Wild Roles disabled retain their
-  current role composition, selection validation, resolution, and win conditions.
+- Unique multi-role assignment, preservation of all three core roles, the nine-player
+  cap, Bounty eligibility, and the no-eligible-seat case.
+- Pure-rules evaluation for all six objectives, including arrest cancellation,
+  simultaneous actions, repeated-round counters, boundary values, and final-round
+  timing.
+- Active-game/postgame disclosure boundaries, plan privacy, happens-once versus
+  at-finish timing, and Loyal-aligned Wild results.
+- Regression coverage for standard role composition, legal actions, round
+  resolution, Mathbreaker, tutorial disclosure, and Wild Roles disabled.
 
+### Manual verification remaining
+
+- Exercise host toggle persistence, the private player role card, phone layout,
+  observer view, and the postgame result in a real multi-browser room.
+- Compare and select the preferred per-role information treatments in the Wild
+  Roles tab of the visual preview lab.

@@ -1,39 +1,42 @@
-import { eyeSvg, roleSvg } from './icons.js';
+import { eyeSvg, roleSvg, wildRoleSvg } from './icons.js';
+import { WILD_ROLE_DEFINITIONS, describeWildRoleType, wildRoleTimingLabel } from './game-rules.js';
 
 const lab=document.querySelector('#preview-lab');
 const modalRoot=document.querySelector('#preview-modal-root');
 const COLORS=['yellow','pink','orange','red','blue','green'];
 const GROUPS=[{name:'Group 1',colors:['yellow','pink']},{name:'Group 2',colors:['orange','red']},{name:'Group 3',colors:['blue','green']}];
-const VALUES={yellow:4,pink:7,orange:3,red:6,blue:5,green:2};
+const VALUES={yellow:4,pink:6,orange:3,red:6,blue:5,green:2};
 const TARGETS={yellow:6,red:8,blue:2};
+const MODERATE_COLORS=['pink','orange','green'];
 let activeTab='plans';
 let phone=false;
 let roundDemo={round:4,role:'wallfacer',selection:null,locked:false};
+let wildDemo='loner';
+const WILD_PREVIEWS={
+  bounty:{label:'Bounty',objective:'Get both Ava Wen and Sam Rao arrested at least once each. Once complete, this goal stays complete.'},
+  extremist:{label:'Extremist',objective:'Get Green to its opposite extreme, 9, at least once. Once complete, this goal stays complete.'},
+  conservationist:{label:'Conservationist',objective:'Keep the combined dial total within 3 of its starting total when the Wallfacer completes the plan.'},
+  moderate:{label:'Moderate',objective:'Finish with your three assigned non-plan dials in the 4–6 range.'},
+  disruptor:{label:'Disruptor',objective:'Make an uncancelled wrong-way move on each of the three hidden plan dials. Once all three qualify, this goal stays complete.'},
+  loner:{label:'Loner',objective:'Complete four rounds as the only player choosing your dial. Arrested rounds do not count; once complete, this goal stays complete.'}
+};
 
 function targetMarker(value,label='Target'){
   return `<span class="preview-target-marker"><i></i>${label} ${value}</span>`;
 }
 
-function dial(color,variant){
+function dial(color){
   const target=TARGETS[color];
   const relevant=target!==undefined;
-  const badge=variant==='badge'&&relevant?`<span class="preview-target-badge">Target ${target}</span>`:'';
-  const marker=variant==='marker'&&relevant?targetMarker(target):'';
-  return `<div class="preview-dial dial ${color} ${relevant?'is-plan-dial':''}">${badge}<span>${color}</span><strong>${VALUES[color]}</strong>${marker}</div>`;
+  return `<div class="preview-dial dial ${color} ${relevant?'is-plan-dial':''}"><span>${color}</span><strong>${VALUES[color]}</strong>${relevant?targetMarker(target):''}</div>`;
 }
 
-function board(variant){
-  const strip=variant==='strip'?`<div class="preview-mission-strip"><span>Secret targets</span>${Object.entries(TARGETS).map(([color,value])=>`<b class="${color}">${color} ${value}</b>`).join('')}</div>`:'';
-  return `<div class="preview-board">${COLORS.map(color=>dial(color,variant)).join('')}</div>${strip}`;
+function board(){
+  return `<div class="preview-board">${COLORS.map(dial).join('')}</div>`;
 }
 
 function planIdeas(){
-  const ideas=[
-    {variant:'badge',number:'01',title:'Target badge',label:'Fastest scan',copy:'The exact target rides on its outlined dial. It is quick to read, but adds another pill-shaped label to each target.'},
-    {variant:'strip',number:'02',title:'Mission strip',label:'Calmest board',copy:'The three dials still get a white outline, while one compact strip keeps all target values together.'},
-    {variant:'marker',number:'03',title:'Target marker',label:'Selected · live now',copy:'A white target notch sits inside each outlined dial without covering its main value. This is now the production Wallfacer treatment.'}
-  ];
-  return `<section class="preview-panel" data-panel="plans"><div class="preview-section-heading"><div><span>Show-role redesign</span><h2>Three ways to keep the plan on the board</h2></div><p>“Show role” stays limited to the role name. The selected design outlines the three relevant dials and marks each exact target in place.</p></div><div class="preview-ideas">${ideas.map(idea=>`<article class="preview-idea ${idea.variant==='marker'?'is-selected-idea':''}"><div class="preview-idea-head"><span>${idea.number}</span><div><h3>${idea.title}</h3><b>${idea.label}</b></div></div>${board(idea.variant)}<p>${idea.copy}</p></article>`).join('')}</div></section>`;
+  return `<section class="preview-panel" data-panel="plans"><div class="preview-section-heading"><div><span>Selected treatment</span><h2>Plan targets live directly on their dials.</h2></div><p>“Show role” stays limited to the role name. The three relevant dials remain outlined and each exact target gets a white notch in place.</p></div><article class="preview-idea preview-selected-plan"><div class="preview-idea-head"><span>03</span><div><h3>Target marker</h3><b>Selected · live now</b></div></div>${board()}<p>A white target notch sits inside each outlined dial without covering its main value.</p></article></section>`;
 }
 
 function actionRail(effects,locked=false){
@@ -67,10 +70,90 @@ function modalPanel(){
 }
 
 function rolePanel(){
-  return `<section class="preview-panel" data-panel="system"><div class="preview-section-heading"><div><span>Reusable element shelf</span><h2>Role icons and reconnection state</h2></div><p>This area can grow as a reference for future game elements.</p></div><div class="preview-system-grid"><article><h3>Role icon set</h3><div class="preview-role-row"><div>${roleSvg('wallfacer')}<span>Wallfacer</span></div><div>${roleSvg('wallbreaker')}<span>Wallbreaker</span></div><div class="police">${roleSvg('police')}<span>Shi Qiang</span></div><div>${roleSvg('civilian')}<span>Specialist</span></div></div></article><article><h3>Reconnecting</h3><div class="preview-reconnect"><div class="reconnect-spinner"></div><strong>Reconnecting…</strong><p>Looking for the room and restoring your seat.</p><button class="secondary">Give up and return home</button></div></article></div></section>`;
+  return `<section class="preview-panel" data-panel="system"><div class="preview-section-heading"><div><span>Reusable element shelf</span><h2>Roles, public reference, and reconnection</h2></div><p>The Wild Role guide lists the complete six-role bank without revealing who received which role.</p></div><div class="preview-system-grid"><article><h3>Role icon set</h3><div class="preview-role-row"><div>${roleSvg('wallfacer')}<span>Wallfacer</span></div><div>${roleSvg('wallbreaker')}<span>Wallbreaker</span></div><div class="police">${roleSvg('police')}<span>Shi Qiang</span></div><div>${roleSvg('civilian')}<span>Specialist</span></div></div></article><article><h3>Reconnecting</h3><div class="preview-reconnect"><div class="reconnect-spinner"></div><strong>Reconnecting…</strong><p>Looking for the room and restoring your seat.</p><button class="secondary">Give up and return home</button></div></article><article class="preview-guide-shelf"><h3>Public Wild Role reference</h3><div class="preview-guide-buttons"><button data-demo-modal="wild-guide">Open Wild Roles</button></div></article></div></section>`;
+}
+
+function segments(value,max=3){
+  return `<div class="preview-wild-segments" style="grid-template-columns:repeat(${max},1fr)" aria-label="${value} of ${max} complete">${Array.from({length:max},(_,index)=>`<i class="${index<value?'complete':''}"></i>`).join('')}</div>`;
+}
+
+function rangeScale({min=0,max=9,low,high,current,label=''}){
+  const left=(low-min)/(max-min)*100;
+  const width=(high-low)/(max-min)*100;
+  const marker=(current-min)/(max-min)*100;
+  return `<div class="preview-range-scale"><div class="preview-range-labels"><span>${min}</span><strong>${label||`${low}–${high} wins`}</strong><span>${max}</span></div><div class="preview-range-track"><i style="left:${left}%;width:${width}%"></i><b style="left:${marker}%"></b></div><div class="preview-range-current">Current · ${current}</div></div>`;
+}
+
+function wildCompactVisual(role,variant='default'){
+  if(role==='bounty') return `<div class="preview-bounty-targets"><div class="preview-bounty-target arrested"><span class="chat-avatar">AW</span><strong>Ava Wen</strong><span class="preview-target-arrest-x" aria-hidden="true">×</span></div><div class="preview-bounty-target"><span class="chat-avatar">SR</span><strong>Sam Rao</strong></div></div>`;
+  if(role==='extremist') return '';
+  if(role==='conservationist') return conservationistVisual(variant);
+  if(role==='moderate') return `<div class="preview-moderate-dials"><div class="pink good"><span>Pink</span><strong>6</strong><b>In range</b></div><div class="orange"><span>Orange</span><strong>3</strong><b>Needs 4–6</b></div><div class="green"><span>Green</span><strong>2</strong><b>Needs 4–6</b></div></div>${segments(1,3)}`;
+  if(role==='disruptor') return `<div class="preview-subtle-progress"><span>Wrong-way dials</span><strong>1/3</strong></div>${segments(1,3)}`;
+  return `<div class="preview-subtle-progress"><span>Solitary rounds</span><strong>3/4</strong></div>${segments(3,4)}`;
+}
+
+function conservationistVisual(variant){
+  if(variant==='total') return `<div class="preview-conservation-total"><span>Current total</span><strong>32</strong><b>Safe · 27–33</b></div>`;
+  if(variant==='delta') return `<div class="preview-conservation-delta"><strong>+2</strong><span>from starting total</span><b>SAFE WITHIN ±3</b></div>`;
+  if(variant==='balance') return `<div class="preview-conservation-balance"><div><span>−3</span><strong>+2</strong><span>+3</span></div><i><b></b></i></div>`;
+  return `${rangeScale({min:20,max:40,low:27,high:33,current:32})}<div class="preview-wild-status loyal">Current total is inside the required range</div>`;
+}
+
+function wildRoundDial(color,roleId,variant){
+  const extremistTarget=roleId==='extremist'&&color==='green';
+  const extremistClass=extremistTarget?`preview-extremist-target preview-extremist-${variant} preview-extremist-up`:'';
+  const moderateTarget=roleId==='moderate'&&MODERATE_COLORS.includes(color);
+  const moderateClass=moderateTarget?`preview-moderate-target preview-moderate-${variant}`:'';
+  const effects=moderateTarget?[2,1,-1,-2]:[1,-1];
+  return `<div class="preview-round-dial dial ${color} ${extremistClass} ${moderateClass}"><div class="preview-round-face"><span>${color}</span><strong>${VALUES[color]}</strong></div><div class="preview-action-zones count-${effects.length}">${effects.map(effect=>`<button aria-label="${effect>0?'Increase':'Decrease'} ${color} by ${Math.abs(effect)}">${effect>0?'+':''}${effect}</button>`).join('')}</div></div>`;
+}
+
+function wildPlayerScreen(roleId,variant='default'){
+  const subtle=['disruptor','loner'].includes(roleId);
+  const status=['extremist','moderate'].includes(roleId)?'':`<section class="preview-wild-status-panel ${subtle?'subtle':''}">${wildCompactVisual(roleId,variant)}</section>`;
+  return `<div class="preview-wild-player-shell"><div class="preview-wild-topbar"><div><span class="brand">ROUND 6/10</span><p>Room PREVIEW</p></div><div><button class="secondary" data-demo-modal="wild-guide">Wild roles</button><button class="secondary" data-wild-show-role>Show role</button><button class="secondary">Leave game</button></div></div><section class="preview-wild-move-panel"><div><strong>Your move</strong><span>Select a dial and adjustment</span></div><button disabled>Lock selection</button><small>3/4 locked</small></section>${status}<div class="preview-round-board preview-wild-board">${[
+    {name:'Mathematics',colors:['yellow','pink']},
+    {name:'Science',colors:['blue','green']},
+    {name:'Agriculture',colors:['orange','red']}
+  ].map(group=>`<section class="preview-round-group"><div class="group-label">${group.name}</div><div class="preview-round-dials">${group.colors.map(color=>wildRoundDial(color,roleId,variant)).join('')}</div></section>`).join('')}</div><button class="preview-chat-launch" aria-label="Open messages">•••</button></div>`;
+}
+
+function wildRolesPanel(){
+  const variants=wildDemo==='extremist'
+      ? [
+          {id:'edge',number:'01',label:'Edge glow + destination',copy:'The selected live treatment: a glowing edge, upward arrows, and 9 mark the destination.'},
+          {id:'cap',number:'02',label:'Endpoint cap',copy:'A compact endpoint marker labels the target value without adding a separate panel.'},
+          {id:'chevrons',number:'03',label:'Direction chevrons',copy:'Purple arrows inside the dial emphasize direction while leaving the edge unchanged.'}
+        ]
+      : wildDemo==='conservationist'
+        ? [
+            {id:'gauge',number:'01',label:'Range gauge · detailed',copy:'Shows the full winning interval and the current total on one scale.'},
+            {id:'total',number:'02',label:'Total tile · minimal',copy:'One large board total with the safe interval beneath it.'},
+            {id:'delta',number:'03',label:'Delta stamp · minimal',copy:'Shows only how far the board has moved from its starting total.'},
+            {id:'balance',number:'04',label:'Balance line · minimal',copy:'The selected live treatment: a tiny ±3 line places the current change inside the safe band.'}
+          ]
+        : wildDemo==='moderate'
+          ? [
+              {id:'outline',number:'01',label:'Violet outline',copy:'The selected live treatment: a purple frame marks each Moderate dial without adding any text.'},
+              {id:'corners',number:'02',label:'Corner brackets',copy:'Museum-like corner marks identify the three affected dials more quietly.'},
+              {id:'seal',number:'03',label:'Moderate seal',copy:'A small purple diamond marks each affected dial while leaving its border alone.'}
+            ]
+          : [{id:'default',number:'',label:'',copy:''}];
+  const screens=variants.map(variant=>`<article class="preview-wild-context-option">${variant.label?`<div class="preview-context-option-heading"><span>${variant.number}</span><div><h3>${variant.label}</h3><p>${variant.copy}</p></div></div>`:''}${wildPlayerScreen(wildDemo,variant.id)}</article>`).join('');
+  const comparisonTitle=variants.length===3?`Three ${WILD_PREVIEWS[wildDemo].label} treatments`:variants.length===4?`Four ${WILD_PREVIEWS[wildDemo].label} treatments`:'The complete Wild Role player screen';
+  return `<section class="preview-panel preview-wild-screen-panel" data-panel="wild"><div class="preview-section-heading"><div><span>Full player context</span><h2>${comparisonTitle}</h2></div><p>Switch roles to inspect each private objective in the same screen context it occupies during a round.</p></div><div class="preview-wild-role-picker" aria-label="Wild Role preview">${Object.entries(WILD_PREVIEWS).map(([id,item])=>`<button class="secondary ${wildDemo===id?'active':''}" data-wild-role="${id}" aria-pressed="${wildDemo===id}">${wildRoleSvg(id)}<span>${item.label}</span></button>`).join('')}</div><div class="preview-wild-context-options">${screens}</div></section>`;
 }
 
 function modalHtml(type){
+  if(type==='wild-role'){
+    const role=WILD_PREVIEWS[wildDemo];
+    return `<div class="modal preview-demo-modal"><div class="modal-card"><div class="role-only"><div class="eyebrow">Your role</div>${wildRoleSvg(wildDemo)}<h2 class="role-title">${role.label}</h2></div><section class="wild-role-objective"><div class="eyebrow">Wild goal · Loyal · ${wildRoleTimingLabel(wildDemo)}</div><p>${role.objective}</p></section><hr><button class="secondary" data-close-demo>Close</button></div></div>`;
+  }
+  if(type==='wild-guide'){
+    const cards=Object.entries(WILD_PREVIEWS).map(([roleId,role])=>`<article class="wild-guide-role">${wildRoleSvg(roleId)}<div><span class="wild-timing-label ${WILD_ROLE_DEFINITIONS[roleId].timing}">${wildRoleTimingLabel(roleId)}</span><strong>${role.label}</strong><p>${describeWildRoleType(roleId)}</p></div></article>`).join('');
+    return `<div class="modal preview-demo-modal"><div class="modal-card stack wild-guide-modal"><div><div class="eyebrow">Public reference</div><h2 class="role-title">Wild Roles</h2></div><p class="small">Happens-once goals stay complete. At-finish goals are checked when the game ends. Wild players never see the Wallfacer's plan.</p><div class="wild-guide-grid">${cards}</div><button class="secondary" data-close-demo>Close</button></div></div>`;
+  }
   if(type==='role') return `<div class="modal preview-demo-modal"><div class="modal-card"><div class="role-only"><div class="eyebrow">Your role</div>${roleSvg(roundDemo.role==='specialist'?'civilian':'wallfacer')}<h2 class="role-title">${roundDemo.role==='specialist'?'Science Specialist':'Wallfacer'}</h2></div><hr><button class="secondary" data-close-demo>Close</button></div></div>`;
   if(type==='guess') return `<div class="modal preview-demo-modal"><div class="modal-card stack"><div><div class="eyebrow">Final action</div><h2 class="role-title">Guess the plan</h2></div><p class="small">Choose the three dial colors in the Wallfacer's plan. A correct guess wins; an incorrect guess gives the Loyal team the win.</p><div class="math-guess-grid standard-guess-grid">${COLORS.map(color=>`<label class="${color}"><input class="preview-break-dial" type="checkbox" value="${color}"><span>${color}</span></label>`).join('')}</div><div class="small" id="preview-guess-count" aria-live="polite">0 of 3 selected</div><button class="danger" data-submit-demo-guess disabled>Submit final guess</button><button class="secondary" data-close-demo>Cancel</button></div></div>`;
   if(type==='arrest') return `<div class="modal preview-demo-modal"><div class="modal-card stack"><div class="modal-icon danger-icon">${roleSvg('police')}</div><div><div class="eyebrow">Private result</div><h2 class="role-title">You were arrested</h2></div><p>Police arrested you last round. Your locked dial effect was cancelled.</p><button data-close-demo>Dismiss</button></div></div>`;
@@ -83,20 +166,23 @@ function currentPanel(){
   if(activeTab==='round') return roundPanel();
   if(activeTab==='controls') return lockPanel();
   if(activeTab==='modals') return modalPanel();
+  if(activeTab==='wild') return wildRolesPanel();
   return rolePanel();
 }
 
 function render(){
   lab.className=phone?'is-phone':'';
-  const tabs=[['plans','Plan designs'],['round','Six-dial round'],['controls','Touch & lock'],['modals','Modals'],['system','Roles & reconnect']];
-  lab.innerHTML=`<header class="preview-header"><div><a href="/host">← Back to host</a><div class="brand">wallbreaker</div><h1>Game UI preview lab</h1><p>Compare secret-plan treatments and inspect reusable game states without starting a room.</p></div><button class="secondary" id="viewport-toggle">${phone?'Use wide preview':'Use phone preview'}</button></header><nav class="preview-tabs" aria-label="Preview categories">${tabs.map(([id,label])=>`<button class="${activeTab===id?'active':''}" data-tab="${id}" aria-pressed="${activeTab===id}">${label}</button>`).join('')}</nav><div class="preview-stage">${currentPanel()}</div>`;
+  const tabs=[['plans','Plan design'],['round','Six-dial round'],['controls','Touch & lock'],['modals','Modals'],['wild','Wild Roles'],['system','Roles & reconnect']];
+  lab.innerHTML=`<header class="preview-header"><div><a href="/host">← Back to host</a><div class="brand">wallbreaker</div><h1>Game UI preview lab</h1><p>Inspect the selected plan treatment, each complete Wild Role player screen, and reusable game states without starting a room.</p></div><button class="secondary" id="viewport-toggle">${phone?'Use wide preview':'Use phone preview'}</button></header><nav class="preview-tabs" aria-label="Preview categories">${tabs.map(([id,label])=>`<button class="${activeTab===id?'active':''}" data-tab="${id}" aria-pressed="${activeTab===id}">${label}</button>`).join('')}</nav><div class="preview-stage">${currentPanel()}</div>`;
   lab.querySelectorAll('[data-tab]').forEach(button=>button.addEventListener('click',()=>{ activeTab=button.dataset.tab; render(); }));
   lab.querySelector('#viewport-toggle')?.addEventListener('click',()=>{ phone=!phone; render(); });
   lab.querySelectorAll('[data-demo-modal]').forEach(button=>button.addEventListener('click',()=>openModal(button.dataset.demoModal)));
+  lab.querySelectorAll('[data-wild-show-role]').forEach(button=>button.addEventListener('click',()=>openModal('wild-role')));
   lab.querySelectorAll('[data-round-action]').forEach(button=>button.addEventListener('click',()=>{ roundDemo.selection={color:button.dataset.color,effect:Number(button.dataset.effect)}; render(); }));
   lab.querySelector('[data-round-lock]')?.addEventListener('click',()=>{ if(roundDemo.selection&&!roundDemo.locked){ roundDemo.locked=true; render(); } });
   lab.querySelector('[data-round-reset]')?.addEventListener('click',()=>{ if(roundDemo.locked) roundDemo.round+=1; roundDemo.selection=null; roundDemo.locked=false; render(); });
   lab.querySelectorAll('[data-round-role]').forEach(button=>button.addEventListener('click',()=>{ if(roundDemo.locked) return; roundDemo.role=button.dataset.roundRole; roundDemo.selection=null; render(); }));
+  lab.querySelectorAll('[data-wild-role]').forEach(button=>button.addEventListener('click',()=>{ wildDemo=button.dataset.wildRole; render(); }));
 }
 
 function openModal(type){

@@ -1,4 +1,5 @@
-import {eyeSvg,roleSvg} from './icons.js';
+import {eyeSvg,roleSvg,wildRoleSvg} from './icons.js';
+import {WILD_ROLE_DEFINITIONS,describeWildRoleType,wildRoleTimingLabel} from './game-rules.js';
 
 const deck=document.querySelector('[data-rules-deck]');
 const slides=[...document.querySelectorAll('.rules-slide')];
@@ -65,11 +66,6 @@ function movePanelHtml({role='wallfacer',selection=null,locked=false,playersLock
   return `<section class="panel stack move-panel"><div class="move-summary"><strong>Your move</strong><span>${locked?`Locked in · ${chosen}`:chosen}</span></div>${spy}${arrest}<button type="button" data-rule-lock ${locked||!hasChoice?'disabled':''}>${locked?`Locked in · ${chosen}`:'Lock selection'}</button>${guess}<div class="small">${locked?playersLocked+1:playersLocked}/${totalPlayers} locked</div></section>`;
 }
 
-function roleCardHtml({kind,name,detail,plan='',team=''}){
-  const iconKind=kind==='specialist'?'civilian':kind;
-  return `<div class="role-card ${team}">${roleSvg(iconKind)}<div class="role-card-copy"><strong>${name}</strong><div class="small">${detail}</div>${plan?`<div class="small">${plan}</div>`:''}</div></div>`;
-}
-
 function mountStaticScreens(){
   const teamUi=document.querySelector('#rules-team-ui');
   if(teamUi) teamUi.innerHTML=`<article class="panel stack team-role-card wallfacer-team-ui"><div class="eyebrow">Wallfacer team</div><div class="role-only">${roleSvg('wallfacer')}<h2 class="role-title">The Wallfacer</h2></div><p class="small">Leads Shi Qiang and the Specialists.</p></article><article class="panel stack team-role-card wallbreaker-team-ui"><div class="eyebrow">Wallbreaker team</div><div class="role-only">${roleSvg('wallbreaker')}<h2 class="role-title">The Wallbreaker</h2></div><p class="small">Plays alone.</p></article>`;
@@ -85,8 +81,6 @@ function mountStaticScreens(){
   const arrestedScreen=document.querySelector('#rules-arrested-screen');
   if(arrestedScreen) arrestedScreen.innerHTML=`${gameTopbarHtml({label:'ROUND 2/10'})}${dialBoardHtml({observer:true})}<div class="modal rules-embedded-modal rules-arrested-outcome" role="dialog" aria-modal="true" aria-labelledby="rules-arrested-title"><div class="modal-card stack"><div class="modal-icon danger-icon">${roleSvg('police')}</div><div><div class="eyebrow">Private result</div><h2 class="role-title" id="rules-arrested-title">You were arrested</h2></div><p>Police arrested you last round. Your locked dial effect was cancelled.</p><button type="button" tabindex="-1">Dismiss</button></div></div>`;
 
-  const observer=document.querySelector('#rules-observer-screen');
-  if(observer) observer.innerHTML=`${gameTopbarHtml({label:'OBSERVER · ROUND 1/10'})}<section class="panel stack omniscient"><div class="section-title">${roleSvg('omniscient')}<div><strong>Observer view</strong><div class="small">Roles and plans are visible.</div></div></div><div class="role-grid">${roleCardHtml({kind:'wallfacer',name:'Ava',detail:'Wallfacer · Wallfacer team',plan:'yellow 6 · blue 2 · red 8',team:'wallfacer-team-ui'})}${roleCardHtml({kind:'wallbreaker',name:'Mara',detail:'Wallbreaker · Wallbreaker team',plan:'Targets Ava',team:'wallbreaker-team-ui'})}${roleCardHtml({kind:'police',name:'Shi',detail:'Shi Qiang · Wallfacer team',team:'wallfacer-team-ui'})}${roleCardHtml({kind:'specialist',name:'Lin',detail:'Agriculture Specialist · Wallfacer team',team:'wallfacer-team-ui'})}</div></section>`;
 }
 
 function bindActionScreen({selector,role='wallfacer',targets=false,specialty=null,initialSelection=null,initialArrestPickerOpen=false}={}){
@@ -146,6 +140,18 @@ function mountGameScreens(){
   bindActionScreen({selector:'#rules-wallbreaker-action-screen',role:'wallbreaker',initialSelection:{kind:'dial',color:'blue',effect:-1}});
   bindActionScreen({selector:'#rules-police-action-screen',role:'police',initialSelection:{kind:'arrest',target:null},initialArrestPickerOpen:true});
   bindActionScreen({selector:'#rules-specialist-screen',role:'specialist',specialty:'Mathematics',initialSelection:{kind:'dial',color:'yellow',effect:2}});
+}
+
+function mountWildRuleSlides(){
+  const bank=document.querySelector('#rules-wild-bank');
+  if(bank){
+    bank.innerHTML=Object.entries(WILD_ROLE_DEFINITIONS).map(([roleId,definition])=>`<article>${wildRoleSvg(roleId)}<div><span class="wild-timing-label ${definition.timing}">${wildRoleTimingLabel(roleId)}</span><strong>${definition.label}</strong><p>${describeWildRoleType(roleId)}</p></div></article>`).join('');
+  }
+  const infoIcons=document.querySelector('#rules-wild-info-icons');
+  if(infoIcons) infoIcons.innerHTML=Object.keys(WILD_ROLE_DEFINITIONS).map(wildRoleSvg).join('');
+  document.querySelectorAll('[data-rule-wild-icon]').forEach(target=>{
+    target.innerHTML=wildRoleSvg(target.dataset.ruleWildIcon);
+  });
 }
 
 function slideHash(slide){
@@ -240,63 +246,6 @@ function toggleFullscreen(){
 function syncFullscreenButton(){
   const active=Boolean(document.fullscreenElement);
   fullscreenButton.setAttribute('aria-label',active?'Exit fullscreen':'Enter fullscreen');
-}
-
-function bindStandardExample(){
-  const arrestButton=document.querySelector('#example-arrest');
-  const resolveButton=document.querySelector('#example-resolve');
-  const resetButton=document.querySelector('#example-reset');
-  const civilianRow=document.querySelector('#example-civilian-row');
-  const policeCopy=document.querySelector('#example-police-copy');
-  const stateLabel=document.querySelector('#example-state-label');
-  const dial=document.querySelector('#example-live-dial');
-  const equation=document.querySelector('#example-equation');
-  const explanation=document.querySelector('#example-explanation');
-  if(!arrestButton||!resolveButton||!resetButton||!dial) return;
-  let arrested=false;
-
-  function renderDial(value,deltaText='?',animate=false){
-    dial.innerHTML=`${dialCardHtml('red',{observer:true})}<span class="rules-example-delta">${deltaText}</span>`;
-    const values=[Math.min(9,value+1),value,Math.max(0,value-1)];
-    dial.querySelectorAll('.value-reel>span').forEach((item,index)=>{ item.textContent=String(values[index]); });
-    dial.classList.remove('is-resolved');
-    if(animate) requestAnimationFrame(()=>dial.classList.add('is-resolved'));
-  }
-
-  function resetResult(){
-    stateLabel.textContent='Waiting for locks';
-    renderDial(1);
-    equation.innerHTML='<span>+1</span><i>+</i><span>+2</span><i>+</i><span>−1</span><i>=</i><strong>?</strong>';
-    explanation.textContent='The public reveal will show the combined dial movement—not who caused it.';
-  }
-
-  function syncArrest(){
-    arrestButton.setAttribute('aria-pressed',String(arrested));
-    civilianRow.classList.toggle('is-arrested',arrested);
-    policeCopy.textContent=arrested?'Arrest Lin':'Green +1';
-    resetResult();
-  }
-
-  arrestButton.addEventListener('click',()=>{
-    arrested=!arrested;
-    syncArrest();
-  });
-  resolveButton.addEventListener('click',()=>{
-    const net=arrested?0:2;
-    stateLabel.textContent='Round resolved';
-    renderDial(1+net,net===0?'±0':`+${net}`,true);
-    equation.innerHTML=arrested
-      ? '<span>+1</span><i>+</i><span class="cancelled">+2</span><i>+</i><span>−1</span><i>=</i><strong>0</strong>'
-      : '<span>+1</span><i>+</i><span>+2</span><i>+</i><span>−1</span><i>=</i><strong>+2</strong>';
-    explanation.textContent=arrested
-      ? 'Lin’s +2 is omitted. Ava’s +1 and Mara’s −1 cancel, so Red stays at 1.'
-      : 'The three Red moves add to +2. Shi Qiang’s Green move affects a different dial.';
-  });
-  resetButton.addEventListener('click',()=>{
-    arrested=false;
-    syncArrest();
-  });
-  syncArrest();
 }
 
 function bindGuessExample(){
@@ -440,11 +389,11 @@ function isTypingTarget(target){
 }
 
 mountGameScreens();
+mountWildRuleSlides();
 buildToc();
 deck.classList.add('is-enhanced');
 showSlide(indexForHash(),{updateHash:false,announce:false});
 requestAnimationFrame(()=>deck.classList.add('is-ready'));
-bindStandardExample();
 bindGuessExample();
 bindMathExample();
 bindWallbreakerChoiceExample();

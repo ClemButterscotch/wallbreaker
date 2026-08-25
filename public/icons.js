@@ -9,6 +9,19 @@ export function roleSvg(kind){
   return `<svg class="role-svg" viewBox="0 0 24 24" aria-hidden="true">${icon}</svg>`;
 }
 
+export function wildRoleSvg(roleId){
+  const icons={
+    bounty:'<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>',
+    extremist:'<circle cx="4.5" cy="12" r="2.5"/><circle cx="19.5" cy="12" r="2.5"/><path d="M8 12h8M13 8.5l3.5 3.5-3.5 3.5"/>',
+    conservationist:'<path d="M12 4v16M6 7h12M8 7 4.5 13h7L8 7ZM16 7l-3.5 6h7L16 7ZM8 20h8"/><path d="M4.5 13c.4 1.8 1.5 2.7 3.5 2.7s3.1-.9 3.5-2.7M12.5 13c.4 1.8 1.5 2.7 3.5 2.7s3.1-.9 3.5-2.7"/>',
+    moderate:'<path d="M4 5h16v14H4z"/><path d="M8 16v-4M12 16V8M16 16v-6"/><circle cx="8" cy="10" r="1.5"/><circle cx="12" cy="6" r="1.5"/><circle cx="16" cy="8" r="1.5"/>',
+    disruptor:'<path d="M4 8h14M14 4l4 4-4 4M20 16H6M10 12l-4 4 4 4"/>',
+    loner:'<circle cx="12" cy="12" r="2.5"/><path d="M12 3a9 9 0 0 1 7.8 4.5M21 12a9 9 0 0 1-4.5 7.8M12 21a9 9 0 0 1-7.8-4.5M3 12a9 9 0 0 1 4.5-7.8"/>'
+  };
+  const icon=icons[roleId]||'<circle cx="12" cy="12" r="8"/><path d="M8 12h8M12 8v8"/>';
+  return `<svg class="role-svg wild-role-svg" data-wild-role-icon="${roleId||'wild'}" viewBox="0 0 24 24" aria-hidden="true">${icon}</svg>`;
+}
+
 export function eyeSvg(){
   return '<svg class="eye-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>';
 }

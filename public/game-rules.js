@@ -9,6 +9,20 @@ export const MATHBREAKER_FIELDS = {
   green:'Game Theory'
 };
 export const MATHBREAKER_THRESHOLD = 7;
+export function viewerAccess({isHost=false,adminPlaying=false,playerId=null}={}){
+  const observer=Boolean(isHost&&!adminPlaying);
+  return {observer,player:!observer,viewerId:observer?null:(playerId||null)};
+}
+export const WILD_ROLE_DEFINITIONS = Object.freeze({
+  bounty:{label:'Bounty',timing:'one-time'},
+  extremist:{label:'Extremist',timing:'one-time'},
+  conservationist:{label:'Conservationist',timing:'end-state'},
+  moderate:{label:'Moderate',timing:'end-state'},
+  disruptor:{label:'Disruptor',timing:'one-time'},
+  loner:{label:'Loner',timing:'one-time'}
+});
+export const WILD_ROLE_IDS = Object.freeze(Object.keys(WILD_ROLE_DEFINITIONS));
+export const MAX_WILD_PLAYERS = WILD_ROLE_IDS.length+3;
 
 export function clampDial(value){
   return Math.max(0,Math.min(9,value));
@@ -22,6 +36,201 @@ export function roleComposition(playerCount){
   const remaining=Math.max(0,count-wallfacers-wallbreakers);
   const police=remaining>0?1:0;
   return {wallfacers,wallbreakers,police,civilians:remaining-police};
+}
+
+export function wildRoleComposition(playerCount,enabled=false){
+  const composition=roleComposition(playerCount);
+  const wilds=enabled?Math.min(composition.civilians,WILD_ROLE_IDS.length):0;
+  return {...composition,civilians:composition.civilians-wilds,wilds};
+}
+
+function randomItem(items,random=Math.random){
+  if(!items.length) return undefined;
+  const value=Number(random());
+  const index=Math.max(0,Math.min(items.length-1,Math.floor((Number.isFinite(value)?value:0)*items.length)));
+  return items[index];
+}
+
+function createWildRole({wildRole,player,players,roles,dials,random}){
+  const definition=WILD_ROLE_DEFINITIONS[wildRole];
+  const wildData={};
+  if(wildRole==='bounty'){
+    const targets=players.filter(candidate=>candidate.id!==player.id&&!['police','wallfacer'].includes(roles[candidate.id]?.kind));
+    const firstTarget=randomItem(targets,random);
+    const secondTarget=randomItem(targets.filter(candidate=>candidate.id!==firstTarget?.id),random);
+    wildData.targetIds=[firstTarget?.id,secondTarget?.id].filter(Boolean);
+  }
+  if(wildRole==='extremist'){
+    const wallfacer=Object.values(roles).find(role=>role?.kind==='wallfacer'&&role.plan?.values);
+    const outsidePlan=COLORS.filter(color=>!Object.hasOwn(wallfacer?.plan?.values||{},color));
+    const eligible=outsidePlan.length?outsidePlan:COLORS;
+    const distanceFromCenter=color=>Math.abs(Number(dials[color])-4.5);
+    const greatestDistance=Math.max(...eligible.map(distanceFromCenter));
+    const mostExtreme=eligible.filter(color=>distanceFromCenter(color)===greatestDistance);
+    const color=randomItem(mostExtreme,random);
+    const startingValue=clampDial(Number(dials[color]));
+    Object.assign(wildData,{color,startingValue,targetValue:startingValue<=4?9:0});
+  }
+  if(wildRole==='moderate'){
+    const wallfacer=Object.values(roles).find(role=>role?.kind==='wallfacer'&&role.plan?.values);
+    wildData.colors=COLORS.filter(color=>!Object.hasOwn(wallfacer?.plan?.values||{},color));
+  }
+  return {kind:'wild',team:'loyal',label:definition.label,wildRole,wildData};
+}
+
+export function assignWildRoles({players=[],roles={},dials={},random=Math.random}={}){
+  const candidates=players.filter(player=>roles[player.id]?.kind==='civilian');
+  let available=[...WILD_ROLE_IDS];
+  let nextRoles={...roles};
+  const assignments=[];
+  for(const player of candidates.slice(0,WILD_ROLE_IDS.length)){
+    const bountyTargets=players.filter(candidate=>candidate.id!==player.id&&!['police','wallfacer'].includes(roles[candidate.id]?.kind));
+    const eligible=available.filter(roleId=>roleId!=='bounty'||bountyTargets.length>=2);
+    const wildRole=randomItem(eligible,random);
+    if(!wildRole) continue;
+    const role=createWildRole({wildRole,player,players,roles,dials,random});
+    nextRoles={...nextRoles,[player.id]:role};
+    assignments.push({playerId:player.id,role});
+    available=available.filter(roleId=>roleId!==wildRole);
+  }
+  return {roles:nextRoles,playerIds:assignments.map(assignment=>assignment.playerId),assignments};
+}
+
+export function describeWildRoleType(roleId){
+  if(roleId==='bounty') return 'Have both secret targets arrested at least once each.';
+  if(roleId==='extremist') return 'Get an assigned non-plan dial to its opposite extreme at least once.';
+  if(roleId==='conservationist') return 'Keep the six-dial total within 3 of its starting value when the Wallfacer completes the plan.';
+  if(roleId==='moderate') return 'Finish with all three assigned non-plan dials in the 4–6 range.';
+  if(roleId==='disruptor') return 'Make an uncancelled wrong-way move on each of the three hidden plan dials.';
+  if(roleId==='loner') return 'Complete four non-arrested rounds as the only player choosing your dial.';
+  return '';
+}
+
+export function wildRoleTimingLabel(roleId){
+  return WILD_ROLE_DEFINITIONS[roleId]?.timing==='end-state'?'At finish':'Happens once';
+}
+
+export function describeWildRole(role,players=[]){
+  if(role?.kind!=='wild'||!WILD_ROLE_DEFINITIONS[role.wildRole]) return '';
+  const data=role.wildData||{};
+  if(role.wildRole==='bounty'){
+    const targetIds=Array.isArray(data.targetIds)?data.targetIds:data.targetId?[data.targetId]:[];
+    const targets=targetIds.map(targetId=>players.find(player=>player.id===targetId)?.name||'an assigned player');
+    const targetNames=targets.length>1?`${targets.slice(0,-1).join(', ')} and ${targets.at(-1)}`:targets[0]||'your assigned players';
+    return `Get ${targets.length>1?'both ':''}${targetNames} arrested by Police at least once each. Once complete, this goal stays complete.`;
+  }
+  if(role.wildRole==='extremist') return `Get the ${data.color||'assigned'} dial to the opposite extreme, ${data.targetValue??'your target'}, at least once. Once complete, this goal stays complete.`;
+  if(role.wildRole==='conservationist') return 'Keep the total of all six dials within 3 of its starting total when the Wallfacer completes the plan.';
+  if(role.wildRole==='moderate') return `Finish with ${(data.colors||[]).join(', ')||'your three assigned dials'} in the 4–6 range.`;
+  if(role.wildRole==='disruptor') return 'Make an uncancelled move away from the target on each of the three hidden plan dials. Once all three qualify, this goal stays complete.';
+  return 'Complete four rounds when you are not arrested and no other player chooses your dial. Once all four count, this goal stays complete.';
+}
+
+function roundAction(entry,playerId){
+  return entry.actions?.find(item=>item.playerId===playerId);
+}
+
+function disruptorAwayMoves(playerId,history=[],planValues={}){
+  return history.flatMap(entry=>{
+    const own=roundAction(entry,playerId);
+    if(own?.arrested||own?.action?.type!=='move') return [];
+    const target=Number(planValues?.[own.action.color]);
+    const before=Number(entry.before?.[own.action.color]);
+    const correctDirection=Math.sign(target-before);
+    const ownDirection=Math.sign(Number(own.action.effect||0));
+    if(!Number.isFinite(target)||!Number.isFinite(before)||correctDirection===0||ownDirection!==-correctDirection) return [];
+    return [{round:entry.round,color:own.action.color,effect:own.action.effect}];
+  });
+}
+
+function lonerRounds(playerId,history=[]){
+  return history.filter(entry=>{
+    const own=roundAction(entry,playerId);
+    if(own?.arrested||own?.action?.type!=='move') return false;
+    return !(entry.actions||[]).some(item=>item.playerId!==playerId&&item.action?.type==='move'&&item.action.color===own.action.color);
+  }).length;
+}
+
+export function evaluateWildRole({role,playerId,players=[],history=[],initialDials={},finalDials={},planValues={},winner=''}={}){
+  if(role?.kind!=='wild'||!WILD_ROLE_DEFINITIONS[role.wildRole]) return null;
+  const objective=describeWildRole(role,players);
+  const data=role.wildData||{};
+  let met=false;
+  let progress=0;
+  let goal=null;
+  let evidence='';
+  let details={};
+  let reachedOnce=false;
+  if(role.wildRole==='bounty'){
+    const targetIds=Array.isArray(data.targetIds)?data.targetIds:data.targetId?[data.targetId]:[];
+    const targets=targetIds.map(targetId=>{
+      const arrest=history.find(entry=>(entry.actions||[]).some(item=>item.action?.type==='arrest'&&item.action.targetId===targetId));
+      return {targetId,arrested:Boolean(arrest),round:arrest?.round??null};
+    });
+    progress=targets.filter(target=>target.arrested).length;
+    goal=targetIds.length||2;
+    met=targetIds.length>0&&progress===targetIds.length;
+    reachedOnce=met;
+    details={targets};
+    evidence=met?(targetIds.length===1?'The assigned player was arrested.':'Both assigned players were arrested.'):`${progress} of ${goal} assigned players were arrested.`;
+  } else if(role.wildRole==='extremist'){
+    const boards=[initialDials,...history.map(entry=>entry.after),finalDials].filter(Boolean);
+    const reachedIndex=boards.findIndex(board=>Number(board?.[data.color])===Number(data.targetValue));
+    reachedOnce=reachedIndex>=0;
+    met=reachedOnce;
+    progress=reachedOnce?1:0;
+    goal=1;
+    const current=finalDials?.[data.color];
+    details={color:data.color,startingValue:data.startingValue,targetValue:data.targetValue,current,reachedRound:reachedIndex>0?history[reachedIndex-1]?.round??null:null};
+    evidence=met
+      ? `${data.color} reached its required extreme of ${data.targetValue}${details.reachedRound?` in round ${details.reachedRound}`:''}; the one-time goal is complete.`
+      : `${data.color} began at ${data.startingValue}; required extreme ${data.targetValue}; current ${current??'unknown'}.`;
+  } else if(role.wildRole==='conservationist'){
+    const initial=COLORS.reduce((sum,color)=>sum+Number(initialDials?.[color]||0),0);
+    const final=COLORS.reduce((sum,color)=>sum+Number(finalDials?.[color]||0),0);
+    const difference=Math.abs(final-initial);
+    const qualifyingRound=history.find(entry=>Math.abs(COLORS.reduce((sum,color)=>sum+Number(entry.after?.[color]||0),0)-initial)<=3)?.round??null;
+    reachedOnce=qualifyingRound!==null;
+    met=history.length>0&&difference<=3;
+    progress=difference;
+    details={initial,current:final,low:initial-3,high:initial+3,difference,qualifyingRound};
+    evidence=met?`The current total is inside the required ${initial-3}–${initial+3} range.`:reachedOnce?`The total entered range in round ${qualifyingRound}, but the current total is ${final}; it must return before the Wallfacer finishes.`:`Required range: ${initial-3}–${initial+3}. Current total: ${final} (difference ${difference}).`;
+  } else if(role.wildRole==='moderate'){
+    const colors=Array.isArray(data.colors)?data.colors:[];
+    const values=colors.map(color=>Number(finalDials?.[color]));
+    progress=values.filter(value=>value>=4&&value<=6).length;
+    goal=3;
+    const qualifyingRound=history.find(entry=>colors.length===3&&colors.every(color=>Number(entry.after?.[color])>=4&&Number(entry.after?.[color])<=6))?.round??null;
+    reachedOnce=qualifyingRound!==null;
+    met=history.length>0&&colors.length===3&&colors.every((color,index)=>values[index]>=4&&values[index]<=6);
+    details={colors:colors.map((color,index)=>({color,value:values[index],inRange:values[index]>=4&&values[index]<=6})),qualifyingRound};
+    evidence=met?'All three assigned dials are currently in range.':reachedOnce?`All three entered range in round ${qualifyingRound}, but only ${progress} are in range now.`:`${progress} of 3 currently in range · ${colors.map((color,index)=>`${color} ${values[index]}`).join(' · ')}`;
+  } else if(role.wildRole==='disruptor'){
+    const qualifyingMoves=disruptorAwayMoves(playerId,history,planValues);
+    const firstMoveByColor=new Map();
+    qualifyingMoves.forEach(move=>{ if(!firstMoveByColor.has(move.color)) firstMoveByColor.set(move.color,move); });
+    progress=Math.min(firstMoveByColor.size,3);
+    goal=3;
+    met=progress===goal;
+    reachedOnce=met;
+    details={qualifyingDials:[...firstMoveByColor.values()]};
+    evidence=met?'A wrong-way move has qualified on all three hidden plan dials.':`${progress} of 3 hidden plan dials have a qualifying wrong-way move.`;
+  } else if(role.wildRole==='loner'){
+    progress=lonerRounds(playerId,history);
+    goal=4;
+    met=progress>=4;
+    reachedOnce=met;
+    evidence=`${Math.min(progress,goal)} of ${goal} qualifying solitary rounds.`;
+  }
+  return {roleId:role.wildRole,label:role.label,timing:WILD_ROLE_DEFINITIONS[role.wildRole].timing,met,reachedOnce,progress,goal,objective,evidence,details};
+}
+
+export function buildWildRoleResults(players=[],roles={},context={}){
+  const wallfacerCompleted=context.wallfacerCompleted===true||isStandardPlanComplete(context.finalDials,context.planValues);
+  return players.flatMap(player=>{
+    const result=evaluateWildRole({role:roles[player.id],playerId:player.id,players,...context});
+    return result?[{playerId:player.id,name:player.name,...result,won:result.met&&wallfacerCompleted}]:[];
+  });
 }
 
 export function mathbreakerRoleComposition(playerCount){
@@ -124,6 +333,7 @@ export function validateMathbreakerGuess({planFields,guessFields,previousGuessKe
 }
 
 export function maxEffectFor(role,color){
+  if(role?.kind==='wild') return role.wildRole==='moderate'&&role.wildData?.colors?.includes(color)?2:1;
   if(role?.kind==='wallfacer'||role?.kind==='wallbreaker'||role?.kind==='police') return 1;
   if(role?.kind==='civilian'&&!SUBJECTS[role.profession]?.includes(color)) return 1;
   return 2;
@@ -185,6 +395,11 @@ export function isPlanFieldGuess(planValues,guessColors){
   return guessed===actual;
 }
 
+export function isStandardPlanComplete(dials={},planValues={}){
+  const entries=Object.entries(planValues||{});
+  return entries.length===3&&entries.every(([color,value])=>COLORS.includes(color)&&Number(dials?.[color])===Number(value));
+}
+
 export function privateArrestOutcome(playerId,role,players,arrested,history=[]){
   const outcome={arrested:Boolean(arrested?.[playerId])};
   if(role?.kind!=='police') return outcome;
@@ -209,7 +424,7 @@ function privateHistoryForViewer(history,roles,viewerId){
   });
 }
 
-export function buildPostgameDisclosure(phase,players,roles,history,finalGuess,recap,viewerId=null){
+export function buildPostgameDisclosure(phase,players,roles,history,finalGuess,recap,viewerId=null,wildContext=null){
   if(phase!=='ended'||recap?.active!==true) return undefined;
   const completedRounds=history||[];
   const roundIndex=Math.max(0,Math.min(Number(recap.roundIndex)||0,Math.max(0,completedRounds.length-1)));
@@ -217,10 +432,11 @@ export function buildPostgameDisclosure(phase,players,roles,history,finalGuess,r
   return {
     roles:players.map(player=>{
       const role=roles[player.id]||{};
-      return {playerId:player.id,name:player.name,kind:role.kind,label:role.label,profession:role.profession,specialty:role.specialty,plan:role.plan,targetId:role.targetId};
+      return {playerId:player.id,name:player.name,kind:role.kind,label:role.label,profession:role.profession,specialty:role.specialty,plan:role.plan,targetId:role.targetId,wildRole:role.wildRole,wildData:role.wildData};
     }),
     history:completedRounds[roundIndex]?[completedRounds[roundIndex]]:[],
     finalGuess:complete?(finalGuess||null):null,
+    wildResults:wildContext?buildWildRoleResults(players,roles,{history:completedRounds,...wildContext}):[],
     recap:{roundIndex,totalRounds:completedRounds.length,complete}
   };
 }

@@ -709,6 +709,120 @@ kbd { display:inline-grid; min-width:22px; min-height:22px; place-items:center; 
 .finale-mark strong { color:#aaa583; font-size:.61rem; letter-spacing:.16em; text-transform:uppercase; }
 .finale-visual p { position:absolute; left:50%; bottom:3%; width:100%; color:#716f67; font-size:.67rem; line-height:2; text-align:center; transform:translateX(-50%); }
 
+.wild-rules-slide { --rules-wild:#b394ff; background:radial-gradient(circle at 76% 38%,rgba(139,92,246,.14),transparent 34%); }
+.wild-rules-slide .rules-kicker { color:var(--rules-wild); }
+.wild-rules-slide .rules-kicker>i { display:grid; place-items:center; width:30px; height:30px; background:transparent; color:var(--rules-wild); }
+.wild-rules-slide .rules-kicker .role-svg { width:28px; height:28px; }
+.wild-overview-layout { gap:24px; }
+.wild-pack-summary { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.wild-pack-summary article { display:grid; gap:6px; min-height:112px; padding:18px; border:1px solid #493b6a; border-radius:14px; background:linear-gradient(145deg,rgba(41,29,67,.72),rgba(10,9,12,.9)); }
+.wild-pack-summary span,.wild-demo-head span,.wild-info-public>span,.wild-info-private>span { color:#9585bb; font-size:.6rem; font-weight:900; letter-spacing:.12em; text-transform:uppercase; }
+.wild-pack-summary strong { font-size:1.1rem; }
+.wild-pack-summary p { margin:0; color:#918b9e; font-size:.72rem; }
+.wild-role-bank { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+.wild-role-bank article { display:grid; grid-template-columns:42px 1fr; gap:12px; align-items:start; min-height:104px; padding:14px; border:1px solid #393142; border-radius:12px; background:#0d0b10; }
+.wild-role-bank article>div { display:grid; gap:4px; }
+.wild-role-bank .role-svg { width:36px; height:36px; padding:7px; border:1px solid #66518f; border-radius:10px; color:var(--rules-wild); fill:none; stroke:currentColor; stroke-width:1.7; }
+.wild-role-bank strong { font-size:.82rem; }
+.wild-role-bank p { margin:4px 0 0; color:#88818f; font-size:.66rem; line-height:1.4; }
+
+.wild-unlock-layout { gap:30px; }
+.wild-unlock-flow { display:grid; grid-template-columns:1fr auto 1fr auto 1fr; gap:14px; align-items:center; }
+.wild-unlock-flow article { display:grid; grid-template-rows:auto auto auto 1fr; gap:7px; min-height:210px; padding:20px; border:1px solid #4b3c6b; border-radius:16px; background:linear-gradient(150deg,#171022,#09080b); }
+.wild-unlock-flow article b { color:var(--rules-wild); font-size:.68rem; }
+.wild-unlock-flow article span { color:#827794; font-size:.61rem; font-weight:900; letter-spacing:.1em; text-transform:uppercase; }
+.wild-unlock-flow article strong { font-size:1.12rem; line-height:1.15; }
+.wild-unlock-flow article p { margin:3px 0 0; color:#918b99; font-size:.76rem; line-height:1.45; }
+.wild-unlock-flow>i { color:#665876; font-size:1.5rem; font-style:normal; }
+.wild-timing-split { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.wild-timing-split article { display:grid; gap:5px; padding:14px 16px; border:1px solid #59467b; border-radius:12px; background:#100c16; }
+.wild-timing-split article.end-state { border-color:#765031; background:#160f0a; }
+.wild-timing-split span { color:#b394ff; font-size:.61rem; font-weight:900; letter-spacing:.1em; text-transform:uppercase; }
+.wild-timing-split .end-state span { color:#f1bd87; }
+.wild-timing-split strong { font-size:.83rem; }
+.wild-timing-split p { margin:0; color:#918b99; font-size:.7rem; line-height:1.4; }
+.wild-wrong-guess-warning { display:grid; grid-template-columns:1fr auto; gap:10px 24px; align-items:center; padding:16px 18px; border:1px solid #63373f; border-radius:12px; background:#180b0f; }
+.wild-wrong-guess-warning strong { color:#f0dadd; font-size:.84rem; }
+.wild-wrong-guess-warning span { color:#ac838a; font-size:.7rem; }
+
+.wild-information-board { display:grid; grid-template-columns:1fr 1fr; gap:14px; min-height:470px; padding:22px; border:1px solid #4a3a69; border-radius:22px; background:#09080b; }
+.wild-info-public,.wild-info-private { display:grid; align-content:center; gap:18px; padding:22px; border:1px solid #37313e; border-radius:16px; background:#0e0c11; }
+.wild-info-public>strong { font-size:2rem; }
+#rules-wild-info-icons { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+#rules-wild-info-icons .role-svg { width:54px; height:54px; padding:12px; border:1px solid #584875; border-radius:14px; color:var(--rules-wild); fill:none; stroke:currentColor; stroke-width:1.6; }
+.wild-private-role { display:flex; align-items:center; gap:14px; }
+.wild-private-role>i { display:grid; place-items:center; width:58px; height:58px; border:1px solid #6c54a0; border-radius:50%; color:var(--rules-wild); }
+.wild-private-role .role-svg { width:34px; height:34px; }
+.wild-private-role div { display:grid; gap:3px; }
+.wild-private-role small { color:#77717d; font-size:.61rem; font-weight:900; letter-spacing:.1em; text-transform:uppercase; }
+.wild-private-role strong { font-size:1.25rem; }
+.wild-private-lock { display:grid; gap:6px; padding:18px; border:1px dashed #51475d; border-radius:12px; background:#09080a; }
+.wild-private-lock span { color:#77717d; font-size:.62rem; font-weight:900; text-transform:uppercase; }
+.wild-private-lock strong { color:#8f8497; font-size:1.3rem; letter-spacing:.12em; }
+.wild-private-lock p { margin:0; color:#6f6973; font-size:.7rem; }
+
+.wild-role-layout { grid-template-columns:minmax(0,.88fr) minmax(450px,1.12fr); }
+.wild-role-slide .rules-copy h2 { color:#f1ecff; }
+.wild-role-demo { display:grid; align-content:center; gap:20px; min-height:490px; padding:28px; overflow:hidden; border:1px solid #59437d; border-radius:22px; background:radial-gradient(circle at 76% 18%,rgba(162,119,255,.12),transparent 34%),linear-gradient(145deg,#120d19,#080709); }
+.wild-demo-head { display:flex; align-items:center; gap:14px; padding-bottom:17px; border-bottom:1px solid #332a3f; }
+.wild-demo-head>i { display:grid; place-items:center; width:58px; height:58px; border:1px solid #7458a6; border-radius:50%; color:var(--rules-wild); }
+.wild-demo-head .role-svg { width:32px; height:32px; }
+.wild-demo-head>div { display:grid; gap:4px; }
+.wild-demo-head strong { font-size:1.25rem; }
+.wild-demo-progress { display:flex; align-items:end; justify-content:space-between; gap:18px; padding-top:15px; border-top:1px solid #332a3f; }
+.wild-demo-progress span { color:#8d8495; font-size:.7rem; font-weight:800; }
+.wild-demo-progress strong { color:var(--rules-wild); font-size:1.6rem; }
+.wild-demo-status { padding:13px; border:1px solid #6c54a0; border-radius:10px; background:rgba(123,84,190,.15); color:#d9c8ff; font-size:.72rem; font-weight:900; letter-spacing:.11em; text-align:center; text-transform:uppercase; }
+
+.wild-bounty-list { display:grid; gap:12px; }
+.wild-bounty-list article { position:relative; display:grid; grid-template-columns:52px 1fr; gap:14px; align-items:center; min-height:82px; padding:14px; border:1px solid #3c3543; border-radius:14px; background:#0d0b10; }
+.wild-bounty-list article>b { display:grid; place-items:center; width:52px; height:52px; border:2px solid #62586a; border-radius:50%; background:#d87398; color:white; }
+.wild-bounty-list article>strong { font-size:1.05rem; }
+.wild-bounty-list article>i { position:absolute; inset:50% 18px auto auto; color:#ff655f; font-size:4.2rem; font-style:normal; line-height:.7; text-shadow:0 0 16px rgba(255,76,68,.55); transform:translateY(-50%) rotate(-8deg); }
+.wild-bounty-list article.is-arrested>strong { color:#958e98; }
+
+.wild-extremist-demo>p,.wild-disruptor-demo>p { margin:0; color:#89818e; font-size:.72rem; text-align:center; }
+.wild-extremist-destination { display:flex; align-items:center; justify-content:center; gap:8px; color:var(--rules-wild); }
+.wild-extremist-destination span { font-size:1.5rem; text-shadow:0 0 14px currentColor; }
+.wild-extremist-destination strong { display:grid; place-items:center; width:52px; height:52px; border:1px solid currentColor; border-radius:50%; font-size:1.5rem; box-shadow:0 0 24px rgba(179,148,255,.2); }
+.wild-demo-dial { position:relative; display:grid; grid-template-columns:1fr auto; align-items:center; min-height:190px; padding:28px; border:1px solid rgba(255,255,255,.28); border-top:7px solid var(--rules-wild); border-radius:18px; box-shadow:0 -8px 28px rgba(179,148,255,.45); }
+.wild-demo-dial>span { font-size:.7rem; font-weight:900; letter-spacing:.11em; }
+.wild-demo-dial>strong { font-size:4.2rem; }
+.wild-demo-dial>div { grid-column:1/-1; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.wild-demo-dial b { display:grid; place-items:center; min-height:42px; border:1px solid rgba(255,255,255,.2); border-radius:8px; background:rgba(0,0,0,.18); }
+
+.wild-conservation-number { display:grid; justify-items:center; gap:5px; padding:25px; border:1px solid #4c3c67; border-radius:16px; background:#0c0a0f; }
+.wild-conservation-number span { color:#8d8495; font-size:.65rem; font-weight:900; letter-spacing:.1em; text-transform:uppercase; }
+.wild-conservation-number strong { color:var(--rules-wild); font-size:3.5rem; }
+.wild-conservation-number b { color:#cbb8f4; font-size:.72rem; }
+.wild-conservation-line { display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; color:#8e8497; font-size:.7rem; }
+.wild-conservation-line>i { position:relative; height:7px; border-radius:999px; background:#443755; }
+.wild-conservation-line>i>b { position:absolute; left:82%; top:50%; width:18px; height:18px; border:4px solid #f0e8ff; border-radius:50%; background:var(--rules-wild); box-shadow:0 0 18px var(--rules-wild); transform:translate(-50%,-50%); }
+
+.wild-moderate-dials { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+.wild-moderate-dials article { display:grid; grid-template-rows:auto 1fr auto; gap:10px; min-height:230px; padding:15px; border:3px solid var(--rules-wild); border-radius:14px; box-shadow:0 0 20px rgba(179,148,255,.18); }
+.wild-moderate-dials span { font-size:.62rem; font-weight:900; }
+.wild-moderate-dials article>strong { align-self:center; font-size:3.2rem; text-align:center; }
+.wild-moderate-dials article>div { display:grid; grid-template-columns:1fr 1fr; gap:5px; }
+.wild-moderate-dials b { display:grid; min-height:28px; place-items:center; border:1px solid rgba(255,255,255,.2); border-radius:6px; background:rgba(0,0,0,.2); font-size:.65rem; }
+
+.wild-trial-list { display:grid; gap:9px; }
+.wild-trial-list article { display:grid; grid-template-columns:76px 1fr auto; gap:12px; align-items:center; min-height:66px; padding:13px; border:1px solid #38323e; border-radius:11px; background:#0d0b0f; }
+.wild-trial-list span { color:#746d79; font-size:.6rem; font-weight:900; }
+.wild-trial-list strong { font-size:.9rem; }
+.wild-trial-list b { color:#7d7582; font-size:.65rem; }
+.wild-trial-list article.is-success { border-color:#765ba6; background:rgba(122,84,185,.13); }
+.wild-trial-list article.is-success b { color:#d7c4ff; }
+
+.wild-loner-rounds { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; }
+.wild-loner-rounds article { display:grid; gap:6px; min-height:96px; align-content:center; padding:12px; border:1px solid #3b3442; border-radius:11px; background:#0d0b0f; }
+.wild-loner-rounds span { color:#756e7b; font-size:.59rem; font-weight:900; }
+.wild-loner-rounds strong { font-size:.84rem; }
+.wild-loner-rounds b { color:#88808e; font-size:.62rem; }
+.wild-loner-rounds article.is-good { border-color:#5e4a82; background:rgba(115,82,168,.12); }
+.wild-loner-rounds article.is-good b { color:#c9b5ee; }
+.wild-loner-rounds article.is-blocked { opacity:.58; }
+
 .rules-controls { position:relative; z-index:30; display:grid; grid-template-columns:120px 1fr 120px; align-items:center; height:var(--controls-height); padding:0 clamp(18px,3.4vw,56px); border-top:1px solid rgba(255,255,255,.09); background:rgba(5,5,5,.88); backdrop-filter:blur(18px); }
 .rules-nav-button { display:flex; align-items:center; gap:10px; width:max-content; padding:9px 0; border:0; background:transparent; color:#aaa89f; font-size:.72rem; }
 .rules-nav-button:hover:not(:disabled) { color:var(--rules-yellow); }
@@ -767,6 +881,13 @@ kbd { display:inline-grid; min-width:22px; min-height:22px; place-items:center; 
   .host-view-visual,.final-reference-card { min-height:0; }
   .glass-visual { min-height:430px; }
   .character-board { min-height:450px; }
+  .wild-pack-summary { grid-template-columns:1fr 1fr 1fr; }
+  .wild-role-bank { grid-template-columns:1fr 1fr; }
+  .wild-unlock-flow { grid-template-columns:1fr; }
+  .wild-unlock-flow article { min-height:0; }
+  .wild-unlock-flow>i { transform:rotate(90deg); text-align:center; }
+  .wild-information-board { min-height:420px; }
+  .wild-role-demo { min-height:440px; }
   .rules-controls { grid-template-columns:54px 1fr 54px; }
   .rules-nav-button b { display:none; }
   .rules-nav-button span { width:36px; height:36px; }
@@ -840,6 +961,16 @@ kbd { display:inline-grid; min-width:22px; min-height:22px; place-items:center; 
   .glass-visual { grid-template-columns:1fr; min-height:650px; padding:22px; }
   .glass-visual article { min-height:150px; }
   .glass-note { grid-column:auto; }
+  .wild-pack-summary,.wild-role-bank,.wild-information-board { grid-template-columns:1fr; }
+  .wild-timing-split { grid-template-columns:1fr; }
+  .wild-pack-summary article,.wild-role-bank article { min-height:0; }
+  .wild-wrong-guess-warning { grid-template-columns:1fr; }
+  .wild-information-board,.wild-role-demo { min-height:0; padding:18px; }
+  .wild-moderate-dials { grid-template-columns:1fr; }
+  .wild-moderate-dials article { min-height:150px; }
+  .wild-loner-rounds { grid-template-columns:1fr 1fr; }
+  .wild-trial-list article { grid-template-columns:64px 1fr; }
+  .wild-trial-list b { grid-column:2; }
   .rules-controls { padding:0 14px; }
 }
 
@@ -861,7 +992,7 @@ kbd { display:inline-grid; min-width:22px; min-height:22px; place-items:center; 
   .rules-copy h1,.rules-copy h2,.rules-copy h3,.rules-points strong,.character-rules strong,.ready-list strong,.rules-compact-points strong,.victory-list strong { color:#111!important; }
   .rules-lede,.rules-points p,.character-rules span,.ready-list p,.rules-compact-points span,.victory-list p { color:#333!important; }
   .rules-kicker,.rules-kicker span { color:#6a5700!important; }
-  .rulebook-contents-grid article,.game-board-visual,.plan-card,.plan-shadow-card,.character-board,.role-choice-card,.guess-lab,.example-result,.game-over-panel,.host-view-visual,.glass-visual,.final-reference-card,.round-example-grid article,.math-secret-card,.threshold-visual,.combination-visual,.math-example-result,.math-rule-strip article,.math-role-lane,.math-field-board,.rules-live-player-screen,.rulebook-real-guess,.team-role-card,.rules-live-player-screen .panel,.rulebook-real-guess .modal-card { border-color:#aaa!important; background:#fff!important; color:#111!important; box-shadow:none!important; }
+  .rulebook-contents-grid article,.game-board-visual,.plan-card,.plan-shadow-card,.character-board,.role-choice-card,.guess-lab,.example-result,.game-over-panel,.host-view-visual,.glass-visual,.final-reference-card,.round-example-grid article,.math-secret-card,.threshold-visual,.combination-visual,.math-example-result,.math-rule-strip article,.math-role-lane,.math-field-board,.rules-live-player-screen,.rulebook-real-guess,.team-role-card,.rules-live-player-screen .panel,.rulebook-real-guess .modal-card,.wild-pack-summary article,.wild-role-bank article,.wild-unlock-flow article,.wild-information-board,.wild-info-public,.wild-info-private,.wild-role-demo { border-color:#aaa!important; background:#fff!important; color:#111!important; box-shadow:none!important; }
   .role-choice-card span,.role-choice-card strong,.role-choice-card b,.role-choice-result p { color:#111!important; }
   .rulebook-contents-grid p,.game-board-top strong,.game-subject header,.plan-shadow-card small,.example-result p,.example-private-note,.host-view-visual article span,.host-view-visual article small,.final-reference-card p,.final-reference-card small { color:#333!important; }
   .rulebook-contents-grid strong,.game-board-top strong,.plan-shadow-card strong,.host-view-visual article strong,.final-reference-card strong { color:#111!important; }

@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#050505" />
   <meta name="description" content="The complete rulebook for Wallbreaker." />
   <title>Wallbreaker rules</title>
-  <link rel="stylesheet" href="/styles.css?v=20260823-3" />
-  <link rel="stylesheet" href="/rules.css?v=20260823-3" />
+  <link rel="stylesheet" href="/styles.css?v=20260824-5" />
+  <link rel="stylesheet" href="/rules.css?v=20260824-5" />
 </head>
 <body class="rules-page">
   <a class="rules-skip" href="#rules-slide-start">Skip to the rulebook</a>
@@ -116,35 +116,87 @@
         </div>
       </section>
 
-      <section class="rules-slide" id="rules-slide-example" data-title="Worked arrest example" data-chapter="Round resolution" aria-hidden="true">
-        <div class="rules-slide-inner rules-example-layout">
-          <div class="rules-copy"><div class="rules-kicker">11 · Worked example · Interactive</div><h2>Worked example: resolving an arrest.</h2><p class="rules-lede">Red starts at 1. The host adds the three Red actions unless Shi Qiang arrests Lin.</p><div class="example-actions" id="standard-example-actions"><div><span class="example-avatar loyal">WF</span><p><strong>Ava · Wallfacer</strong><span>Red +1</span></p></div><div id="example-civilian-row"><span class="example-avatar civilian">SP</span><p><strong>Lin · Agriculture Specialist</strong><span>Red +2</span></p><em>ARRESTED</em></div><div><span class="example-avatar danger">WB</span><p><strong>Mara · Wallbreaker</strong><span>Red −1</span></p></div><div><span class="example-avatar police">SQ</span><p><strong>Shi Qiang</strong><span id="example-police-copy">Green +1</span></p></div></div><div class="example-controls"><button class="rules-toggle" id="example-arrest" type="button" aria-pressed="false"><span></span>Shi Qiang arrests Lin</button><button class="rules-primary" id="example-resolve" type="button">Resolve round</button><button class="rules-text-button" id="example-reset" type="button">Reset</button></div></div>
-          <div class="rules-visual example-result" id="standard-example-result" aria-live="polite"><div class="result-label"><span>PUBLIC BOARD</span><strong id="example-state-label">Waiting for locks</strong></div><div class="rules-worked-dial rules-live-player-screen" id="example-live-dial"></div><div class="equation" id="example-equation"><span>+1</span><i>+</i><span>+2</span><i>+</i><span>−1</span><i>=</i><strong>?</strong></div><p id="example-explanation">The public reveal shows the combined dial movement, not the individual actions.</p><small class="example-private-note">If Lin is arrested, Lin receives a private notification. The table is not told who was arrested.</small></div>
-        </div>
-      </section>
-
-      <section class="rules-slide" id="rules-slide-observer" data-title="Observer responsibilities" data-chapter="Ending the game" aria-hidden="true">
-        <div class="rules-slide-inner">
-          <div class="rules-copy"><div class="rules-kicker">12 · Observer</div><h2>The observer runs the room but does not play.</h2><p class="rules-lede">The observer browser holds the authoritative game state. It validates locked actions, resolves rounds, checks victory, and broadcasts the public result.</p><ul class="rules-points"><li><span>01</span><p><strong>The observer sees roles and the plan.</strong> This information stays hidden from players during play.</p></li><li><span>02</span><p><strong>Messaging is optional and private.</strong> Each player may message the observer, not the entire table.</p></li><li><span>03</span><p><strong>Disconnected players can be resolved as no move.</strong> This prevents a round from remaining locked indefinitely.</p></li><li><span>04</span><p><strong>Postgame disclosure is public.</strong> Roles, the plan, the final guess, arrests, and round history are revealed during the recap.</p></li></ul></div>
-          <div class="rules-visual rules-live-player-screen" id="rules-observer-screen" aria-label="The observer’s actual role and plan panel"></div>
-        </div>
-      </section>
-
       <section class="rules-slide" id="rules-slide-finish" data-title="How the game ends" data-chapter="Ending the game" aria-hidden="true">
         <div class="rules-slide-inner rules-example-layout">
-          <div class="rules-copy"><div class="rules-kicker">13 · Victory conditions</div><h2>The game ends when:</h2><div class="victory-list"><article class="wallfacer-team"><span>Wallfacer team</span><strong>The plan is completed</strong><p>After resolution, all three plan dials exactly match their target values.</p></article><article class="wallbreaker-team"><span>Wallbreaker team</span><strong>The three colors are guessed</strong><p>The Wallbreaker correctly identifies all three plan colors. Values are not required.</p></article><article class="wallfacer-team"><span>Wallfacer team</span><strong>The guess is wrong</strong><p>Any incorrect set of three colors ends the game immediately.</p></article><article class="wallbreaker-team"><span>Wallbreaker team</span><strong>The round limit is reached</strong><p>The final round ends without the plan being completed.</p></article></div></div>
+          <div class="rules-copy"><div class="rules-kicker">11 · Victory conditions</div><h2>The game ends when:</h2><div class="victory-list"><article class="wallfacer-team"><span>Wallfacer team</span><strong>The plan is completed</strong><p>After resolution, all three plan dials exactly match their target values.</p></article><article class="wallbreaker-team"><span>Wallbreaker team</span><strong>The three colors are guessed</strong><p>The Wallbreaker correctly identifies all three plan colors. Values are not required.</p></article><article class="wallfacer-team"><span>Wallfacer team</span><strong>The guess is wrong</strong><p>Any incorrect set of three colors ends the game immediately.</p></article><article class="wallbreaker-team"><span>Wallbreaker team</span><strong>The round limit is reached</strong><p>The final round ends without the plan being completed.</p></article></div></div>
           <div class="rules-visual game-over-panel wallfacer-team-panel"><div class="game-over-top"><span>GAME OVER</span><strong>Wallfacer team wins</strong></div><p>The plan was completed.</p><div class="completed-plan-board"><article class="yellow"><span>Yellow</span><strong>6</strong><b>Target 6</b></article><article class="blue"><span>Blue</span><strong>2</strong><b>Target 2</b></article><article class="red"><span>Red</span><strong>8</strong><b>Target 8</b></article></div><div class="game-over-note"><span>Completion is checked</span><strong>after every round resolves</strong></div></div>
+        </div>
+      </section>
+
+      <section class="rules-slide wild-rules-slide" id="rules-slide-wild-overview" data-title="Wild Roles: advanced pack" data-chapter="Wild Roles" aria-hidden="true">
+        <div class="rules-slide-inner rules-stack-layout wild-overview-layout">
+          <div class="rules-copy rules-copy-wide"><div class="rules-kicker">12 · Wild Roles · Optional pack</div><h2>Every Specialist becomes a different Wild Role.</h2><p class="rules-lede">The host may enable Wild Roles in a standard game with 4–9 players. The Wallfacer, Wallbreaker, and Shi Qiang remain unchanged.</p></div>
+          <div class="wild-pack-summary"><article><span>Host setting</span><strong>Wild Roles · On</strong><p>All Specialist seats are replaced.</p></article><article><span>Role bank</span><strong>Six unique roles</strong><p>No role can appear twice.</p></article><article><span>Alignment</span><strong>Loyal</strong><p>Every Wild Role wants the Wallfacer to succeed.</p></article></div>
+          <div class="wild-role-bank" id="rules-wild-bank" aria-label="The six possible Wild Roles"></div>
+        </div>
+      </section>
+
+      <section class="rules-slide wild-rules-slide" id="rules-slide-wild-unlock" data-title="How Wild Roles win" data-chapter="Wild Roles" aria-hidden="true">
+        <div class="rules-slide-inner rules-stack-layout wild-unlock-layout">
+          <div class="rules-copy rules-copy-wide"><div class="rules-kicker">13 · Wild Roles · Personal goal and shared finish</div><h2>Meet your goal. Help without seeing the plan.</h2><p class="rules-lede">Wild players never see the Wallfacer’s plan. Your goal’s timing determines what must be true when the Wallfacer completes it.</p></div>
+          <div class="wild-unlock-flow" aria-label="How a Wild Role wins"><article><b>01</b><span>Private task</span><strong>Satisfy your Wild goal</strong><p>Your goal may depend on arrests, dial positions, or your own moves.</p></article><i aria-hidden="true">→</i><article><b>02</b><span>Shared work</span><strong>Help the Wallfacer indirectly</strong><p>The game never shows you the plan or its target values.</p></article><i aria-hidden="true">→</i><article><b>03</b><span>Shared finish</span><strong>Finish with your goal satisfied</strong><p>The Wallfacer must complete the plan, and any at-finish goal is checked then.</p></article></div>
+          <div class="wild-timing-split"><article class="one-time"><span>Happens once</span><strong>Bounty · Extremist · Disruptor · Loner</strong><p>Once completed, these goals stay complete for the rest of the game.</p></article><article class="end-state"><span>At finish</span><strong>Conservationist · Moderate</strong><p>These board states are checked when the game ends.</p></article></div>
+          <div class="wild-wrong-guess-warning"><strong>A wrong Wallbreaker guess still ends the game for the Loyal side—but it does not give Wild players their win.</strong><span>Wild players need actual Wallfacer plan completion.</span></div>
+        </div>
+      </section>
+
+      <section class="rules-slide wild-rules-slide" id="rules-slide-wild-information" data-title="Wild Role information" data-chapter="Wild Roles" aria-hidden="true">
+        <div class="rules-slide-inner">
+          <div class="rules-copy"><div class="rules-kicker">14 · Wild Roles · Information</div><h2>The role bank is public. Assignments stay secret.</h2><p class="rules-lede">Anyone may use the <strong>Wild roles</strong> button during play to reread the six generic goals and whether each happens once or is checked at the finish.</p><ul class="character-rules"><li><strong>Public</strong><span>The six possible roles, their generic goals, and their timing type.</span></li><li><strong>Private</strong><span>Your identity, assigned targets or dials, and progress toward your Wild goal.</span></li><li><strong>The plan stays private</strong><span>Wild players never receive its target values or a plan display. Some roles identify off-plan dials. Shi Qiang and the Wallbreaker receive no partial information about which Wild Roles were dealt.</span></li></ul></div>
+          <div class="rules-visual wild-information-board"><div class="wild-info-public"><span>EVERY PLAYER CAN OPEN</span><strong>Wild Roles</strong><div id="rules-wild-info-icons" aria-hidden="true"></div></div><div class="wild-info-private"><span>YOUR PRIVATE SCREEN</span><div class="wild-private-role"><i data-rule-wild-icon="disruptor"></i><div><small>Your role</small><strong>Disruptor</strong></div></div><div class="wild-private-lock"><span>Wallfacer plan</span><strong>HIDDEN</strong><p>Wild players never receive it.</p></div></div></div>
+        </div>
+      </section>
+
+      <section class="rules-slide wild-rules-slide wild-role-slide" id="rules-slide-wild-bounty" data-title="Wild Role: Bounty" data-chapter="Wild Roles" data-wild-role="bounty" aria-hidden="true">
+        <div class="rules-slide-inner character-layout wild-role-layout">
+          <div class="rules-copy"><div class="rules-kicker"><i data-rule-wild-icon="bounty"></i>15 · Wild Role</div><h2>Bounty</h2><p class="rules-lede">Get both of your secret targets arrested by Shi Qiang at least once each.</p><ul class="character-rules"><li><strong>Happens once</strong><span>After both targets have been arrested, your goal stays complete for the rest of the game.</span></li><li><strong>Two valid targets</strong><span>Neither target can be you, the Wallfacer, or Shi Qiang. The arrests may happen in different rounds.</span></li><li><strong>Four-player exception</strong><span>Bounty is left out of the draw when two valid targets do not exist.</span></li></ul></div>
+          <div class="rules-visual wild-role-demo wild-bounty-demo"><div class="wild-demo-head"><i data-rule-wild-icon="bounty"></i><div><span>PRIVATE OBJECTIVE</span><strong>Bounty</strong></div></div><div class="wild-bounty-list"><article class="is-arrested"><b>AW</b><strong>Ava Wen</strong><i aria-hidden="true">×</i></article><article><b>SR</b><strong>Sam Rao</strong></article></div><div class="wild-demo-progress"><span>Targets arrested</span><strong>1 / 2</strong></div></div>
+        </div>
+      </section>
+
+      <section class="rules-slide wild-rules-slide wild-role-slide" id="rules-slide-wild-extremist" data-title="Wild Role: Extremist" data-chapter="Wild Roles" data-wild-role="extremist" aria-hidden="true">
+        <div class="rules-slide-inner character-layout wild-role-layout">
+          <div class="rules-copy"><div class="rules-kicker"><i data-rule-wild-icon="extremist"></i>16 · Wild Role</div><h2>Extremist</h2><p class="rules-lede">Push one assigned non-plan dial from its starting side to the opposite extreme.</p><ul class="character-rules"><li><strong>Happens once</strong><span>After the dial reaches the required extreme once, your goal stays complete.</span></li><li><strong>The dial is chosen for you</strong><span>It is the most extreme starting dial outside the Wallfacer’s plan.</span></li><li><strong>Opposite means 0 or 9</strong><span>A low starting dial must reach 9; a high starting dial must reach 0.</span></li></ul></div>
+          <div class="rules-visual wild-role-demo wild-extremist-demo"><div class="wild-demo-head"><i data-rule-wild-icon="extremist"></i><div><span>ASSIGNED DIAL</span><strong>Green began at 2</strong></div></div><div class="wild-extremist-destination"><span>↑</span><span>↑</span><strong>9</strong></div><div class="wild-demo-dial green"><span>GREEN</span><strong>2</strong><div><b>+1</b><b>−1</b></div></div><p>The glowing top edge points toward the required endpoint.</p></div>
+        </div>
+      </section>
+
+      <section class="rules-slide wild-rules-slide wild-role-slide" id="rules-slide-wild-conservationist" data-title="Wild Role: Conservationist" data-chapter="Wild Roles" data-wild-role="conservationist" aria-hidden="true">
+        <div class="rules-slide-inner character-layout wild-role-layout">
+          <div class="rules-copy"><div class="rules-kicker"><i data-rule-wild-icon="conservationist"></i>17 · Wild Role</div><h2>Conservationist</h2><p class="rules-lede">Keep the total of all six dials close to where the game began.</p><ul class="character-rules"><li><strong>At finish</strong><span>The total is checked when the game ends.</span></li><li><strong>Add all six dials</strong><span>Your reference number is the starting total.</span></li><li><strong>Within 3</strong><span>The final total may be no more than 3 above or below the start.</span></li></ul></div>
+          <div class="rules-visual wild-role-demo wild-conservation-demo"><div class="wild-demo-head"><i data-rule-wild-icon="conservationist"></i><div><span>STARTING TOTAL</span><strong>30</strong></div></div><div class="wild-conservation-number"><span>Current difference</span><strong>+2</strong><b>Inside ±3</b></div><div class="wild-conservation-line"><span>−3</span><i><b></b></i><span>+3</span></div><div class="wild-demo-status">Goal currently satisfied</div></div>
+        </div>
+      </section>
+
+      <section class="rules-slide wild-rules-slide wild-role-slide" id="rules-slide-wild-moderate" data-title="Wild Role: Moderate" data-chapter="Wild Roles" data-wild-role="moderate" aria-hidden="true">
+        <div class="rules-slide-inner character-layout wild-role-layout">
+          <div class="rules-copy"><div class="rules-kicker"><i data-rule-wild-icon="moderate"></i>18 · Wild Role</div><h2>Moderate</h2><p class="rules-lede">Finish with all three dials outside the Wallfacer’s plan in the 4–6 range.</p><ul class="character-rules"><li><strong>At finish</strong><span>All three assigned dials are checked when the game ends.</span></li><li><strong>You see the three dials</strong><span>A violet outline marks each assigned non-plan dial, without displaying the Wallfacer’s plan.</span></li><li><strong>Specialist-strength control</strong><span>On those three dials, you may move −2, −1, +1, or +2.</span></li></ul></div>
+          <div class="rules-visual wild-role-demo wild-moderate-demo"><div class="wild-demo-head"><i data-rule-wild-icon="moderate"></i><div><span>ASSIGNED DIALS</span><strong>All three in range</strong></div></div><div class="wild-moderate-dials"><article class="pink"><span>PINK</span><strong>6</strong><div><b>+2</b><b>+1</b><b>−1</b><b>−2</b></div></article><article class="orange"><span>ORANGE</span><strong>4</strong><div><b>+2</b><b>+1</b><b>−1</b><b>−2</b></div></article><article class="green"><span>GREEN</span><strong>5</strong><div><b>+2</b><b>+1</b><b>−1</b><b>−2</b></div></article></div><div class="wild-demo-status">Goal currently satisfied</div></div>
+        </div>
+      </section>
+
+      <section class="rules-slide wild-rules-slide wild-role-slide" id="rules-slide-wild-disruptor" data-title="Wild Role: Disruptor" data-chapter="Wild Roles" data-wild-role="disruptor" aria-hidden="true">
+        <div class="rules-slide-inner character-layout wild-role-layout">
+          <div class="rules-copy"><div class="rules-kicker"><i data-rule-wild-icon="disruptor"></i>19 · Wild Role</div><h2>Disruptor</h2><p class="rules-lede">Make a wrong-way move on each of the three hidden plan dials.</p><ul class="character-rules"><li><strong>Happens once</strong><span>After all three different plan dials qualify, your goal stays complete.</span></li><li><strong>You start without the plan</strong><span>You do not know which dials or exact values are relevant.</span></li><li><strong>Probe by trial and error</strong><span>Moves on non-plan dials, moves toward a target, repeat successes on the same dial, and moves cancelled by an arrest do not add progress.</span></li></ul></div>
+          <div class="rules-visual wild-role-demo wild-disruptor-demo"><div class="wild-demo-head"><i data-rule-wild-icon="disruptor"></i><div><span>HIDDEN PLAN</span><strong>? · ? · ?</strong></div></div><div class="wild-trial-list"><article><span>ROUND 1</span><strong>Red −1</strong><b>1 / 3</b></article><article><span>ROUND 2</span><strong>Blue +1</strong><b>2 / 3</b></article><article class="is-success"><span>ROUND 3</span><strong>Yellow −1</strong><b>Goal complete</b></article></div><p>You learn when each different dial qualifies, but the plan remains hidden.</p></div>
+        </div>
+      </section>
+
+      <section class="rules-slide wild-rules-slide wild-role-slide" id="rules-slide-wild-loner" data-title="Wild Role: Loner" data-chapter="Wild Roles" data-wild-role="loner" aria-hidden="true">
+        <div class="rules-slide-inner character-layout wild-role-layout">
+          <div class="rules-copy"><div class="rules-kicker"><i data-rule-wild-icon="loner"></i>20 · Wild Role</div><h2>Loner</h2><p class="rules-lede">Complete four rounds in which nobody else chooses the same dial as you.</p><ul class="character-rules"><li><strong>Happens once</strong><span>After four rounds count, your goal stays complete for the rest of the game.</span></li><li><strong>Four separate rounds</strong><span>The qualifying rounds do not need to be consecutive.</span></li><li><strong>No progress on a blocked round</strong><span>A round does not count if another player chooses your dial or Shi Qiang arrests you.</span></li></ul></div>
+          <div class="rules-visual wild-role-demo wild-loner-demo"><div class="wild-demo-head"><i data-rule-wild-icon="loner"></i><div><span>SOLITARY ROUNDS</span><strong>4 / 4</strong></div></div><div class="wild-loner-rounds"><article class="is-good"><span>R1</span><strong>Blue</strong><b>Only you</b></article><article class="is-good"><span>R2</span><strong>Pink</strong><b>Only you</b></article><article class="is-blocked"><span>R3</span><strong>Red</strong><b>Shared dial</b></article><article class="is-blocked"><span>R4</span><strong>Green</strong><b>Arrested</b></article><article class="is-good"><span>R5</span><strong>Orange</strong><b>Only you</b></article><article class="is-good"><span>R6</span><strong>Yellow</strong><b>Only you</b></article></div><div class="wild-demo-status">One-time goal complete</div></div>
         </div>
       </section>
     </main>
 
     <footer class="rules-controls">
       <button class="rules-nav-button" id="rules-prev" type="button" aria-label="Previous slide"><span aria-hidden="true">←</span><b>Back</b></button>
-      <div class="rules-progress-wrap"><div class="rules-progress-label"><span id="rules-slide-number">INTRO</span><strong id="rules-progress-title">What is Wallbreaker?</strong></div><div class="rules-progress" role="progressbar" aria-label="Rulebook progress" aria-valuemin="0" aria-valuemax="13" aria-valuenow="0"><i id="rules-progress-bar"></i></div></div>
+      <div class="rules-progress-wrap"><div class="rules-progress-label"><span id="rules-slide-number">INTRO</span><strong id="rules-progress-title">What is Wallbreaker?</strong></div><div class="rules-progress" role="progressbar" aria-label="Rulebook progress" aria-valuemin="0" aria-valuemax="20" aria-valuenow="0"><i id="rules-progress-bar"></i></div></div>
       <button class="rules-nav-button is-next" id="rules-next" type="button" aria-label="Next slide"><b>Next</b><span aria-hidden="true">→</span></button>
     </footer>
     <div class="sr-only" id="rules-announcer" aria-live="polite"></div>
   </div>
-  <script type="module" src="/rules.js?v=20260823-3"></script>
+  <script type="module" src="/rules.js?v=20260824-5"></script>
 </body>
 </html>
