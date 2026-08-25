@@ -1,6 +1,6 @@
 import { BRAND, hostModeForPath as modeForHostPath, hostStorageName, storageKey } from './brand.js';
 import { eyeSvg, roleSvg, wildRoleSvg } from './icons.js';
-import { COLORS, SUBJECTS, MATHBREAKER_FIELDS, MATHBREAKER_THRESHOLD, WILD_ROLE_DEFINITIONS, MAX_WILD_PLAYERS, viewerAccess, clampDial, roleComposition, wildRoleComposition, mathbreakerRoleComposition, knownWallfacerNames, mathbreakerDecayBudget, createMathbreakerDials, mathbreakerEffectFor, isLegalMathbreakerAdvancement, isLegalMathbreakerDecay, resolveMathbreakerAdvancement, resolveMathbreakerDecay, isMathbreakerPlanComplete, isMathbreakerGuessWindowOpen, validateMathbreakerGuess, assignWildRoles, describeWildRoleType, wildRoleTimingLabel, describeWildRole, evaluateWildRole, legalEffectsFor, isLegalSelection as selectionIsLegal, tryLockSelection, resolveRoundState, isPlanFieldGuess, isStandardPlanComplete, privateArrestOutcome, buildPostgameDisclosure, buildTutorialDisclosure } from './game-rules.js';
+import { COLORS, SUBJECTS, WILD_ROLE_DEFINITIONS, MAX_WILD_PLAYERS, viewerAccess, clampDial, roleComposition, wildRoleComposition, knownWallfacerNames, victoryRevealStage, assignWildRoles, describeWildRoleType, isCompletedOneTimeWildRole, describeWildRole, evaluateWildRole, legalEffectsFor, isLegalSelection as selectionIsLegal, tryLockSelection, resolveRoundState, isPlanFieldGuess, isStandardPlanComplete, privateArrestOutcome, buildPostgameDisclosure, buildTutorialDisclosure } from './game-rules.js';
 
 const DIAL_GROUPS = [{name:'Mathematics',colors:['yellow','pink']},{name:'Science',colors:['blue','green']},{name:'Agriculture',colors:['orange','red']}];
 const EFFECTS = [-2,-1,1,2];
@@ -20,7 +20,7 @@ localStorage.setItem(storageKey('client-id'), clientId);
 let isHost = false;
 let myName = query.get('name') || '';
 let myPlayerId = null;
-function freshPendingSelection(){ return {color:null,effect:null,sophonMode:'affect',policeMode:'affect',arrestTarget:null,decays:[]}; }
+function freshPendingSelection(){ return {color:null,effect:null,sophonMode:'affect',policeMode:'affect',arrestTarget:null}; }
 let pendingSelection = freshPendingSelection();
 let reconnecting = false;
 let noticeQueue = [];
@@ -32,7 +32,7 @@ let audioContext = null;
 let lastCountdownSound = null;
 let revealAnimationTimer = null;
 let countdownTimer = null;
-let mathRevealTimer = null;
+let victoryRevealTimer = null;
 let tutorialUI = null;
 let tutorialLoadPromise = null;
 let localView = { screen:isHostRoute() ? 'host' : 'home', state:null, role:null, error:'', modal:null, revealKey:'', revealAnimationPending:false, tutorialStep:0 };
@@ -81,6 +81,7 @@ function broadcast(){
   if(previousRound!==nextState.round&&nextState.phase==='playing') pendingSelection=freshPendingSelection();
   localView.state = nextState;
   localView.role = access.player?roleFor(game.players.find(p=>p.id===access.viewerId)):null;
+  if(nextState.phase==='victory-reveal'){ localView.modal=null; noticeQueue=[]; }
   queueOutcomeModals(nextState,localView.role);
   render();
 }
@@ -88,22 +89,13 @@ function publicState(viewerId=null){
   const state={
     code:game.code, mode:game.mode||'standard', phase:game.phase, countdown:game.countdown||0, round:game.round, maxRounds:game.maxRounds, dials:game.dials, playerCount:game.players.length, wallfacerCount:game.wallfacerCount, includeMessaging:game.includeMessaging===true, wildRolesEnabled:game.wildRolesEnabled===true,
     players:game.players.map(p=>({id:p.id,name:p.name,ready:!!game.selections[p.id],connected:Boolean(conns.get(p.id)?.open)||(game.adminPlaying===true&&p.id===myPlayerId)})),
-    adminPlaying:game.adminPlaying, paused:game.mode==='mathbreaker'?false:game.paused, breakerName:game.mode==='mathbreaker'?'':game.breakerName,
-    revealed:game.revealed, winner:game.winner, reason:game.reason
+    adminPlaying:game.adminPlaying, paused:game.paused, breakerName:game.breakerName,
+    revealed:game.revealed, revealedBefore:game.revealedBefore, wrappedColors:game.wrappedColors||[], winner:game.winner, reason:game.reason
   };
+  if(game.phase==='victory-reveal') state.victoryReveal={stage:victoryRevealStage(game.victoryReveal)};
   state.wallfacerNames=knownWallfacerNames(game.players,game.roles);
   const lockedSelection=viewerId?game.selections[viewerId]:null;
-  if(lockedSelection) state.lockedSelection={...lockedSelection,...(Array.isArray(lockedSelection.decays)?{decays:[...lockedSelection.decays]}:{})};
-  if(game.mode==='mathbreaker'){
-    state.mathThreshold=game.mathThreshold;
-    state.mathReveal=game.mathReveal?{
-      stage:game.mathReveal.stage,
-      round:game.mathReveal.round,
-      advancementNet:{...game.mathReveal.advancementNet},
-      ...(game.mathReveal.stage==='decay'?{decayNet:{...game.mathReveal.decayNet},decays:[...game.mathReveal.decays]}:{})
-    }:null;
-    state.goodPlayerCount=mathbreakerDecayBudget(game.players.length);
-  }
+  if(lockedSelection) state.lockedSelection={...lockedSelection};
   if(game.phase==='ended') state.recap={active:game.recap?.active===true,roundIndex:game.recap?.roundIndex||0,totalRounds:game.history?.length||0};
   const planValues=Object.values(game.roles).find(role=>role?.kind==='wallfacer')?.plan?.values||{};
   state.postgame=buildPostgameDisclosure(game.phase,game.players,game.roles,game.history,game.finalGuess,game.recap,viewerId,{initialDials:game.initialDials||game.dials,finalDials:game.dials,planValues,winner:game.winner});
@@ -115,11 +107,10 @@ function roleFor(player){
   if(!player || !game.roles[player.id]) return null;
   const r=game.roles[player.id];
   const arrestOutcome=privateArrestOutcome(player.id,r,game.players,game.arrested,game.history);
-  if(r.kind==='wallfacer') return {...r,...arrestOutcome,mathBreakPending:game.mode==='mathbreaker'&&game.mathBreakPending?{kind:'wallfacer'}:null};
+  if(r.kind==='wallfacer') return {...r,...arrestOutcome};
   if(r.kind==='wallbreaker'){
     const target=game.players.find(p=>p.id===r.targetId);
-    const pending=game.mode==='mathbreaker'&&game.mathBreakPending?.breakerId===player.id?{kind:'wallbreaker',targetName:target?.name||'Unknown',fields:[...game.mathBreakPending.fields]}:null;
-    return {...r,...arrestOutcome,targetName:target?.name||'Unknown',mathBreakPending:pending};
+    return {...r,...arrestOutcome,targetName:target?.name||'Unknown'};
   }
   if(r.kind==='wild'){
     const planValues=Object.values(game.roles).find(role=>role?.kind==='wallfacer')?.plan?.values||{};
@@ -130,7 +121,37 @@ function roleFor(player){
 }
 let game = freshGame();
 function randomDials(){ return Object.fromEntries(COLORS.map(c=>[c,Math.floor(Math.random()*10)])); }
-function freshGame(){ return {code:'',mode:'standard',phase:'lobby',round:1,maxRounds:MAX_ROUNDS,wallfacerCount:1,includeMessaging:false,wildRolesEnabled:false,initialDials:null,dials:randomDials(),players:[],roles:{},selections:{},arrested:{},history:[],finalGuess:null,recap:{active:false,roundIndex:0},tutorialReady:{},mathThreshold:MATHBREAKER_THRESHOLD,mathReveal:null,mathBreakPending:null,adminPlaying:true,paused:false,breakerName:'',revealed:null,winner:null,reason:''}; }
+function freshGame(){ return {code:'',mode:'standard',phase:'lobby',round:1,maxRounds:MAX_ROUNDS,wallfacerCount:1,includeMessaging:false,wildRolesEnabled:false,initialDials:null,dials:randomDials(),players:[],roles:{},selections:{},arrested:{},history:[],finalGuess:null,recap:{active:false,roundIndex:0},victoryReveal:null,tutorialReady:{},adminPlaying:true,paused:false,breakerName:'',revealed:null,revealedBefore:null,wrappedColors:[],winner:null,reason:''}; }
+
+function beginGoalVictory(winner,reason){
+  const now=Date.now();
+  game.winner=winner;
+  game.reason=reason;
+  game.phase='victory-reveal';
+  game.victoryReveal={lightAt:now+3000,endsAt:now+4400};
+  scheduleVictoryReveal();
+}
+function scheduleVictoryReveal(){
+  if(!isHost||game.phase!=='victory-reveal'||victoryRevealTimer) return;
+  const stage=victoryRevealStage(game.victoryReveal);
+  if(stage==='ended'){
+    game.phase='ended';
+    game.victoryReveal=null;
+    broadcast();
+    return;
+  }
+  const boundary=stage==='dials'?game.victoryReveal.lightAt:game.victoryReveal.endsAt;
+  victoryRevealTimer=setTimeout(()=>{
+    victoryRevealTimer=null;
+    if(game.phase!=='victory-reveal') return;
+    if(victoryRevealStage(game.victoryReveal)==='ended'){
+      scheduleVictoryReveal();
+      return;
+    }
+    broadcast();
+    scheduleVictoryReveal();
+  },Math.max(0,boundary-Date.now()));
+}
 
 function createPlan(){
   const values={};
@@ -139,20 +160,7 @@ function createPlan(){
 }
 function assignRoles(){
   const players=[...game.players];
-  if(players.length<3) throw new Error(game.mode==='mathbreaker'?'Mathbreaker requires at least 3 players.':'At least 3 players are required so Police is always included.');
-  if(game.mode==='mathbreaker'){
-    const shuffled=[...players].sort(()=>Math.random()-.5);
-    const wallfacer=shuffled[0];
-    const wallbreaker=shuffled[1];
-    const fields=[...COLORS].sort(()=>Math.random()-.5).slice(0,3);
-    const specialties=[...COLORS].sort(()=>Math.random()-.5);
-    game.roles={
-      [wallfacer.id]:{kind:'wallfacer',label:'Wallfacer',plan:{fields,threshold:game.mathThreshold}},
-      [wallbreaker.id]:{kind:'wallbreaker',label:'Wallbreaker',targetId:wallfacer.id,mathGuessKeys:[],lastGuessRound:null,mathGuessResult:null}
-    };
-    shuffled.slice(2).forEach((player,index)=>{ game.roles[player.id]={kind:'specialist',label:'Specialist',specialty:specialties[index%specialties.length]}; });
-    return;
-  }
+  if(players.length<3) throw new Error('At least 3 players are required so Police is always included.');
   const composition=roleComposition(players.length);
   const wallfacerCount=composition.wallfacers;
   const shuffled=[...players].sort(()=>Math.random()-.5);
@@ -175,13 +183,12 @@ function checkWallfacerWin(){
     const r=game.roles[p.id];
     if(r?.kind==='wallfacer'){
       const ok=isStandardPlanComplete(game.dials,r.plan.values);
-      if(ok){ game.winner='Loyal team'; game.reason=`${p.name} completed the plan.`; game.phase='ended'; return true; }
+      if(ok){ beginGoalVictory('Loyal team',`${p.name} completed the plan.`); return true; }
     }
   }
   return false;
 }
 function resolveRound(){
-  if(game.mode==='mathbreaker'){ resolveMathbreakerRound(); return; }
   const entries=Object.entries(game.selections);
   if(entries.length!==game.players.length) return;
   const roundSelections=game.selections;
@@ -189,6 +196,8 @@ function resolveRound(){
   game.arrested=resolution.arrested;
   game.dials=resolution.after;
   game.revealed=resolution.net;
+  game.revealedBefore=resolution.before;
+  game.wrappedColors=[...new Set(resolution.wraps.map(item=>item.color))];
   for(const p of game.players){
     const role=game.roles[p.id];
     if(role?.kind==='wallbreaker'){
@@ -203,79 +212,6 @@ function resolveRound(){
   if(checkWallfacerWin()){ broadcast(); return; }
   if(game.round>=game.maxRounds){ game.winner='Wallbreaker'; game.reason=`Round ${game.maxRounds} ended without the Wallfacer completing the plan.`; game.phase='ended'; }
   else game.round++;
-  broadcast();
-}
-
-function resolveMathbreakerRound(){
-  if(game.phase!=='playing'||Object.keys(game.selections).length!==game.players.length) return;
-  const breaker=game.players.find(player=>game.roles[player.id]?.kind==='wallbreaker');
-  const breakerSelection=game.selections[breaker?.id];
-  const decayBudget=breakerSelection?.systemSkipped?0:mathbreakerDecayBudget(game.players.length);
-  const decays=breakerSelection?.systemSkipped?[]:breakerSelection?.decays;
-  if(!breaker||!isLegalMathbreakerDecay({decays},decayBudget)) return;
-  const advancement=resolveMathbreakerAdvancement({dials:game.dials,selections:game.selections,players:game.players,roles:game.roles,round:game.round});
-  const decay=resolveMathbreakerDecay({dials:advancement.after,decays,budget:decayBudget,round:game.round});
-  game.mathReveal={stage:'advancement',round:game.round,before:advancement.before,afterAdvancement:advancement.after,after:decay.after,advancementNet:advancement.advancementNet,decayNet:decay.decayNet,decays:decay.decays,actions:advancement.actions};
-  game.dials=advancement.after;
-  game.revealed=advancement.advancementNet;
-  game.phase='math-reveal';
-  broadcast();
-  scheduleMathbreakerDecayReveal();
-}
-
-function scheduleMathbreakerDecayReveal(delay=1600){
-  if(!isHost||game.mode!=='mathbreaker'||game.phase!=='math-reveal'||mathRevealTimer) return;
-  mathRevealTimer=setTimeout(()=>{
-    mathRevealTimer=null;
-    if(game.mode!=='mathbreaker'||game.phase!=='math-reveal'||!game.mathReveal) return;
-    const reveal=game.mathReveal;
-    game.dials={...reveal.after};
-    game.revealed={...reveal.decayNet};
-    reveal.stage='decay';
-    game.history.push({round:reveal.round,before:{...reveal.before},afterAdvancement:{...reveal.afterAdvancement},after:{...reveal.after},advancementNet:{...reveal.advancementNet},decayNet:{...reveal.decayNet},decays:[...reveal.decays],actions:[...reveal.actions]});
-    game.selections={};
-    const wallfacer=game.players.find(player=>game.roles[player.id]?.kind==='wallfacer');
-    const plan=wallfacer&&game.roles[wallfacer.id]?.plan;
-    if(plan&&isMathbreakerPlanComplete(game.dials,plan.fields,plan.threshold)){
-      game.winner='Loyal team';
-      game.reason=`${wallfacer.name}'s three fields reached the advancement threshold.`;
-      game.phase='ended';
-    } else {
-      game.round++;
-      game.phase='playing';
-    }
-    broadcast();
-  },delay);
-}
-
-function attemptMathbreakerGuess(playerId,fields){
-  const role=game.roles[playerId];
-  if(role?.kind!=='wallbreaker') return {ok:false,error:'Only the Wallbreaker can guess the plan.'};
-  // Guessing and assigning decay are independent Wallbreaker abilities. A
-  // locked decay selection must not consume the private guess for this turn.
-  if(!isMathbreakerGuessWindowOpen({mode:game.mode,phase:game.phase,paused:game.paused,lastGuessRound:role.lastGuessRound,round:game.round})) return {ok:false,error:'The guess window for this turn has closed.'};
-  const targetRole=game.roles[role.targetId];
-  const result=validateMathbreakerGuess({planFields:targetRole?.plan?.fields,guessFields:fields,previousGuessKeys:role.mathGuessKeys||[],lastGuessRound:role.lastGuessRound,round:game.round});
-  if(!result.valid) return {ok:false,error:result.error};
-  role.mathGuessKeys||=[];
-  role.mathGuessKeys.push(result.key);
-  role.lastGuessRound=game.round;
-  role.mathGuessResult={round:game.round,correct:result.correct,fields:[...fields]};
-  if(result.correct){
-    game.mathBreakPending={breakerId:playerId,wallfacerId:role.targetId,fields:[...targetRole.plan.fields]};
-    game.paused=true;
-  }
-  broadcast();
-  return {ok:true,correct:result.correct};
-}
-
-function confirmMathbreakerDeclaration(playerId){
-  const pending=game.mathBreakPending;
-  if(game.mode!=='mathbreaker'||!pending||pending.breakerId!==playerId) return;
-  game.finalGuess={playerId,targetId:pending.wallfacerId,fields:[...pending.fields],correct:true};
-  game.winner='Wallbreakers';
-  game.reason=`${game.players.find(player=>player.id===playerId)?.name||'The Wallbreaker'} revealed the secret fields.`;
-  game.phase='ended'; game.paused=false; game.mathBreakPending=null;
   broadcast();
 }
 function attemptBreak(playerId, colors){
@@ -407,12 +343,7 @@ function handleHostMessage(conn,msg){
     game.tutorialReady[msg.playerId]=true;
     broadcast();
   }
-  if(msg.type==='breakGuess' && game.mode!=='mathbreaker' && game.phase==='playing') attemptBreak(msg.playerId,msg.colors);
-  if(msg.type==='mathbreakerGuess' && game.mode==='mathbreaker' && game.phase==='playing'){
-    const result=attemptMathbreakerGuess(msg.playerId,msg.fields);
-    if(!result.ok) send(conn,{type:'error',message:result.error});
-  }
-  if(msg.type==='mathbreakerDeclaration' && game.mode==='mathbreaker') confirmMathbreakerDeclaration(msg.playerId);
+  if(msg.type==='breakGuess' && game.phase==='playing') attemptBreak(msg.playerId,msg.colors);
   if(msg.type==='chat' && game.includeMessaging===true && typeof msg.text==='string'){
     const player=game.players.find(p=>p.id===msg.playerId);
     if(!player || !msg.text.trim()) return;
@@ -424,7 +355,7 @@ function handleHostMessage(conn,msg){
 function handleClientMessage(msg){
   if(msg.type==='joined'){ myPlayerId=msg.playerId; }
   if(msg.type==='state'){
-    const wasPlaying=['playing','math-reveal'].includes(localView.state?.phase);
+    const wasPlaying=localView.state?.phase==='playing';
     const previousRound=localView.state?.round;
     if(msg.state.phase==='countdown' && msg.state.countdown!==lastCountdownSound){ lastCountdownSound=msg.state.countdown; playTung(); }
     const nextRevealKey=`${msg.state.round}:${JSON.stringify(msg.state.revealed)}`;
@@ -435,6 +366,7 @@ function handleClientMessage(msg){
     }
     if(previousRound!==msg.state.round&&msg.state.phase==='playing') pendingSelection=freshPendingSelection();
     localView.state=msg.state; localView.role=msg.role; localView.error=''; localView.screen=['lobby','countdown'].includes(msg.state.phase)?'lobby':'game'; saveClientSession();
+    if(msg.state.phase==='victory-reveal'){ localView.modal=null; noticeQueue=[]; }
     if(msg.state.mode==='tutorial') loadTutorialUI();
     if(msg.state.phase==='playing'&&!wasPlaying) localView.modal='role';
     queueOutcomeModals(msg.state,msg.role);
@@ -574,7 +506,7 @@ async function resumeHost(attempt=0){
   if(!saved?.code||!saved.game) return;
   if((saved.game.mode||'standard')!==hostModeForPath()) return;
   try {
-    await setupPeerAsHost(saved.code); isHost=true; game=saved.game; game.mode ||= 'standard'; game.wallfacerCount=1; game.maxRounds ||= MAX_ROUNDS; game.adminPlaying=game.adminPlaying===true; game.includeMessaging=!game.adminPlaying; game.wildRolesEnabled=game.mode==='standard'&&game.wildRolesEnabled===true; game.initialDials ||= game.phase==='lobby'?null:{...game.dials}; game.history ||= []; game.finalGuess ||= null; game.recap ||= {active:false,roundIndex:0}; game.tutorialReady ||= {}; game.mathThreshold ||= MATHBREAKER_THRESHOLD; game.mathReveal ||= null; game.mathBreakPending ||= null;
+    await setupPeerAsHost(saved.code); isHost=true; game=saved.game; game.mode ||= 'standard'; game.wallfacerCount=1; game.maxRounds ||= MAX_ROUNDS; game.adminPlaying=game.adminPlaying===true; game.includeMessaging=!game.adminPlaying; game.wildRolesEnabled=game.mode==='standard'&&game.wildRolesEnabled===true; game.initialDials ||= game.phase==='lobby'?null:{...game.dials}; game.history ||= []; game.finalGuess ||= null; game.recap ||= {active:false,roundIndex:0}; game.victoryReveal ||= null; game.tutorialReady ||= {};
     const legacyWildRoles={doomsayer:['extremist','Extremist'],curator:['moderate','Moderate'],contrarian:['disruptor','Disruptor'],hermit:['loner','Loner']};
     Object.values(game.roles||{}).forEach(role=>{ const migrated=role?.kind==='wild'?legacyWildRoles[role.wildRole]:null; if(migrated){ [role.wildRole,role.label]=migrated; } });
     myPlayerId=game.adminPlaying?clientId:null;
@@ -582,7 +514,7 @@ async function resumeHost(attempt=0){
     if(!currentSaved){ saveHost(); localStorage.removeItem(storageKey('host')); }
     localView.screen=['lobby','countdown'].includes(game.phase)?'lobby':'game'; localView.state=publicState(); if(game.mode==='tutorial') loadTutorialUI(); render();
     if(game.phase==='countdown') beginCountdown();
-    if(game.phase==='math-reveal') scheduleMathbreakerDecayReveal(500);
+    if(game.phase==='victory-reveal') scheduleVictoryReveal();
   } catch {
     peer?.destroy?.();
     if(attempt<12){
@@ -630,8 +562,7 @@ function returnToLobby(){
   broadcast();
 }
 function resetGameStart(mode){
-  game.mode=mode; game.round=1; game.selections={}; game.arrested={}; game.history=[]; game.finalGuess=null; game.recap={active:false,roundIndex:0}; game.revealed=null; game.winner=null; game.reason=''; game.tutorialReady={}; game.mathThreshold=MATHBREAKER_THRESHOLD; game.mathReveal=null; game.mathBreakPending=null; game.paused=false;
-  if(mode==='mathbreaker') game.dials=createMathbreakerDials();
+  game.mode=mode; game.round=1; game.selections={}; game.arrested={}; game.history=[]; game.finalGuess=null; game.recap={active:false,roundIndex:0}; game.victoryReveal=null; game.revealed=null; game.revealedBefore=null; game.wrappedColors=[]; game.winner=null; game.reason=''; game.tutorialReady={}; game.paused=false;
   game.initialDials={...game.dials};
   pendingSelection=freshPendingSelection(); localView.modal=null; localView.tutorialStep=0; noticeQueue=[]; shownNoticeKeys.clear();
 }
@@ -642,9 +573,9 @@ function startGame(){
       const enteredName=document.querySelector('#host-player-name')?.value??myName;
       if(!syncHostPlayerName(enteredName,{required:true})) throw new Error(localView.error);
     }
-    if(game.players.length<3) throw new Error(mode==='mathbreaker'?'Mathbreaker requires at least 3 players.':'At least 3 players are required so Police is always included.');
+    if(game.players.length<3) throw new Error('At least 3 players are required so Police is always included.');
     if(mode==='standard'&&game.wildRolesEnabled===true&&game.players.length<4) throw new Error('Wild Roles requires at least 4 players so at least one Wild Role can be assigned.');
-    if(mode==='standard'&&game.wildRolesEnabled===true&&game.players.length>MAX_WILD_PLAYERS) throw new Error(`Wild Roles games are capped at ${MAX_WILD_PLAYERS} players so every Wild Role stays unique.`);
+    if(mode==='standard'&&game.wildRolesEnabled===true&&game.players.length>MAX_WILD_PLAYERS) throw new Error(`Wild Roles games are capped at ${MAX_WILD_PLAYERS} players so one Wild Role always remains unoccupied.`);
     resetGameStart(mode);
     if(mode==='tutorial'){
       game.phase='tutorial'; localView.screen='game'; loadTutorialUI(); broadcast(); return;
@@ -677,9 +608,7 @@ function submitSelection(){
   const sophonMode=pendingSelection.sophonMode || 'affect';
   const policeMode=pendingSelection.policeMode || 'affect';
   if(localView.state?.players.find(p=>p.id===myPlayerId)?.ready) return;
-  const selection=localView.state?.mode==='mathbreaker'
-    ? role?.kind==='wallbreaker'?{decays:[...pendingSelection.decays]}:{color,effect:mathbreakerEffectFor(role,color)}
-    : role?.kind==='wallbreaker'&&sophonMode==='see' ? {sophonMode:'see'} : role?.kind==='police'&&policeMode==='arrest' ? {policeMode:'arrest',arrestTarget:pendingSelection.arrestTarget} : {color,effect,sophonMode:'affect',policeMode:'affect'};
+  const selection=role?.kind==='wallbreaker'&&sophonMode==='see' ? {sophonMode:'see'} : role?.kind==='police'&&policeMode==='arrest' ? {policeMode:'arrest',arrestTarget:pendingSelection.arrestTarget} : {color,effect,sophonMode:'affect',policeMode:'affect'};
   if(!isLegalSelection(myPlayerId,selection)) return;
   if(isHost){
     if(!tryLockSelection(game.selections,myPlayerId,selection,item=>isLegalSelection(myPlayerId,item))) return;
@@ -693,18 +622,8 @@ function sendBreak(){
   if(isHost) attemptBreak(myPlayerId,colors); else send(hostConn,{type:'breakGuess',playerId:myPlayerId,colors});
   localView.modal=null; render();
 }
-function sendMathbreakerGuess(){
-  const fields=[...document.querySelectorAll('.math-guess-field:checked')].map(element=>element.value);
-  if(fields.length!==3){ localView.error='Choose exactly three fields.'; render(); return; }
-  if(isHost) attemptMathbreakerGuess(myPlayerId,fields); else send(hostConn,{type:'mathbreakerGuess',playerId:myPlayerId,fields});
-  localView.modal=null; render();
-}
-function confirmMathbreakerReveal(){
-  if(isHost) confirmMathbreakerDeclaration(myPlayerId); else send(hostConn,{type:'mathbreakerDeclaration',playerId:myPlayerId});
-}
-
 function queueOutcomeModals(state,role){
-  if(!localAccess().player||!state||!role) return;
+  if(!localAccess().player||!state||!role||state.phase==='victory-reveal') return;
   const candidates=[];
   if(role.arrested||role.arrestedPlayerName){
     candidates.push({type:'arrest-outcome',key:`arrest:${state.round}:${role.arrested?'target':role.arrestedPlayerName}`});
@@ -774,41 +693,39 @@ function wildProgressHtml(role,status,state=localView.state){
   }
   if(role.wildRole==='extremist') return '';
   if(role.wildRole==='conservationist'){
-    const delta=Number(details.current)-Number(details.initial);
-    const safeDelta=Number.isFinite(delta)?delta:0;
-    const marker=Math.max(0,Math.min(100,((safeDelta+3)/6)*100));
-    return `<div class="wild-conservation-balance" aria-label="Current dial total is ${safeDelta>=0?'+':''}${safeDelta} from its starting total"><div><span>−3</span><strong>${safeDelta>=0?'+':''}${safeDelta}</strong><span>+3</span></div><i><b style="left:${marker}%"></b></i></div>`;
-  }
-  if(role.wildRole==='moderate'){
-    return `<div class="wild-moderate-dials">${(details.colors||[]).map(item=>`<div class="${item.inRange?'in-range':''}"><span>${escapeHtml(item.color)}</span><strong>${escapeHtml(String(item.value))}</strong><b>${item.inRange?'In range':'Needs 4–6'}</b></div>`).join('')}</div>${wildSegmentsHtml(status.progress,status.goal)}${evidence}`;
+    const eligible=Number(state?.round)>=4;
+    return `<div class="wild-total-readout" aria-label="Starting dial total ${escapeHtml(String(details.initial))}; current dial total ${escapeHtml(String(details.current))}"><div><span>Starting total</span><strong>${escapeHtml(String(details.initial))}</strong></div><div><span>Current total</span><strong>${escapeHtml(String(details.current))}</strong></div></div><div class="small wild-progress-evidence">${eligible?'This round can complete your goal.':'Your first eligible round is round 4.'}</div>`;
   }
   const value=Math.max(0,Math.min(Number(status.progress)||0,status.goal));
-  const label=role.wildRole==='disruptor'?'wrong-way dials':'solitary rounds';
+  const label=role.wildRole==='disruptor'?'wrong-way dials':role.wildRole==='numerologist'?'matching dials':role.wildRole==='wrapper'?'wrapped dials':'solitary rounds';
   return `<div class="wild-subtle-progress"><span>${label}</span><strong>${value}/${status.goal}</strong></div>${wildSegmentsHtml(value,status.goal)}`;
 }
 function wildMissionPanelHtml(role,state=localView.state){
-  if(!localAccess().player||role?.kind!=='wild'||['extremist','moderate'].includes(role.wildRole)) return '';
-  return `<section class="panel wild-status-panel ${['disruptor','loner'].includes(role.wildRole)?'subtle':''}" aria-label="${escapeHtml(role.label)} progress">${wildProgressHtml(role,role.wildStatus,state)}</section>`;
+  if(!localAccess().player||role?.kind!=='wild'||isCompletedOneTimeWildRole(role)||['extremist','moderate','oddball','numerologist'].includes(role.wildRole)) return '';
+  return `<section class="panel wild-status-panel ${['disruptor','loner','oddball','numerologist','wrapper'].includes(role.wildRole)?'subtle':''}" aria-label="${escapeHtml(role.label)} progress">${wildProgressHtml(role,role.wildStatus,state)}</section>`;
 }
 function wildRoleGuideModal(){
   if(localView.modal!=='wild-guide') return '';
-  const cards=Object.entries(WILD_ROLE_DEFINITIONS).map(([roleId,definition])=>`<article class="wild-guide-role">${wildRoleSvg(roleId)}<div><span class="wild-timing-label ${definition.timing}">${escapeHtml(wildRoleTimingLabel(roleId))}</span><strong>${escapeHtml(definition.label)}</strong><p>${escapeHtml(describeWildRoleType(roleId))}</p></div></article>`).join('');
-  return `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="wild-guide-title"><div class="modal-card stack wild-guide-modal"><div><div class="eyebrow">Public reference</div><h2 class="role-title" id="wild-guide-title">Wild Roles</h2></div><p class="small">Every Wild Role is Loyal. Happens-once goals stay complete; at-finish goals are checked when the game ends. Wild players never see the Wallfacer's plan.</p><div class="wild-guide-grid">${cards}</div><button class="secondary" id="close-modal">Close</button></div></div>`;
+  const cards=Object.entries(WILD_ROLE_DEFINITIONS).map(([roleId,definition])=>`<article class="wild-guide-role">${wildRoleSvg(roleId)}<div><strong>${escapeHtml(definition.label)}</strong><p>${escapeHtml(describeWildRoleType(roleId))}</p></div></article>`).join('');
+  return `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="wild-guide-title"><div class="modal-card stack wild-guide-modal"><div><div class="eyebrow">Public reference</div><h2 class="role-title" id="wild-guide-title">Wild Roles</h2></div><p class="small">Complete your Wild goal and help the Wallfacer team win. A completed goal stays complete. Wild players never see the Wallfacer's plan. The Wallbreaker privately knows one unoccupied role they can claim as a cover.</p><div class="wild-guide-grid">${cards}</div><button class="secondary" id="close-modal">Close</button></div></div>`;
 }
 function roleHtml(role,state=localView.state){
   if(!role) return '<p>No role assigned.</p>';
   const name=role.kind==='police'?'Shi Qiang'
     : role.kind==='civilian'?`${role.profession} Specialist`
-      : role.kind==='specialist'?`${mathFieldName(role.specialty)} Specialist`
-        : role.kind==='wallbreaker'?'Wallbreaker'
-          : role.kind==='wild'?role.label:'Wallfacer';
-  const wildObjective=role.kind==='wild'?`<section class="wild-role-objective"><div class="eyebrow">Wild goal · Loyal · ${escapeHtml(wildRoleTimingLabel(role.wildRole))}</div><p>${escapeHtml(role.wildObjective||'Complete your private Wild goal and help the Wallfacer finish their unknown plan.')}</p>${wildProgressHtml(role,role.wildStatus,state)}</section>`:'';
-  const icon=role.kind==='wild'?wildRoleSvg(role.wildRole):roleSvg(role.kind==='specialist'?'civilian':role.kind);
-  return `<div class="role-only"><div class="eyebrow">Your role</div>${icon}<h2 class="role-title">${escapeHtml(name)}</h2></div>${wildObjective}${knownWallfacerHtml(state)}`;
+      : role.kind==='wallbreaker'?'Wallbreaker'
+        : role.kind==='wild'?role.label:'Wallfacer';
+  const oneTimeComplete=isCompletedOneTimeWildRole(role);
+  const quietBinaryGoal=['moderate','oddball','numerologist'].includes(role.wildRole);
+  const wildObjective=role.kind==='wild'?`<section class="wild-role-objective ${oneTimeComplete?'goal-complete':''}"><div class="eyebrow">Wild goal · Loyal${oneTimeComplete?' · Goal achieved':''}</div><p>${escapeHtml(role.wildObjective||'Complete your private Wild goal and help the Wallfacer team win.')}</p>${oneTimeComplete?'<div class="wild-goal-achieved-callout">Goal achieved · Help the Wallfacer team win</div>':quietBinaryGoal?'':wildProgressHtml(role,role.wildStatus,state)}</section>`:'';
+  const wallbreakerWildIntel=role.kind==='wallbreaker'&&role.unoccupiedWildRole&&WILD_ROLE_DEFINITIONS[role.unoccupiedWildRole]
+    ? `<section class="wallbreaker-wild-intel">${wildRoleSvg(role.unoccupiedWildRole)}<div><div class="eyebrow">Wild Roles clue</div><p><strong>${escapeHtml(WILD_ROLE_DEFINITIONS[role.unoccupiedWildRole].label)}</strong> is not in this game.</p></div></section>`:'';
+  const icon=role.kind==='wild'?wildRoleSvg(role.wildRole):roleSvg(role.kind);
+  return `<div class="role-only"><div class="eyebrow">Your role</div>${icon}<h2 class="role-title">${escapeHtml(name)}</h2></div>${wildObjective}${wallbreakerWildIntel}${knownWallfacerHtml(state)}`;
 }
 function omniscientHtml(state){
   if(!localAccess().observer) return '';
-  return `<section class="panel stack omniscient"><div class="section-title">${roleSvg('omniscient')}<div><strong>Observer view</strong><div class="small">Roles and plans are visible; private arrest outcomes stay hidden.</div></div></div><div class="role-grid">${state.players.map(p=>{ const r=game.roles[p.id]; const plan=r?.plan?.values; const mathPlan=r?.plan?.fields; const wildDetail=r?.kind==='wild'?describeWildRole(r,game.players):''; const icon=r?.kind==='wild'?wildRoleSvg(r.wildRole):roleSvg(r?.kind); return `<div class="role-card">${icon}<div class="role-card-copy"><div class="player-name-line"><strong>${escapeHtml(p.name)}</strong>${connectionBadgeHtml(p)}</div><div class="small">${escapeHtml(r?.label||'Unassigned')}${r?.targetId?` · targets ${escapeHtml(game.players.find(x=>x.id===r.targetId)?.name||'Unknown')}`:''}${r?.specialty?` · ${escapeHtml(mathFieldName(r.specialty))}`:''}</div>${wildDetail?`<div class="small">${escapeHtml(wildDetail)}</div>`:''}${plan?`<div class="small">${Object.entries(plan).map(([c,v])=>`${c} ${v}`).join(' · ')}</div>`:''}${mathPlan?`<div class="small">${mathPlan.map(mathFieldName).map(escapeHtml).join(' · ')} · threshold ${r.plan.threshold}</div>`:''}${!p.connected&&!p.ready&&state.phase==='playing'?`<button class="skip-player" data-skip-player="${escapeHtml(p.id)}">Resolve as no move</button>`:''}</div></div>`; }).join('')}</div></section>`;
+  return `<section class="panel stack omniscient"><div class="section-title">${roleSvg('omniscient')}<div><strong>Observer view</strong><div class="small">Roles and plans are visible; private arrest outcomes stay hidden.</div></div></div><div class="role-grid">${state.players.map(p=>{ const r=game.roles[p.id]; const plan=r?.plan?.values; const wildDetail=r?.kind==='wild'?describeWildRole(r,game.players):''; const icon=r?.kind==='wild'?wildRoleSvg(r.wildRole):roleSvg(r?.kind); return `<div class="role-card">${icon}<div class="role-card-copy"><div class="player-name-line"><strong>${escapeHtml(p.name)}</strong>${connectionBadgeHtml(p)}</div><div class="small">${escapeHtml(r?.label||'Unassigned')}${r?.targetId?` · targets ${escapeHtml(game.players.find(x=>x.id===r.targetId)?.name||'Unknown')}`:''}</div>${wildDetail?`<div class="small">${escapeHtml(wildDetail)}</div>`:''}${plan?`<div class="small">${Object.entries(plan).map(([c,v])=>`${c} ${v}`).join(' · ')}</div>`:''}${!p.connected&&!p.ready&&state.phase==='playing'?`<button class="skip-player" data-skip-player="${escapeHtml(p.id)}">Resolve as no move</button>`:''}</div></div>`; }).join('')}</div></section>`;
 }
 function hostOperationsHtml(state){
   if(!isHost||localAccess().observer||state.phase!=='playing') return '';
@@ -821,10 +738,6 @@ function currentRoleFor(playerId){
 }
 function isLegalSelection(playerId,selection){
   const role=currentRoleFor(playerId);
-  if(game.mode==='mathbreaker'||localView.state?.mode==='mathbreaker'){
-    if(role?.kind==='wallbreaker') return isLegalMathbreakerDecay(selection,mathbreakerDecayBudget(game.players?.length||localView.state?.playerCount||0));
-    return isLegalMathbreakerAdvancement(role,selection);
-  }
   const players=isHost?game.players:(localView.state?.players||[]);
   return selectionIsLegal(role,selection,players,playerId);
 }
@@ -840,29 +753,17 @@ function dialCardHtml(c,state,role){
   const visiblePlan=role?.kind==='wallfacer'?role.plan?.values:null;
   const planValue=visiblePlan?.[c];
   const planTarget=planValue!==undefined?`<span class="plan-target-marker"><i></i>Target ${planValue}</span>`:'';
-  const extremistTarget=role?.kind==='wild'&&role.wildRole==='extremist'&&role.wildData?.color===c;
+  const oneTimeComplete=isCompletedOneTimeWildRole(role);
+  const extremistTarget=!oneTimeComplete&&role?.kind==='wild'&&role.wildRole==='extremist'&&role.wildData?.color===c;
   const extremistDirection=extremistTarget?(Number(role.wildData?.targetValue)===0?'down':'up'):'';
   const extremistIndicator=extremistTarget?`<span class="extremist-edge-indicator ${extremistDirection}" aria-hidden="true"></span>`:'';
-  const moderateTarget=role?.kind==='wild'&&role.wildRole==='moderate'&&role.wildData?.colors?.includes(c);
-  const dialLabel=`${c}, value ${state.dials[c]}${planValue!==undefined?`, Loyal target ${planValue}`:''}${extremistTarget?`, Extremist target ${role.wildData.targetValue}`:''}${moderateTarget?', Moderate dial':''}`;
-  return `<div class="dial ${c} dial-card standard-dial-card ${selected?'selected':''} ${lockEffect?'locked-preview':''} ${planValue!==undefined?'plan-target':''} ${extremistTarget?`extremist-target extremist-${extremistDirection}`:''} ${moderateTarget?'moderate-target':''} ${dialRevealClass(state,c)}" ${dialRevealStyle(state,c)}><div class="dial-face"><div class="dial-select" aria-label="${dialLabel}"><span class="name">${c}</span>${dialValueHtml(c,state)}</div>${planTarget}</div><div class="dial-actions action-count-${orderedEffects.length}">${orderedEffects.map(button).join('')}</div>${arrows}${extremistIndicator}</div>`;
+  const wrapperWrapped=!oneTimeComplete&&role?.kind==='wild'&&role.wildRole==='wrapper'&&(role.wildStatus?.details?.qualifyingDials||[]).some(item=>item.color===c);
+  const wrapperIndicator=wrapperWrapped?`<span class="wrapper-dial-indicator" aria-hidden="true">${wildRoleSvg('wrapper')}</span>`:'';
+  const dialLabel=`${c}, value ${state.dials[c]}${planValue!==undefined?`, Loyal target ${planValue}`:''}${extremistTarget?`, Extremist target ${role.wildData.targetValue}`:''}${wrapperWrapped?', already wrapped for Wrapper goal':''}`;
+  return `<div class="dial ${c} dial-card standard-dial-card ${selected?'selected':''} ${lockEffect?'locked-preview':''} ${planValue!==undefined?'plan-target':''} ${extremistTarget?`extremist-target extremist-${extremistDirection}`:''} ${wrapperWrapped?'wrapper-goal-dial':''} ${dialRevealClass(state,c)}" ${dialRevealStyle(state,c)}><div class="dial-face"><div class="dial-select" aria-label="${dialLabel}"><span class="name">${c}</span>${dialValueHtml(c,state)}</div>${planTarget}</div><div class="dial-actions action-count-${orderedEffects.length}">${orderedEffects.map(button).join('')}</div>${arrows}${extremistIndicator}${wrapperIndicator}</div>`;
 }
 function observerDialCardHtml(c,state){
   return `<div class="dial ${c} dial-card standard-dial-card observer-dial ${dialRevealClass(state,c)}" ${dialRevealStyle(state,c)}><div class="dial-face"><div class="dial-select"><span class="name">${c}</span>${dialValueHtml(c,state)}</div></div></div>`;
-}
-function mathFieldName(color){ return MATHBREAKER_FIELDS[color]||color; }
-function mathbreakerDialCardHtml(color,state,role){
-  const locked=state.players.find(player=>player.id===myPlayerId)?.ready;
-  const selection=locked&&state.lockedSelection?state.lockedSelection:pendingSelection;
-  const selected=selection.color===color;
-  const effect=mathbreakerEffectFor(role,color);
-  const interactive=!locked&&state.phase==='playing'&&effect;
-  const arrows=locked&&selected?`<span class="lock-arrows up" style="--lock-speed:${effect===2?'.55s':'1.1s'}" aria-hidden="true">↑</span>`:'';
-  const planField=role?.kind==='wallfacer'&&role.plan?.fields?.includes(color);
-  return `<div class="dial ${color} dial-card math-dial-card ${selected?'selected':''} ${locked&&selected?'locked-preview':''} ${planField?'plan-target':''} ${dialRevealClass(state,color)}" ${dialRevealStyle(state,color)}><div class="adjust-row">${interactive?`<button class="dial-action math-advance" data-math-advance="${color}" aria-label="Advance ${escapeHtml(mathFieldName(color))} by ${effect}">+${effect}</button>`:''}</div><button class="dial-action dial-select" ${interactive?`data-math-advance="${color}"`:'disabled'} aria-label="${escapeHtml(mathFieldName(color))}, value ${state.dials[color]}"><span class="name">${escapeHtml(mathFieldName(color))}</span>${dialValueHtml(color,state)}</button><div></div>${planField?`<span class="plan-target-marker"><i></i>Goal ≥ ${role.plan.threshold}</span>`:''}${arrows}</div>`;
-}
-function mathbreakerObserverDialCardHtml(color,state){
-  return `<div class="dial ${color} dial-card math-dial-card observer-dial ${dialRevealClass(state,color)}" ${dialRevealStyle(state,color)}><div></div><div class="dial-select"><span class="name">${escapeHtml(mathFieldName(color))}</span>${dialValueHtml(color,state)}</div><div></div></div>`;
 }
 function revealTotal(revealed,color){
   const value=revealed?.[color];
@@ -881,9 +782,10 @@ function dialRevealStyle(state,color){
 function dialValueHtml(c,state){
   const total=revealTotal(state.revealed,c);
   const final=state.dials[c];
-  const prior=clampDial(final-total);
+  const prior=Number.isFinite(Number(state.revealedBefore?.[c]))?Number(state.revealedBefore[c]):clampDial(final-total);
   const direction=total>0?'dial-up':total<0?'dial-down':'dial-flat';
-  return `<div class="value-window ${direction}"><span class="dial-delta dial-delta-up ${total>0?'active':''}">+1</span><div class="value-reel"><span class="reveal-adjacent">${total>0?final:prior}</span><span class="value">${prior}</span><span class="reveal-adjacent">${total<0?final:prior}</span></div><span class="dial-delta dial-delta-down ${total<0?'active':''}">-1</span></div>`;
+  const wrapped=state.wrappedColors?.includes(c)?'<span class="dial-wrapped-badge">Wrapped</span>':'';
+  return `<div class="value-window ${direction}"><span class="dial-delta dial-delta-up ${total>0?'active':''}">+1</span><div class="value-reel"><span class="reveal-adjacent">${total>0?final:prior}</span><span class="value">${prior}</span><span class="reveal-adjacent">${total<0?final:prior}</span></div><span class="dial-delta dial-delta-down ${total<0?'active':''}">-1</span></div>${wrapped}`;
 }
 function movePanelHtml(state,role,current){
   const selection=current&&state.lockedSelection?state.lockedSelection:pendingSelection;
@@ -896,42 +798,22 @@ function movePanelHtml(state,role,current){
   const guess=role?.kind==='wallbreaker'?'<button class="danger" id="break-now">Guess combination</button>':'';
   return `<section class="panel stack move-panel"><div class="move-summary"><strong>Your move</strong><span>${current?lockedLabel:summary}</span></div>${spy}${arrest}<button id="submit" ${state.paused||current||!hasChoice?'disabled':''}>${current?lockedLabel:'Lock selection'}</button>${guess}<div class="small">${state.players.filter(p=>p.ready).length}/${state.players.length} locked</div></section>`;
 }
-function mathbreakerMovePanelHtml(state,role,current){
-  if(role?.kind==='wallbreaker'){
-    const budget=state.goodPlayerCount;
-    const selection=current&&state.lockedSelection?state.lockedSelection:pendingSelection;
-    const decays=selection.decays||[];
-    const counts=Object.fromEntries(COLORS.map(color=>[color,decays.filter(item=>item===color).length]));
-    const total=decays.length;
-    const assignments=COLORS.map(color=>`<div class="decay-assignment"><span>${escapeHtml(mathFieldName(color))}</span><div><button class="secondary decay-remove" data-decay-remove="${color}" ${current||counts[color]===0?'disabled':''} aria-label="Remove decay from ${escapeHtml(mathFieldName(color))}">−</button><strong>${counts[color]}</strong><button class="secondary decay-add" data-decay-add="${color}" ${current||total>=budget?'disabled':''} aria-label="Add decay to ${escapeHtml(mathFieldName(color))}">+</button></div></div>`).join('');
-    const guessed=role.lastGuessRound===state.round;
-    const guessResult=guessed&&!role.mathGuessResult?.correct?'<div class="math-guess-result">That combination is not the plan. It cannot be guessed again.</div>':'';
-    return `<section class="panel stack move-panel mathbreaker-move"><div class="move-summary"><strong>Assign decay</strong><span>${current?'Locked':`${total}/${budget} assigned`}</span></div><p class="small">Choose all ${budget} decay effects now. They lock simultaneously with every advancement and may stack on one field.</p><div class="decay-grid">${assignments}</div><button id="submit" ${current||total!==budget||state.phase!=='playing'?'disabled':''}>${current?'Decay locked':'Lock decay'}</button><button class="secondary" id="math-guess-now" ${guessed||state.phase!=='playing'?'disabled':''}>${guessed?'Guess used this turn':'Privately guess the plan'}</button>${guessResult}<div class="small">${state.players.filter(player=>player.ready).length}/${state.players.length} locked</div></section>`;
-  }
-  const selection=current&&state.lockedSelection?state.lockedSelection:pendingSelection;
-  const effect=selection.color?mathbreakerEffectFor(role,selection.color):null;
-  const chosen=selection.color?`${mathFieldName(selection.color)} +${effect}`:'Choose a field to advance';
-  return `<section class="panel stack move-panel mathbreaker-move"><div class="move-summary"><strong>Your advancement</strong><span>${current?`Locked · ${chosen}`:chosen}</span></div><button id="submit" ${current||!pendingSelection.color||state.phase!=='playing'?'disabled':''}>${current?'Advancement locked':'Lock advancement'}</button><div class="small">${state.players.filter(player=>player.ready).length}/${state.players.length} locked</div></section>`;
-}
 function home(){ const inviteCode=new URLSearchParams(location.search).get('room')?.match(/^\d{6}$/)?.[0]||''; return `<div class="shell"><div class="topbar"><div class="brand">${BRAND.name}</div><a class="secondary-link" href="/rules">How to play →</a></div><section class="panel stack"><h2>Join game</h2><input id="name" placeholder="Name" value="${escapeHtml(myName)}"><input id="code" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" maxlength="6" placeholder="6-digit room code" value="${inviteCode}"><button id="join">Join room</button></section>${localView.error?`<p class="notice">${escapeHtml(localView.error)}</p>`:''}</div>`; }
 function hostPage(){
   const mode=hostModeForPath()||'standard';
-  const title=mode==='mathbreaker'?'Host Mathbreaker':mode==='tutorial'?'Host the tutorial':'Host Wallbreaker';
-  const description=mode==='mathbreaker'?'Create an experimental Mathbreaker room for at least three players.':mode==='tutorial'?'Create a guided Wallbreaker teaching room.':'Create a room for the Wallfacer, the Wallbreaker, Shi Qiang, and any additional Specialists.';
-  const rulesHref=mode==='mathbreaker'?'/mathbreaker/rules':'/rules';
-  const navigation=mode==='standard'?`<div class="host-mode-links"><a href="/tutorial/host">Host the guided tutorial</a><a href="/preview">Open the UI preview lab</a><details><summary>Experimental modes</summary><a href="/mathbreaker/host">Host Mathbreaker</a></details></div>`:`<a class="secondary-link" href="/host">← Back to Wallbreaker hosting</a>`;
-  return `<div class="shell"><div class="topbar"><div class="brand">${BRAND.name}</div><a class="secondary-link" href="${rulesHref}">How to play →</a></div><section class="panel stack"><span class="mode-kicker">${mode==='mathbreaker'?'EXPERIMENTAL':mode==='tutorial'?'GUIDED':'MAIN GAME'}</span><h2>${title}</h2><p class="small">${description}</p><button id="create">Create room</button>${navigation}</section>${localView.error?`<p class="notice">${escapeHtml(localView.error)}</p>`:''}</div>`;
+  const title=mode==='tutorial'?'Host the tutorial':'Host Wallbreaker';
+  const description=mode==='tutorial'?'Create a guided Wallbreaker teaching room.':'Create a room for the Wallfacer, the Wallbreaker, Shi Qiang, and any additional Specialists.';
+  const navigation=mode==='standard'?`<div class="host-mode-links"><a href="/tutorial/host">Host the guided tutorial</a><a href="/preview">Open the UI preview lab</a></div>`:`<a class="secondary-link" href="/host">← Back to Wallbreaker hosting</a>`;
+  return `<div class="shell"><div class="topbar"><div class="brand">${BRAND.name}</div><a class="secondary-link" href="/rules">How to play →</a></div><section class="panel stack"><span class="mode-kicker">${mode==='tutorial'?'GUIDED':'MAIN GAME'}</span><h2>${title}</h2><p class="small">${description}</p><button id="create">Create room</button>${navigation}</section>${localView.error?`<p class="notice">${escapeHtml(localView.error)}</p>`:''}</div>`;
 }
 function connectionBadgeHtml(player){
   return `<span class="connection-badge ${player.connected?'connected':'disconnected'}"><span aria-hidden="true"></span>${player.connected?'Connected':'Disconnected'}</span>`;
 }
 function lobby(state){
   const wildPackActive=state.mode==='standard'&&state.wildRolesEnabled===true;
-  const composition=wildRoleComposition(state.players.length,wildPackActive);
-  const mathComposition=mathbreakerRoleComposition(state.players.length);
-  const shownComposition=state.mode==='mathbreaker'?mathComposition:composition;
+  const shownComposition=wildRoleComposition(state.players.length,wildPackActive);
   const civilianLabel='Specialist';
-  const civilianCount=state.mode==='mathbreaker'?shownComposition.specialists:shownComposition.civilians;
+  const civilianCount=shownComposition.civilians;
   const wildComposition=wildPackActive?`<div><strong>${shownComposition.wilds}</strong><span>Wild Role${shownComposition.wilds===1?'':'s'}</span></div>`:'';
   const compositionHtml=`<div class="composition" aria-label="Planned role composition"><div><strong>${shownComposition.wallfacers}</strong><span>Wallfacer${shownComposition.wallfacers===1?'':'s'}</span></div><div><strong>${shownComposition.wallbreakers}</strong><span>Wallbreaker${shownComposition.wallbreakers===1?'':'s'}</span></div><div><strong>${shownComposition.police}</strong><span>Police</span></div><div><strong>${civilianCount}</strong><span>${civilianLabel}${civilianCount===1?'':'s'}</span></div>${wildComposition}</div>`;
   const countdown=state.phase==='countdown'?`<div class="countdown" role="status" aria-live="polite">Starting in <strong>${state.countdown}</strong>…</div>`:'';
@@ -940,22 +822,23 @@ function lobby(state){
   const pendingHostSeat=state.adminPlaying===true&&!state.players.some(player=>player.id===myPlayerId);
   const potentialPlayerCount=state.players.length+(pendingHostSeat?1:0);
   const canStart=potentialPlayerCount>=3&&(!wildPackActive||(potentialPlayerCount>=4&&potentialPlayerCount<=MAX_WILD_PLAYERS))&&state.phase==='lobby';
-  const modeName=selectedMode==='tutorial'?'Wallbreaker tutorial':selectedMode==='mathbreaker'?'Mathbreaker':'Wallbreaker';
+  const modeName=selectedMode==='tutorial'?'Wallbreaker tutorial':'Wallbreaker';
   const roundChoices=`<div class="discrete-setting"><strong>Round limit</strong><div class="choice-pills" aria-label="Round limit">${[6,8,10,12].map(rounds=>`<button class="secondary round-choice ${state.maxRounds===rounds?'selected':''}" data-round-limit="${rounds}" aria-pressed="${state.maxRounds===rounds}">${rounds}</button>`).join('')}</div></div>`;
   const hostPlaying=state.adminPlaying===true;
   const participationSetting=`<div class="participation-setting"><div class="role-toggle" role="group" aria-label="Your role in this game"><button class="secondary ${hostPlaying?'selected':''}" type="button" data-host-role="player" aria-pressed="${hostPlaying}" ${state.phase!=='lobby'?'disabled':''}>I want to play as a normal player</button><button class="secondary ${hostPlaying?'':'selected'}" type="button" data-host-role="observer" aria-pressed="${!hostPlaying}" ${state.phase!=='lobby'?'disabled':''}>I want to play as observer</button></div>${hostPlaying?`<input id="host-player-name" autocomplete="name" aria-label="Your player name" placeholder="Your name" value="${escapeHtml(myName)}" ${state.phase!=='lobby'?'disabled':''} required>`:''}</div>`;
   const wildSetting=selectedMode==='standard'?`<label class="toggle-setting"><input id="wild-roles" type="checkbox" ${wildPackActive?'checked':''} ${state.phase!=='lobby'?'disabled':''}><strong>Wild Roles</strong></label>`:'';
-  const standardRoleCopy=wildPackActive?`The three core roles stay fixed; every Specialist seat becomes a different Loyal Wild Role. Maximum ${MAX_WILD_PLAYERS} players.`:'One Wallfacer, one Wallbreaker, one Shi Qiang, and a Specialist in every remaining seat.';
-  const standardSettings=selectedMode==='mathbreaker'?`<div class="setting-heading"><div><strong>Fixed Mathbreaker roles</strong><div class="small">One Wallfacer, one Wallbreaker, no Police, and no round limit.</div></div></div>${compositionHtml}`:`<div class="setting-heading"><div><strong>Fixed standard roles</strong><div class="small">${standardRoleCopy}</div></div></div>${compositionHtml}${roundChoices}`;
+  const standardRoleCopy=wildPackActive?`The three core roles stay fixed; every Specialist seat becomes a different Loyal Wild Role. Maximum ${MAX_WILD_PLAYERS} players, leaving one role unoccupied for the Wallbreaker to bluff.`:'One Wallfacer, one Wallbreaker, one Shi Qiang, and a Specialist in every remaining seat.';
+  const standardSettings=`<div class="setting-heading"><div><strong>Fixed standard roles</strong><div class="small">${standardRoleCopy}</div></div></div>${compositionHtml}${roundChoices}`;
   const startControl=state.phase==='countdown'?'<button disabled>Starting…</button>':`<button class="start-selected-mode" id="start-game" ${canStart?'':'disabled'}>Start ${modeName}</button>`;
   const settings=isHost?`<div class="selected-mode-readout"><span class="mode-kicker">HOSTING</span><strong>${modeName}</strong></div><div class="lobby-settings">${standardSettings}${wildSetting}${participationSetting}</div><button class="secondary" id="copy-invite">Copy invite link</button>${startControl}<button class="secondary" id="leave">End game</button>`:`<div class="selected-mode-readout"><span class="mode-kicker">SELECTED MODE</span><strong>${modeName}</strong></div>${compositionHtml}<button class="secondary" id="leave">Leave game</button>`;
   return `<div class="shell"><div class="topbar"><div><div class="brand">${BRAND.name}</div><div class="meta">Room · ${state.playerCount} players</div></div><div class="code">${state.code}</div></div><section class="panel stack">${countdown}<div class="players">${playerRows}</div>${settings}</section>${chatHtml()}${localView.error?`<p class="notice">${escapeHtml(localView.error)}</p>`:''}</div>`;
 }
 function postgameRoleDetail(role,names){
-  if(role.kind==='wallfacer'&&role.plan?.fields) return `Plan · ${role.plan.fields.map(mathFieldName).join(' · ')} · threshold ${role.plan.threshold}`;
   if(role.kind==='wallfacer') return `Plan · ${Object.entries(role.plan?.values||{}).map(([color,value])=>`${color} ${value}`).join(' · ')}`;
-  if(role.kind==='wallbreaker') return `Targeted ${names.get(role.targetId)||'Unknown'}`;
-  if(role.kind==='specialist') return `Specialist · ${mathFieldName(role.specialty)}`;
+  if(role.kind==='wallbreaker'){
+    const absentRole=WILD_ROLE_DEFINITIONS[role.unoccupiedWildRole]?.label;
+    return `Targeted ${names.get(role.targetId)||'Unknown'}${absentRole?` · knew ${absentRole} was unoccupied`:''}`;
+  }
   if(role.kind==='civilian') return `Specialist · ${role.profession||'Unknown specialty'}`;
   if(role.kind==='police') return 'Police';
   if(role.kind==='wild') return describeWildRole(role,[...names].map(([id,name])=>({id,name})));
@@ -966,7 +849,6 @@ function postgameActionText(action,names){
   if(action.type==='arrest') return `arrested ${names.get(action.targetId)||'a player'}`;
   if(action.type==='private') return 'kept their action private';
   if(action.type==='skipped') return 'was resolved as no move while disconnected';
-  if(action.type==='advance') return `advanced ${mathFieldName(action.color)} ${signed(Number(action.effect||0))}`;
   return `${action.color||'unknown'} ${signed(Number(action.effect||0))}`;
 }
 function postgameActionsHtml(state){
@@ -986,36 +868,39 @@ function postgameHtml(state){
   if(!state.recap?.active) return `${outcome}${postgameActionsHtml(state)}`;
   const postgame=state.postgame||{roles:[],history:[],finalGuess:null,recap:{roundIndex:0,totalRounds:0,complete:true}};
   const names=new Map(postgame.roles.map(role=>[role.playerId,role.name]));
-  const wallbreaker=postgame.roles.find(role=>role.kind==='wallbreaker');
   const roleCards=postgame.roles.map(role=>`<article class="reveal-role-card">${role.kind==='wild'?wildRoleSvg(role.wildRole):roleSvg(role.kind)}<div><strong>${escapeHtml(role.name)}</strong><div class="reveal-role-name">${escapeHtml(role.label||role.kind||'Unknown')}</div><div class="small">${escapeHtml(postgameRoleDetail(role,names))}</div></div></article>`).join('');
   const rounds=postgame.history.map(entry=>{
-    const dials=COLORS.map(color=>{ const before=Number(entry.before?.[color]||0); const after=Number(entry.after?.[color]||0); return `<div class="history-dial ${color}"><span>${escapeHtml(state.mode==='mathbreaker'?mathFieldName(color):color)}</span><strong>${before} → ${after}</strong><small>${signed(after-before)}</small></div>`; }).join('');
+    const dials=COLORS.map(color=>{ const before=Number(entry.before?.[color]||0); const after=Number(entry.after?.[color]||0); const wrapped=(entry.wraps||[]).some(item=>item.color===color); const change=wrapped?`${signed(Number(entry.net?.[color]||0))} · wrapped`:signed(after-before); return `<div class="history-dial ${color}"><span>${escapeHtml(color)}</span><strong>${before} → ${after}</strong><small>${escapeHtml(change)}</small></div>`; }).join('');
     const actions=entry.actions.map(item=>`<div class="history-action ${item.arrested?'cancelled':''}"><div><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.kind||'')}</span></div><div>${escapeHtml(postgameActionText(item.action,names))}${item.arrested?' · cancelled by arrest':''}</div></div>`).join('');
-    const decayAction=state.mode==='mathbreaker'&&entry.decays?.length?`<div class="history-action"><div><strong>${escapeHtml(wallbreaker?.name||'Wallbreaker')}</strong><span>decay</span></div><div>${COLORS.filter(color=>entry.decays.includes(color)).map(color=>`${mathFieldName(color)} ${signed(-entry.decays.filter(item=>item===color).length)}`).join(' · ')}</div></div>`:'';
-    return `<article class="history-round recap-round"><div class="recap-round-heading"><span>Round ${entry.round}</span><span>${entry.actions.length+(decayAction?1:0)} actions</span></div><div class="history-dials">${dials}</div><div class="history-actions">${actions}${decayAction}</div></article>`;
+    return `<article class="history-round recap-round"><div class="recap-round-heading"><span>Round ${entry.round}</span><span>${entry.actions.length} actions</span></div><div class="history-dials">${dials}</div><div class="history-actions">${actions}</div></article>`;
   }).join('');
   const finalGuess=postgame.finalGuess;
-  const guessDescription=finalGuess?.colors?finalGuess.colors.join(' · '):finalGuess?.fields?finalGuess.fields.map(mathFieldName).join(' · '):'';
+  const guessDescription=finalGuess?.colors?.join(' · ')||'';
   const guessHtml=finalGuess?`<section class="panel stack final-guess"><strong>Final wall break</strong><div>${escapeHtml(names.get(finalGuess.playerId)||'A Wallbreaker')} guessed ${escapeHtml(guessDescription)}.</div><div class="${finalGuess.correct?'guess-correct':'guess-wrong'}">${finalGuess.correct?'The plan was identified.':'The guess was incorrect.'}</div></section>`:'';
   const wildResults=postgame.wildResults||[];
-  const wildResultsHtml=wildResults.length?`<section class="postgame-section"><div class="postgame-heading"><div><div class="eyebrow">Loyal specialists</div><h2>Wild Role results</h2></div><div class="small">Happens-once goals stay complete. At-finish goals are checked when the game ends.</div></div><div class="wild-result-grid">${wildResults.map(result=>`<article class="panel wild-result ${result.won?'met':'missed'}">${wildRoleSvg(result.roleId)}<div><strong>${escapeHtml(result.name)} · ${escapeHtml(result.label)}</strong><div class="reveal-role-name">${result.won?'Goal satisfied · Wallfacer plan complete':result.met?'Goal satisfied · Wallfacer plan incomplete':result.reachedOnce?'Goal reached earlier · not satisfied at finish':'Goal not completed'}</div><p class="small">${escapeHtml(result.objective)}</p><div class="small">${escapeHtml(result.evidence)}</div></div></article>`).join('')}</div></section>`:'';
+  const wildResultsHtml=wildResults.length?`<section class="postgame-section"><div class="postgame-heading"><div><div class="eyebrow">Loyal specialists</div><h2>Wild Role results</h2></div><div class="small">A Wild player wins if their goal is satisfied and the Wallfacer team wins.</div></div><div class="wild-result-grid">${wildResults.map(result=>`<article class="panel wild-result ${result.won?'met':'missed'}">${wildRoleSvg(result.roleId)}<div><strong>${escapeHtml(result.name)} · ${escapeHtml(result.label)}</strong><div class="reveal-role-name">${result.won?'Goal satisfied · Wallfacer team won':result.met?'Goal satisfied · Wallfacer team lost':'Goal not completed'}</div><p class="small">${escapeHtml(result.objective)}</p><div class="small">${escapeHtml(result.evidence)}</div></div></article>`).join('')}</div></section>`:'';
   const roundLabel=postgame.recap.totalRounds?`Round ${postgame.recap.roundIndex+1} of ${postgame.recap.totalRounds}`:'No completed rounds';
   return `${outcome}${postgameActionsHtml(state)}<section class="postgame-section"><div class="postgame-heading"><div><div class="eyebrow">The truth</div><h2>Role reveal</h2></div><div class="small">Every identity and special assignment is now public.</div></div><div class="reveal-role-grid">${roleCards}</div></section>${wildResultsHtml}<section class="postgame-section"><div class="postgame-heading"><div><div class="eyebrow">Recap</div><h2>${roundLabel}</h2></div><div class="small">The host advances each round for the room.</div></div><div class="history-list">${rounds||'<div class="panel small">No round was completed before the final guess.</div>'}</div></section>${guessHtml}`;
 }
+function victoryRevealHtml(state){
+  if(state.phase!=='victory-reveal') return '';
+  if(state.victoryReveal?.stage!=='light') return '<div class="sr-only" role="status" aria-live="assertive">The final dials are resolving.</div>';
+  return `<div class="victory-light" role="status" aria-live="assertive"><div><span>Goal achieved</span><strong>${escapeHtml(state.reason)}</strong></div></div>`;
+}
 function gameScreen(state,role){
-  if(state.mode==='mathbreaker') return mathbreakerGameScreen(state,role);
   const access=localAccess();
   const mine=state.players.find(p=>p.id===myPlayerId);
   const current=mine?.ready;
   const sophonHeader=role?.kind==='wallbreaker'?`<div class="sophon-inventory" aria-label="Choose one Sophon action each round"><span class="sophon-count">SOPHON · CHOOSE 1</span></div>`:'';
   const tutorialAids=state.mode==='tutorial'&&tutorialUI?tutorialUI.tutorialAidHtml({state,role,myPlayerId,isHost}):'';
-  if(state.winner) return `<div class="shell postgame-shell"><div class="topbar"><div><div class="brand">${BRAND.name}</div><div class="meta">Room ${state.code}</div></div>${isHost?'':`<button class="secondary" id="leave">Leave game</button>`}</div>${postgameHtml(state)}${outcomeModalsHtml(state,role)}${chatHtml()}</div>`;
-  return `<div class="shell ${state.mode==='tutorial'?'tutorial-game-shell':''}"><div class="topbar"><div><div class="brand">ROUND ${state.round}/${state.maxRounds}</div><div class="meta">Room ${state.code}${state.mode==='tutorial'?' · Guided practice':''}</div></div><div class="row">${sophonHeader}${state.wildRolesEnabled?'<button class="secondary" id="show-wild-guide">Wild roles</button>':''}${access.player?'<button class="secondary" id="show-role">Show role</button>':''}<button class="secondary" id="leave">${isHost?'End game':'Leave game'}</button></div></div>
+  const oneTimeComplete=access.player&&isCompletedOneTimeWildRole(role);
+  if(state.phase==='ended') return `<div class="shell postgame-shell"><div class="topbar"><div><div class="brand">${BRAND.name}</div><div class="meta">Room ${state.code}</div></div>${isHost?'':`<button class="secondary" id="leave">Leave game</button>`}</div>${postgameHtml(state)}${outcomeModalsHtml(state,role)}${chatHtml()}</div>`;
+  return `<div class="shell ${state.mode==='tutorial'?'tutorial-game-shell':''} ${oneTimeComplete?'wild-goal-complete-shell':''} ${state.phase==='victory-reveal'?`goal-victory-stage-${state.victoryReveal?.stage||'dials'}`:''}"><div class="topbar"><div><div class="brand">ROUND ${state.round}/${state.maxRounds}</div><div class="meta">Room ${state.code}${state.mode==='tutorial'?' · Guided practice':''}</div></div><div class="row">${sophonHeader}${state.wildRolesEnabled?'<button class="secondary" id="show-wild-guide">Wild roles</button>':''}${access.player&&state.phase==='playing'?'<button class="secondary" id="show-role">Show role</button>':''}<button class="secondary" id="leave">${isHost?'End game':'Leave game'}</button></div></div>
   <div class="sr-only" role="status" aria-live="polite">${current?'Your move is locked.':`${state.players.filter(player=>player.ready).length} of ${state.players.length} players locked.`}</div>
   ${localView.error?`<div class="notice connection-notice">${escapeHtml(localView.error)}</div>`:''}
   ${state.paused?`<div class="notice">Game paused: ${escapeHtml(state.breakerName)} is attempting to break the wall.</div>`:''}
   ${knownWallfacerHtml(state)}
-  ${access.player?movePanelHtml(state,role,current):''}
+  ${access.player&&state.phase==='playing'?movePanelHtml(state,role,current):''}
   ${wildMissionPanelHtml(role,state)}
   <div class="dial-board">${DIAL_GROUPS.map(group=>`<section class="dial-group"><div class="group-label">${group.name}</div><div class="dials">${group.colors.map(c=>access.observer?observerDialCardHtml(c,state):dialCardHtml(c,state,role)).join('')}</div></section>`).join('')}</div>
   ${tutorialAids}
@@ -1026,30 +911,11 @@ function gameScreen(state,role){
   ${wildRoleGuideModal()}
   ${localView.modal==='break'?breakModal():''}
   ${outcomeModalsHtml(state,role)}
+  ${victoryRevealHtml(state)}
   ${chatHtml()}
   </div>`;
 }
 function breakModal(){ return `<div class="modal"><div class="modal-card stack"><h2 class="role-title">Guess the plan</h2><p class="small">Choose the three dial colors in the Wallfacer's plan. You do not guess their values. A correct guess wins; an incorrect guess gives the Loyal team the win.</p><div class="math-guess-grid standard-guess-grid">${COLORS.map(color=>`<label class="${color}"><input class="break-dial" type="checkbox" value="${color}"><span>${color}</span></label>`).join('')}</div><button class="danger" id="send-break">Submit final guess</button><button class="secondary" id="close-modal">Cancel</button></div></div>`; }
-function mathbreakerGuessModal(role){
-  const used=new Set(role?.mathGuessKeys||[]);
-  return `<div class="modal"><div class="modal-card stack"><div class="eyebrow">Private guess · Round ${localView.state?.round}</div><h2 class="role-title">Which three fields matter?</h2><p class="small">This guess is private. You may guess once this turn, and an incorrect combination cannot be repeated.</p><div class="math-guess-grid">${COLORS.map(color=>`<label><input class="math-guess-field" type="checkbox" value="${color}"><span>${escapeHtml(mathFieldName(color))}</span></label>`).join('')}</div><div class="small">${used.size} of 20 combinations tested.</div><button class="danger" id="send-math-guess">Submit private guess</button><button class="secondary" id="close-modal">Cancel</button></div></div>`;
-}
-function mathbreakerDeclarationHtml(role){
-  const pending=role?.mathBreakPending;
-  if(!pending) return '';
-  if(pending.kind==='wallbreaker') return `<div class="modal math-break-reveal"><div class="modal-card stack"><div class="eyebrow">The wall is broken</div><h2 class="role-title">Stand up and reveal yourself.</h2><p>Read this aloud before pressing the button:</p><blockquote>“${escapeHtml(pending.targetName)}, I am your Wallbreaker.”</blockquote><p>Then reveal the plan:</p><div class="card-list">${pending.fields.map(field=>`<div class="card-line">${escapeHtml(mathFieldName(field))}</div>`).join('')}</div><button class="danger" id="confirm-math-declaration">I read the line and revealed the plan</button></div></div>`;
-  return `<div class="modal math-break-reveal"><div class="modal-card stack"><div class="eyebrow">Your wall has been broken</div><h2 class="role-title">The Wallbreaker identified your plan.</h2><p>Wait for them to stand, address you, and reveal the three fields aloud.</p></div></div>`;
-}
-function mathbreakerGameScreen(state,role){
-  const access=localAccess();
-  const current=state.players.find(player=>player.id===myPlayerId)?.ready;
-  if(state.winner) return `<div class="shell postgame-shell mathbreaker-shell"><div class="topbar"><div><div class="brand">mathbreaker</div><div class="meta">Room ${state.code}</div></div>${isHost?'':`<button class="secondary" id="leave">Leave game</button>`}</div>${postgameHtml(state)}${outcomeModalsHtml(state,role)}${chatHtml()}</div>`;
-  const reveal=state.mathReveal;
-  const revealNotice=state.phase==='math-reveal'?`<div class="notice math-reveal-notice"><strong>${reveal?.stage==='decay'?'Decay revealed':'Advancements revealed'}</strong><span>${reveal?.stage==='decay'?'The precommitted decay now takes effect.':'The Wallbreaker’s precommitted decay follows immediately.'}</span></div>`:'';
-  const board=COLORS.map(color=>access.observer?mathbreakerObserverDialCardHtml(color,state):mathbreakerDialCardHtml(color,state,role)).join('');
-  const lastReveal=state.revealed?`<section class="panel stack"><strong>${reveal?.stage==='advancement'?'Advancement reveal':'Decay reveal'}</strong>${COLORS.map(color=>`<div class="card-line">${escapeHtml(mathFieldName(color))}: ${signed(revealTotal(state.revealed,color))}</div>`).join('')}</section>`:'';
-  return `<div class="shell mathbreaker-shell"><div class="topbar"><div><div class="brand">mathbreaker · round ${state.round}</div><div class="meta">Room ${state.code} · Reach ${state.mathThreshold}</div></div><div class="row">${access.player?'<button class="secondary" id="show-role">Show role</button>':''}<button class="secondary" id="leave">${isHost?'End game':'Leave game'}</button></div></div>${localView.error?`<div class="notice connection-notice">${escapeHtml(localView.error)}</div>`:''}${knownWallfacerHtml(state)}${revealNotice}${access.player?mathbreakerMovePanelHtml(state,role,current):''}<div class="dial-board mathbreaker-board">${board}</div>${omniscientHtml(state)}${hostOperationsHtml(state)}${lastReveal}${localView.modal==='role'?`<div class="modal"><div class="modal-card">${roleHtml(role)}<hr><button class="secondary" id="close-modal">Close</button></div></div>`:''}${localView.modal==='math-guess'?mathbreakerGuessModal(role):''}${outcomeModalsHtml(state,role)}${mathbreakerDeclarationHtml(role)}${chatHtml()}</div>`;
-}
 function legalNotice(){ return '<footer class="legal">Unofficial, noncommercial fan project. Not affiliated with or endorsed by the rights holders of <em>The Three-Body Problem</em>.</footer>'; }
 function loadTutorialUI(){
   if(tutorialUI||tutorialLoadPromise) return tutorialLoadPromise;
@@ -1101,20 +967,14 @@ function bind(){
   document.querySelector('#host-player-name')?.addEventListener('keydown',event=>{ if(event.key==='Enter'){ event.preventDefault(); event.currentTarget.blur(); } });
   document.querySelector('#submit')?.addEventListener('click',submitSelection);
   document.querySelectorAll('.dial-action.adjust').forEach(el=>el.addEventListener('click',()=>{ if(localView.state?.players.find(player=>player.id===myPlayerId)?.ready) return; pendingSelection.color=el.dataset.color; pendingSelection.effect=Number(el.dataset.effect); pendingSelection.sophonMode='affect'; pendingSelection.policeMode='affect'; render(); }));
-  document.querySelectorAll('[data-math-advance]').forEach(el=>el.addEventListener('click',()=>{ if(localView.state?.players.find(player=>player.id===myPlayerId)?.ready) return; const color=el.dataset.mathAdvance; pendingSelection.color=color; pendingSelection.effect=mathbreakerEffectFor(localView.role,color); render(); }));
-  document.querySelectorAll('.decay-add').forEach(el=>el.addEventListener('click',()=>{ if(localView.state?.players.find(player=>player.id===myPlayerId)?.ready) return; if(pendingSelection.decays.length<(localView.state?.goodPlayerCount||0)){ pendingSelection.decays.push(el.dataset.decayAdd); render(); } }));
-  document.querySelectorAll('.decay-remove').forEach(el=>el.addEventListener('click',()=>{ if(localView.state?.players.find(player=>player.id===myPlayerId)?.ready) return; const index=pendingSelection.decays.lastIndexOf(el.dataset.decayRemove); if(index>=0){ pendingSelection.decays.splice(index,1); render(); } }));
   document.querySelector('#spy-choice')?.addEventListener('click',()=>{ if(localView.state?.players.find(player=>player.id===myPlayerId)?.ready) return; pendingSelection.color=null; pendingSelection.effect=null; pendingSelection.sophonMode='see'; pendingSelection.policeMode='affect'; render(); });
   document.querySelector('#arrest-choice')?.addEventListener('click',()=>{ if(localView.state?.players.find(player=>player.id===myPlayerId)?.ready) return; pendingSelection.color=null; pendingSelection.effect=null; pendingSelection.sophonMode='affect'; pendingSelection.policeMode='arrest'; localView.modal='arrest-picker'; render(); });
   document.querySelectorAll('.arrest-target').forEach(el=>el.addEventListener('click',()=>{ if(localView.state?.players.find(player=>player.id===myPlayerId)?.ready) return; pendingSelection.arrestTarget=el.dataset.arrestTarget||null; dismissModal(); }));
   document.querySelector('#show-role')?.addEventListener('click',()=>{localView.modal='role';render();});
   document.querySelector('#show-wild-guide')?.addEventListener('click',()=>{localView.modal='wild-guide';render();});
   document.querySelector('#close-modal')?.addEventListener('click',dismissModal);
-  document.querySelector('#break-now')?.addEventListener('click',()=>{ localView.modal=localView.state?.mode==='mathbreaker'?'math-guess':'break'; render(); });
-  document.querySelector('#math-guess-now')?.addEventListener('click',()=>{ localView.modal='math-guess'; render(); });
+  document.querySelector('#break-now')?.addEventListener('click',()=>{ localView.modal='break'; render(); });
   document.querySelector('#send-break')?.addEventListener('click',sendBreak);
-  document.querySelector('#send-math-guess')?.addEventListener('click',sendMathbreakerGuess);
-  document.querySelector('#confirm-math-declaration')?.addEventListener('click',confirmMathbreakerReveal);
   document.querySelector('#start-recap')?.addEventListener('click',startPostgameRecap);
   document.querySelector('#advance-recap')?.addEventListener('click',advancePostgameRecap);
   document.querySelector('#return-lobby')?.addEventListener('click',returnToLobby);

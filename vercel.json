@@ -2,7 +2,6 @@
   "builds": [
     { "src": "index.html", "use": "@vercel/static" },
     { "src": "rules.html", "use": "@vercel/static" },
-    { "src": "mathbreaker-rules.html", "use": "@vercel/static" },
     { "src": "preview.html", "use": "@vercel/static" },
     { "src": "public/app.js", "use": "@vercel/static" },
     { "src": "public/brand.js", "use": "@vercel/static" },
@@ -17,11 +16,9 @@
   ],
   "routes": [
     { "src": "/rules", "dest": "/rules.html" },
-    { "src": "/mathbreaker/rules", "dest": "/mathbreaker-rules.html" },
     { "src": "/preview", "dest": "/preview.html" },
     { "src": "/host", "dest": "/index.html" },
     { "src": "/tutorial/host", "dest": "/index.html" },
-    { "src": "/mathbreaker/host", "dest": "/index.html" },
     { "src": "/app.js", "dest": "/public/app.js" },
     { "src": "/brand.js", "dest": "/public/brand.js" },
     { "src": "/icons.js", "dest": "/public/icons.js" },

@@ -1,5 +1,5 @@
 import {eyeSvg,roleSvg,wildRoleSvg} from './icons.js';
-import {WILD_ROLE_DEFINITIONS,describeWildRoleType,wildRoleTimingLabel} from './game-rules.js';
+import {WILD_ROLE_DEFINITIONS} from './game-rules.js';
 
 const deck=document.querySelector('[data-rules-deck]');
 const slides=[...document.querySelectorAll('.rules-slide')];
@@ -143,10 +143,6 @@ function mountGameScreens(){
 }
 
 function mountWildRuleSlides(){
-  const bank=document.querySelector('#rules-wild-bank');
-  if(bank){
-    bank.innerHTML=Object.entries(WILD_ROLE_DEFINITIONS).map(([roleId,definition])=>`<article>${wildRoleSvg(roleId)}<div><span class="wild-timing-label ${definition.timing}">${wildRoleTimingLabel(roleId)}</span><strong>${definition.label}</strong><p>${describeWildRoleType(roleId)}</p></div></article>`).join('');
-  }
   const infoIcons=document.querySelector('#rules-wild-info-icons');
   if(infoIcons) infoIcons.innerHTML=Object.keys(WILD_ROLE_DEFINITIONS).map(wildRoleSvg).join('');
   document.querySelectorAll('[data-rule-wild-icon]').forEach(target=>{
@@ -283,56 +279,6 @@ function bindGuessExample(){
   sync();
 }
 
-function bindMathExample(){
-  const next=document.querySelector('#math-example-next');
-  const reset=document.querySelector('#math-example-reset');
-  const dial=document.querySelector('.math-example-dial');
-  const value=document.querySelector('#math-example-value');
-  const change=document.querySelector('#math-example-change');
-  const equation=document.querySelector('#math-example-equation');
-  const copy=document.querySelector('#math-example-copy');
-  const phaseLabels=[...document.querySelectorAll('[data-math-phase]')];
-  if(!next||!reset||!dial||!value||!change||!equation||!copy||!phaseLabels.length) return;
-  let phase=0;
-
-  function renderPhase(animate=false){
-    phaseLabels.forEach(label=>label.classList.toggle('is-active',Number(label.dataset.mathPhase)===phase));
-    if(phase===0){
-      value.textContent='4';
-      change.textContent='Ready';
-      equation.textContent='Waiting for every player to lock.';
-      copy.textContent='The Wallbreaker cannot wait to see advancements before placing decay.';
-      next.textContent='Reveal advancements';
-    } else if(phase===1){
-      value.textContent='7';
-      change.textContent='+3';
-      equation.textContent='4 + 1 + 2 = 7';
-      copy.textContent='All good-player advancements appear together. The field touches the victory threshold—for now.';
-      next.textContent='Reveal precommitted decay';
-    } else {
-      value.textContent='5';
-      change.textContent='−2';
-      equation.textContent='7 − 2 = 5';
-      copy.textContent='The already-locked decay applies immediately. This field does not remain at the threshold.';
-      next.textContent='Replay example';
-    }
-    if(animate){
-      dial.classList.remove('is-changing');
-      requestAnimationFrame(()=>dial.classList.add('is-changing'));
-    } else dial.classList.remove('is-changing');
-  }
-
-  next.addEventListener('click',()=>{
-    phase=phase===2?0:phase+1;
-    renderPhase(true);
-  });
-  reset.addEventListener('click',()=>{
-    phase=0;
-    renderPhase();
-  });
-  renderPhase();
-}
-
 function bindWallbreakerChoiceExample(){
   const buttons=[...document.querySelectorAll('[data-wallbreaker-choice]')];
   const title=document.querySelector('#wallbreaker-choice-title');
@@ -395,7 +341,6 @@ deck.classList.add('is-enhanced');
 showSlide(indexForHash(),{updateHash:false,announce:false});
 requestAnimationFrame(()=>deck.classList.add('is-ready'));
 bindGuessExample();
-bindMathExample();
 bindWallbreakerChoiceExample();
 bindPoliceChoiceExample();
 

@@ -16,7 +16,10 @@ export function wildRoleSvg(roleId){
     conservationist:'<path d="M12 4v16M6 7h12M8 7 4.5 13h7L8 7ZM16 7l-3.5 6h7L16 7ZM8 20h8"/><path d="M4.5 13c.4 1.8 1.5 2.7 3.5 2.7s3.1-.9 3.5-2.7M12.5 13c.4 1.8 1.5 2.7 3.5 2.7s3.1-.9 3.5-2.7"/>',
     moderate:'<path d="M4 5h16v14H4z"/><path d="M8 16v-4M12 16V8M16 16v-6"/><circle cx="8" cy="10" r="1.5"/><circle cx="12" cy="6" r="1.5"/><circle cx="16" cy="8" r="1.5"/>',
     disruptor:'<path d="M4 8h14M14 4l4 4-4 4M20 16H6M10 12l-4 4 4 4"/>',
-    loner:'<circle cx="12" cy="12" r="2.5"/><path d="M12 3a9 9 0 0 1 7.8 4.5M21 12a9 9 0 0 1-4.5 7.8M12 21a9 9 0 0 1-7.8-4.5M3 12a9 9 0 0 1 4.5-7.8"/>'
+    loner:'<circle cx="12" cy="12" r="2.5"/><path d="M12 3a9 9 0 0 1 7.8 4.5M21 12a9 9 0 0 1-4.5 7.8M12 21a9 9 0 0 1-7.8-4.5M3 12a9 9 0 0 1 4.5-7.8"/>',
+    oddball:'<circle cx="6" cy="7" r="2"/><circle cx="12" cy="7" r="2"/><circle cx="18" cy="7" r="2"/><circle cx="6" cy="17" r="2"/><circle cx="12" cy="17" r="2"/><circle cx="18" cy="17" r="2"/><path d="M10.5 4.5h3M10.5 9.5h3M4.5 14.5h3M4.5 19.5h3M16.5 14.5h3M16.5 19.5h3"/>',
+    numerologist:'<path d="M5 5h14v14H5zM8.5 9.5h.01M12 9.5h.01M15.5 9.5h.01M8.5 14.5h.01M12 14.5h.01M15.5 14.5h.01"/><path d="M3 9V3h6M15 3h6v6M21 15v6h-6M9 21H3v-6"/>',
+    wrapper:'<rect x="9" y="3" width="6" height="12" rx="3"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4M8.5 21h7"/>'
   };
   const icon=icons[roleId]||'<circle cx="12" cy="12" r="8"/><path d="M8 12h8M12 8v8"/>';
   return `<svg class="role-svg wild-role-svg" data-wild-role-icon="${roleId||'wild'}" viewBox="0 0 24 24" aria-hidden="true">${icon}</svg>`;

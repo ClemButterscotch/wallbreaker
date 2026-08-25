@@ -3,7 +3,6 @@ import { readFileSync } from 'node:fs';
 import { hostModeForPath, hostStorageName } from './public/brand.js';
 import {
   COLORS,
-  MATHBREAKER_THRESHOLD,
   viewerAccess,
   clampDial,
   roleComposition,
@@ -13,22 +12,12 @@ import {
   MAX_WILD_PLAYERS,
   assignWildRoles,
   describeWildRoleType,
-  wildRoleTimingLabel,
+  isCompletedOneTimeWildRole,
   describeWildRole,
   evaluateWildRole,
   buildWildRoleResults,
-  mathbreakerRoleComposition,
   knownWallfacerNames,
-  mathbreakerDecayBudget,
-  createMathbreakerDials,
-  mathbreakerEffectFor,
-  isLegalMathbreakerAdvancement,
-  isLegalMathbreakerDecay,
-  resolveMathbreakerAdvancement,
-  resolveMathbreakerDecay,
-  isMathbreakerPlanComplete,
-  isMathbreakerGuessWindowOpen,
-  validateMathbreakerGuess,
+  victoryRevealStage,
   maxEffectFor,
   legalEffectsFor,
   isLegalSelection,
@@ -49,19 +38,29 @@ const test=(name,fn)=>{
 const rulebookHtml=readFileSync(new URL('./rules.html',import.meta.url),'utf8');
 const appSource=readFileSync(new URL('./public/app.js',import.meta.url),'utf8');
 
-test('the rulebook ends with Wild Role primers and one slide per role',()=>{
+test('the rulebook ends with one advanced Wild Role primer and one slide per role',()=>{
   const wildSlideIds=[...rulebookHtml.matchAll(/id="rules-slide-wild-([^"]+)"/g)].map(match=>match[1]);
-  assert.deepEqual(wildSlideIds,['overview','unlock','information',...WILD_ROLE_IDS]);
+  assert.deepEqual(wildSlideIds,['overview','information',...WILD_ROLE_IDS]);
   assert.doesNotMatch(rulebookHtml,/id="rules-slide-(?:example|observer)"/);
   const standardEnding=rulebookHtml.indexOf('id="rules-slide-finish"');
   assert.ok(wildSlideIds.every(slideId=>rulebookHtml.indexOf(`id="rules-slide-wild-${slideId}"`)>standardEnding));
-  assert.match(rulebookHtml,/Wild Roles · On/);
-  assert.match(rulebookHtml,/4–9 players/);
-  assert.match(rulebookHtml,/it does not give Wild players their win/);
-  assert.match(rulebookHtml,/Bounty · Extremist · Disruptor · Loner/);
-  assert.match(rulebookHtml,/Conservationist · Moderate/);
+  assert.match(rulebookHtml,/Advanced play variant/);
+  assert.match(rulebookHtml,/Wild Roles replace Specialists/);
+  assert.match(rulebookHtml,/There are no Specialists in this variant/);
+  assert.match(rulebookHtml,/Private task.*Shared work.*Win together/s);
+  assert.match(rulebookHtml,/A Wild Role wins only if their private task is complete and the Wallfacer team wins/);
+  assert.doesNotMatch(rulebookHtml,/4–11 players/);
+  assert.doesNotMatch(rulebookHtml,/The host may enable Wild Roles in a standard game/);
+  assert.doesNotMatch(rulebookHtml,/id="rules-wild-bank"|class="wild-pack-summary"/);
+  assert.match(rulebookHtml,/Wallbreaker learns exactly one of them and may pretend to be it/);
+  assert.doesNotMatch(rulebookHtml,/Happens once/i);
+  assert.match(rulebookHtml,/ROUND 4 COMPLETED.*Starting total.*Round 4 total/s);
+  assert.match(rulebookHtml,/wild-moderate-demo.*wild-six-dial-board/s);
+  assert.match(rulebookHtml,/wild-numerologist-demo.*wild-six-dial-board/s);
+  assert.match(rulebookHtml,/wild-wrapper-demo.*wild-six-dial-board/s);
+  assert.match(rulebookHtml,/aria-valuemax="22"/);
   assert.doesNotMatch(rulebookHtml,/Doomsayer|Curator|Contrarian|Hermit|Must remain/i);
-  assert.match(rulebookHtml,/Wild players never see the Wallfacer’s plan/);
+  assert.match(rulebookHtml,/Wild players never see the plan/);
   assert.doesNotMatch(rulebookHtml,/Wallfacer plan revealed|Plan targets revealed|See the exact Wallfacer plan/i);
   assert.doesNotMatch(rulebookHtml,/Combination unlocked/i);
 });
@@ -69,10 +68,8 @@ test('the rulebook ends with Wild Role primers and one slide per role',()=>{
 test('host subpages select and isolate their game modes',()=>{
   assert.equal(hostModeForPath('/host'),'standard');
   assert.equal(hostModeForPath('/tutorial/host'),'tutorial');
-  assert.equal(hostModeForPath('/mathbreaker/host'),'mathbreaker');
-  assert.equal(hostModeForPath('/mathbreaker'),null);
+  assert.equal(hostModeForPath('/unknown/host'),null);
   assert.notEqual(hostStorageName('/host'),hostStorageName('/tutorial/host'));
-  assert.notEqual(hostStorageName('/host'),hostStorageName('/mathbreaker/host'));
 });
 
 test('a playing host has player-only access while an observer has omniscient access',()=>{
@@ -102,13 +99,15 @@ test('Wild Roles are opt-in and replace every eligible Specialist',()=>{
   assert.deepEqual(wildRoleComposition(4,true),{wallfacers:1,wallbreakers:1,police:1,civilians:0,wilds:1});
   assert.deepEqual(wildRoleComposition(8,true),{wallfacers:1,wallbreakers:1,police:1,civilians:0,wilds:5});
   assert.deepEqual(wildRoleComposition(9,true),{wallfacers:1,wallbreakers:1,police:1,civilians:0,wilds:6});
-  assert.deepEqual(wildRoleComposition(10,true),{wallfacers:1,wallbreakers:1,police:1,civilians:1,wilds:6});
-  assert.deepEqual(WILD_ROLE_IDS,['bounty','extremist','conservationist','moderate','disruptor','loner']);
-  assert.equal(MAX_WILD_PLAYERS,9);
+  assert.deepEqual(wildRoleComposition(10,true),{wallfacers:1,wallbreakers:1,police:1,civilians:0,wilds:7});
+  assert.deepEqual(wildRoleComposition(11,true),{wallfacers:1,wallbreakers:1,police:1,civilians:0,wilds:8});
+  assert.deepEqual(wildRoleComposition(12,true),{wallfacers:1,wallbreakers:1,police:1,civilians:1,wilds:8});
+  assert.deepEqual(WILD_ROLE_IDS,['bounty','extremist','conservationist','moderate','disruptor','loner','oddball','numerologist','wrapper']);
+  assert.equal(MAX_WILD_PLAYERS,11);
 });
 
-test('Wild Role assignment preserves every core role and deals unique roles to every Specialist',()=>{
-  const specialists=Array.from({length:6},(_,index)=>({id:`specialist${index+1}`,name:`Specialist ${index+1}`}));
+test('Wild Role assignment preserves every core role, stays unique, and reserves a Wallbreaker cover',()=>{
+  const specialists=Array.from({length:8},(_,index)=>({id:`specialist${index+1}`,name:`Specialist ${index+1}`}));
   const players=[{id:'wf',name:'Wen'},{id:'wb',name:'Bo'},{id:'police',name:'Shi'},...specialists];
   const roles={
     wf:{kind:'wallfacer',label:'Wallfacer',plan:{values:{yellow:4,orange:6,blue:2}}},
@@ -118,15 +117,19 @@ test('Wild Role assignment preserves every core role and deals unique roles to e
   };
   const dials=Object.fromEntries(COLORS.map(color=>[color,5]));
   const assignment=assignWildRoles({players,roles,dials,random:()=>0});
-  assert.equal(assignment.assignments.length,6);
-  assert.deepEqual(new Set(assignment.assignments.map(item=>item.role.wildRole)),new Set(WILD_ROLE_IDS));
+  assert.equal(assignment.assignments.length,8);
+  assert.equal(new Set(assignment.assignments.map(item=>item.role.wildRole)).size,8);
   assert.ok(assignment.assignments.every(item=>item.role.team==='loyal'));
-  assert.equal(Object.values(assignment.roles).filter(role=>role.kind==='wild').length,6);
+  assert.equal(Object.values(assignment.roles).filter(role=>role.kind==='wild').length,8);
   const bounty=assignment.assignments.find(item=>item.role.wildRole==='bounty');
   assert.equal(bounty.role.wildData.targetIds.length,2);
   assert.ok(bounty.role.wildData.targetIds.every(targetId=>!['police','wallfacer'].includes(roles[targetId].kind)));
   assert.deepEqual(assignment.roles.wf,roles.wf);
-  assert.deepEqual(assignment.roles.wb,roles.wb);
+  assert.equal(assignment.roles.wb.targetId,roles.wb.targetId);
+  const occupiedAtCap=new Set(assignment.assignments.map(item=>item.role.wildRole));
+  assert.equal(WILD_ROLE_IDS.filter(roleId=>!occupiedAtCap.has(roleId)).length,1,'the eleven-player cap leaves exactly one role unoccupied');
+  assert.equal(occupiedAtCap.has(assignment.unoccupiedWildRole),false);
+  assert.equal(assignment.roles.wb.unoccupiedWildRole,assignment.unoccupiedWildRole);
   assert.deepEqual(assignment.roles.police,roles.police);
   assert.ok(specialists.every(player=>roles[player.id].kind==='civilian'),'assignment must not mutate the default role map');
 
@@ -134,6 +137,10 @@ test('Wild Role assignment preserves every core role and deals unique roles to e
   const fourPlayerAssignment=assignWildRoles({players:players.slice(0,4),roles:fourPlayerRoles,dials,random:()=>0});
   assert.equal(fourPlayerAssignment.assignments.length,1);
   assert.notEqual(fourPlayerAssignment.assignments[0].role.wildRole,'bounty','Bounty must not be dealt when two valid non-Wallfacer targets do not exist');
+  const fourPlayerOccupied=new Set(fourPlayerAssignment.assignments.map(item=>item.role.wildRole));
+  assert.ok(WILD_ROLE_IDS.includes(fourPlayerAssignment.unoccupiedWildRole));
+  assert.equal(fourPlayerOccupied.has(fourPlayerAssignment.unoccupiedWildRole),false,'the Wallbreaker clue must name an unoccupied role');
+  assert.equal(fourPlayerAssignment.roles.wb.unoccupiedWildRole,fourPlayerAssignment.unoccupiedWildRole,'exactly one absent role is stored privately on the Wallbreaker role');
 
   const noSpecialist=assignWildRoles({players:players.slice(0,3),roles:{wf:roles.wf,wb:roles.wb,police:roles.police},dials,random:()=>0});
   assert.deepEqual(noSpecialist.playerIds,[]);
@@ -141,22 +148,20 @@ test('Wild Role assignment preserves every core role and deals unique roles to e
 });
 
 test('the public Wild Role guide describes every role without private setup data',()=>{
-  assert.deepEqual(WILD_ROLE_IDS.filter(roleId=>WILD_ROLE_DEFINITIONS[roleId].timing==='one-time'),['bounty','extremist','disruptor','loner']);
-  assert.deepEqual(WILD_ROLE_IDS.filter(roleId=>WILD_ROLE_DEFINITIONS[roleId].timing==='end-state'),['conservationist','moderate']);
-  assert.equal(wildRoleTimingLabel('bounty'),'Happens once');
-  assert.equal(wildRoleTimingLabel('extremist'),'Happens once');
-  assert.equal(wildRoleTimingLabel('conservationist'),'At finish');
+  assert.deepEqual(WILD_ROLE_IDS.filter(roleId=>WILD_ROLE_DEFINITIONS[roleId].timing==='one-time'),WILD_ROLE_IDS);
+  assert.deepEqual(WILD_ROLE_IDS.filter(roleId=>WILD_ROLE_DEFINITIONS[roleId].timing==='end-state'),[]);
+  assert.deepEqual(WILD_ROLE_IDS.filter(roleId=>WILD_ROLE_DEFINITIONS[roleId].timing==='throughout'),[]);
+  assert.equal(isCompletedOneTimeWildRole({kind:'wild',wildRole:'oddball',wildStatus:{met:true}}),true);
+  assert.equal(isCompletedOneTimeWildRole({kind:'wild',wildRole:'oddball',wildStatus:{met:false}}),false);
+  assert.equal(isCompletedOneTimeWildRole({kind:'wild',wildRole:'conservationist',wildStatus:{met:true}}),true);
   assert.ok(WILD_ROLE_IDS.every(roleId=>describeWildRoleType(roleId).length>20));
   assert.ok(WILD_ROLE_IDS.every(roleId=>!/unlock/i.test(describeWildRoleType(roleId))));
   assert.doesNotMatch(describeWildRoleType('bounty'),/Ava|Wen|targetIds/);
   assert.doesNotMatch(appSource,/unlockedWildPlan|\bwildPlan\b/,'the active player UI must have no Wild plan payload or rendering path');
   assert.match(appSource,/role\?\.kind==='wallfacer'\?role\.plan\?\.values:null/,'dial target markers must be exclusive to Wallfacers');
-});
-
-test('Mathbreaker always assigns one Wallfacer, one Wallbreaker, and no Police',()=>{
-  assert.deepEqual(mathbreakerRoleComposition(2),{wallfacers:1,wallbreakers:1,specialists:0,police:0});
-  assert.deepEqual(mathbreakerRoleComposition(7),{wallfacers:1,wallbreakers:1,specialists:5,police:0});
-  assert.equal(mathbreakerDecayBudget(7),6,'the Wallfacer counts as good and only the Wallbreaker is excluded');
+  assert.match(appSource,/wild-goal-complete-shell/,'completed one-time goals tint and simplify the player screen');
+  assert.match(appSource,/wrapper-dial-indicator/,'Wrapper can identify dials already wrapped for its goal');
+  assert.doesNotMatch(appSource,/Happens once|wild-timing-label/i,'standard Wild completion timing is not repeated on individual roles');
 });
 
 test('the public identity list reveals only Wallfacers',()=>{
@@ -165,72 +170,13 @@ test('the public identity list reveals only Wallfacers',()=>{
   assert.deepEqual(knownWallfacerNames(players,roles),['Ava']);
 });
 
-test('Mathbreaker boards start between two and four with exactly seventeen points',()=>{
-  for(const random of [()=>0,()=>0.999,()=>0.42]){
-    const dials=createMathbreakerDials(random);
-    assert.equal(Object.values(dials).reduce((sum,value)=>sum+value,0),17);
-    assert.ok(Object.values(dials).every(value=>value>=2&&value<=4));
-  }
-});
-
-test('Mathbreaker advancement respects Wallfacer and Specialist limits',()=>{
-  const wallfacer={kind:'wallfacer'};
-  const specialist={kind:'specialist',specialty:'blue'};
-  assert.equal(mathbreakerEffectFor(wallfacer,'blue'),1);
-  assert.equal(mathbreakerEffectFor(specialist,'blue'),2);
-  assert.equal(mathbreakerEffectFor(specialist,'red'),1);
-  assert.equal(isLegalMathbreakerAdvancement(wallfacer,{color:'blue',effect:1}),true);
-  assert.equal(isLegalMathbreakerAdvancement(wallfacer,{color:'blue',effect:2}),false);
-  assert.equal(isLegalMathbreakerAdvancement(specialist,{color:'blue',effect:2}),true);
-  assert.equal(isLegalMathbreakerAdvancement(specialist,{color:'red',effect:2}),false);
-});
-
-test('Mathbreaker advancements resolve together before any precommitted decay',()=>{
-  const players=[{id:'wf',name:'Wen'},{id:'wb',name:'Bo'},{id:'s',name:'Sal'}];
-  const roles={wf:{kind:'wallfacer'},wb:{kind:'wallbreaker'},s:{kind:'specialist',specialty:'blue'}};
-  const dials=Object.fromEntries(COLORS.map(color=>[color,3]));
-  const result=resolveMathbreakerAdvancement({dials,selections:{wf:{color:'blue',effect:1},wb:{decays:['blue','blue']},s:{color:'blue',effect:2}},players,roles,round:1});
-  assert.equal(result.after.blue,6);
-  assert.equal(result.advancementNet.blue,3);
-  assert.equal(dials.blue,3,'Mathbreaker advancement must not mutate its input board');
-});
-
-test('Mathbreaker decay uses the good-player count and can stack on one field',()=>{
-  assert.equal(isLegalMathbreakerDecay({decays:['blue','blue','red']},3),true);
-  assert.equal(isLegalMathbreakerDecay({decays:['blue','red']},3),false);
-  const dials=Object.fromEntries(COLORS.map(color=>[color,6]));
-  const result=resolveMathbreakerDecay({dials,decays:['blue','blue','red'],budget:3,round:1});
-  assert.equal(result.after.blue,4);
-  assert.equal(result.after.red,5);
-  assert.equal(result.decayNet.blue,-2);
-  assert.equal(dials.blue,6,'Mathbreaker decay must not mutate its input board');
-});
-
-test('Mathbreaker requires all three plan fields to remain at the threshold after decay',()=>{
-  const dials={yellow:7,pink:8,orange:2,red:7,blue:4,green:3};
-  assert.equal(isMathbreakerPlanComplete(dials,['yellow','pink','red'],MATHBREAKER_THRESHOLD),true);
-  assert.equal(isMathbreakerPlanComplete({...dials,red:6},['yellow','pink','red'],MATHBREAKER_THRESHOLD),false);
-});
-
-test('Mathbreaker guesses are private candidates that cannot repeat or occur twice in a turn',()=>{
-  const planFields=['yellow','blue','green'];
-  const wrong=validateMathbreakerGuess({planFields,guessFields:['yellow','pink','green'],previousGuessKeys:[],lastGuessRound:null,round:2});
-  assert.equal(wrong.valid,true);
-  assert.equal(wrong.correct,false);
-  const repeated=validateMathbreakerGuess({planFields,guessFields:['green','yellow','pink'],previousGuessKeys:[wrong.key],lastGuessRound:null,round:3});
-  assert.equal(repeated.valid,false);
-  const sameTurn=validateMathbreakerGuess({planFields,guessFields:planFields,previousGuessKeys:[],lastGuessRound:2,round:2});
-  assert.equal(sameTurn.valid,false);
-  const correct=validateMathbreakerGuess({planFields,guessFields:['green','yellow','blue'],previousGuessKeys:[],lastGuessRound:1,round:2});
-  assert.equal(correct.valid,true);
-  assert.equal(correct.correct,true);
-});
-
-test('Mathbreaker guessing stays available after decay is locked',()=>{
-  const turn={mode:'mathbreaker',phase:'playing',paused:false,lastGuessRound:null,round:4};
-  assert.equal(isMathbreakerGuessWindowOpen({...turn,decayLocked:true}),true,'decay locking is independent from guessing');
-  assert.equal(isMathbreakerGuessWindowOpen({...turn,lastGuessRound:4}),false,'the second guess in a turn remains blocked');
-  assert.equal(isMathbreakerGuessWindowOpen({...turn,phase:'math-reveal'}),false,'guessing closes once resolution begins');
+test('goal victories show dial movement, then light up, then end',()=>{
+  const reveal={lightAt:4000,endsAt:5400};
+  assert.equal(victoryRevealStage(reveal,3999),'dials');
+  assert.equal(victoryRevealStage(reveal,4000),'light');
+  assert.equal(victoryRevealStage(reveal,5399),'light');
+  assert.equal(victoryRevealStage(reveal,5400),'ended');
+  assert.equal(victoryRevealStage(null,5400),null);
 });
 
 test('role-specific dial limits are enforced',()=>{
@@ -238,14 +184,14 @@ test('role-specific dial limits are enforced',()=>{
   assert.equal(maxEffectFor({kind:'wallbreaker'},'yellow'),1);
   assert.equal(maxEffectFor({kind:'police'},'yellow'),1);
   assert.equal(maxEffectFor({kind:'wild',wildRole:'loner'},'yellow'),1);
-  assert.equal(maxEffectFor({kind:'wild',wildRole:'moderate',wildData:{colors:['pink','red','green']}},'red'),2);
-  assert.equal(maxEffectFor({kind:'wild',wildRole:'moderate',wildData:{colors:['pink','red','green']}},'blue'),1);
+  assert.equal(maxEffectFor({kind:'wild',wildRole:'moderate',wildData:{}},'red'),1);
+  assert.equal(maxEffectFor({kind:'wild',wildRole:'moderate',wildData:{}},'blue'),1);
   assert.equal(maxEffectFor({kind:'civilian',profession:'mathematics'},'yellow'),2);
   assert.equal(maxEffectFor({kind:'civilian',profession:'mathematics'},'blue'),1);
   assert.deepEqual(legalEffectsFor({kind:'civilian',profession:'mathematics'},'yellow'),[-2,-1,1,2]);
   assert.deepEqual(legalEffectsFor({kind:'wallfacer'},'yellow'),[-1,1]);
   assert.deepEqual(legalEffectsFor({kind:'wild',wildRole:'loner'},'yellow'),[-1,1]);
-  assert.deepEqual(legalEffectsFor({kind:'wild',wildRole:'moderate',wildData:{colors:['pink','red','green']}},'pink'),[-2,-1,1,2]);
+  assert.deepEqual(legalEffectsFor({kind:'wild',wildRole:'moderate',wildData:{}},'pink'),[-1,1]);
   assert.equal(isLegalSelection({kind:'wallfacer'},{color:'yellow',effect:0},[],'wf'),false,'passing with a zero move is illegal');
 });
 
@@ -296,7 +242,41 @@ test('round resolution applies arrests, clamps dials, and records every action',
   assert.equal(dials.blue,9,'resolution must not mutate its input board');
 });
 
-test('Moderate assignment derives exactly the three dials outside the Wallfacer plan',()=>{
+test('Wrapper makes its touched dial wrap and keeps the power after three distinct wraps',()=>{
+  const players=[{id:'wrapper',name:'Rae'},{id:'helper',name:'Miao'}];
+  const roles={wrapper:{kind:'wild',team:'loyal',label:'Wrapper',wildRole:'wrapper',wildData:{}},helper:{kind:'civilian',profession:'mathematics'}};
+  const board=(overrides={})=>Object.fromEntries(COLORS.map(color=>[color,overrides[color]??5]));
+  const resolve=(round,dials,color,wrapperEffect,helperEffect)=>resolveRoundState({
+    dials,players,roles,round,
+    selections:{wrapper:{color,effect:wrapperEffect},helper:{color,effect:helperEffect}}
+  });
+  const low=resolve(1,board({yellow:0}),'yellow',-1,-2);
+  assert.equal(low.net.yellow,-3);
+  assert.equal(low.after.yellow,7,'0 − 3 wraps to 7 when Wrapper touches the dial');
+  assert.deepEqual(low.wraps,[{playerId:'wrapper',color:'yellow',from:0,to:7,net:-3}]);
+  const high=resolve(2,board({blue:9}),'blue',1,1);
+  assert.equal(high.after.blue,1,'9 + 2 wraps to 1');
+  const third=resolve(3,board({red:0}),'red',-1,-1);
+  const result=evaluateWildRole({role:roles.wrapper,playerId:'wrapper',players,history:[low.record,high.record,third.record]});
+  assert.equal(result.met,true);
+  assert.equal(result.progress,3);
+  assert.deepEqual(result.details.qualifyingDials.map(item=>item.color),['yellow','blue','red']);
+  const afterCompletion=resolve(4,board({orange:9}),'orange',1,1);
+  assert.equal(afterCompletion.after.orange,1,'the wrapping power remains active after the personal goal is complete');
+  assert.equal(afterCompletion.wraps.length,1);
+
+  const arrestedPlayers=[...players,{id:'police',name:'Shi'}];
+  const arrestedRoles={...roles,police:{kind:'police'}};
+  const arrested=resolveRoundState({dials:board({green:0}),players:arrestedPlayers,roles:arrestedRoles,round:5,selections:{
+    wrapper:{color:'green',effect:-1},
+    helper:{color:'green',effect:-2},
+    police:{policeMode:'arrest',arrestTarget:'wrapper'}
+  }});
+  assert.equal(arrested.after.green,0,'a cancelled Wrapper move does not activate wrapping');
+  assert.deepEqual(arrested.wraps,[]);
+});
+
+test('Moderate assignment carries no plan-derived dial data',()=>{
   const players=[{id:'wf',name:'Wen'},{id:'wb',name:'Bo'},{id:'police',name:'Shi'},{id:'specialist',name:'Miao'}];
   const roles={
     wf:{kind:'wallfacer',plan:{values:{yellow:4,orange:6,blue:2}}},
@@ -304,12 +284,12 @@ test('Moderate assignment derives exactly the three dials outside the Wallfacer 
     police:{kind:'police'},
     specialist:{kind:'civilian',profession:'science'}
   };
-  const randomValues=[0.5];
+  const randomValues=[0.25];
   const assignment=assignWildRoles({players,roles,dials:Object.fromEntries(COLORS.map(color=>[color,5])),random:()=>randomValues.shift()??0});
   const role=assignment.assignments[0].role;
   assert.equal(role.wildRole,'moderate');
-  assert.deepEqual(role.wildData.colors,['pink','red','green']);
-  assert.match(describeWildRole(role,players),/pink, red, green/);
+  assert.deepEqual(role.wildData,{});
+  assert.match(describeWildRole(role,players),/all six dials.*3–7/i);
 });
 
 test('Extremist receives the most extreme non-plan dial and its opposite endpoint',()=>{
@@ -372,32 +352,37 @@ test('Bounty and Extremist evaluate from authoritative round history',()=>{
   assert.equal(evaluateWildRole({role:extremistRole,playerId:'wild',players,history:[quietRound],initialDials:board(),finalDials:board(),winner:'Wallbreaker'}).met,false);
 });
 
-test('Conservationist and Moderate are evaluated from the board at the finish',()=>{
+test('Conservationist and Moderate latch after a qualifying board state',()=>{
   const players=[{id:'wild',name:'Miao'}];
   const board=(overrides={})=>Object.fromEntries(COLORS.map(color=>[color,overrides[color]??5]));
   const conservationist={kind:'wild',label:'Conservationist',wildRole:'conservationist',wildData:{}};
-  assert.equal(evaluateWildRole({role:conservationist,playerId:'wild',players,initialDials:board(),finalDials:board({green:8})}).met,false,'the starting board does not satisfy the goal before a round completes');
-  const withinThree={round:1,after:board({green:8}),actions:[]};
-  const conservationMovedOut=evaluateWildRole({role:conservationist,playerId:'wild',players,history:[withinThree],initialDials:board(),finalDials:board({green:9})});
-  assert.equal(conservationMovedOut.reachedOnce,true);
-  assert.equal(conservationMovedOut.met,false,'the final total must still be inside the range');
-  assert.equal(conservationMovedOut.progress,4);
-  assert.equal(conservationMovedOut.details.qualifyingRound,1);
-  assert.match(conservationMovedOut.evidence,/must return/);
-  assert.equal(evaluateWildRole({role:conservationist,playerId:'wild',players,history:[withinThree],initialDials:board(),finalDials:board({green:8})}).met,true);
-  assert.equal(evaluateWildRole({role:conservationist,playerId:'wild',players,history:[{round:1,after:board({green:9}),actions:[]}],initialDials:board(),finalDials:board({green:9})}).met,false);
+  assert.equal(evaluateWildRole({role:conservationist,playerId:'wild',players,initialDials:board(),finalDials:board(),history:[]}).met,false,'the starting board does not count');
+  const earlyMatches=[1,2,3].map(round=>({round,after:board(),actions:[]}));
+  assert.equal(evaluateWildRole({role:conservationist,playerId:'wild',players,history:earlyMatches,initialDials:board(),finalDials:board()}).met,false,'matching totals in the first three rounds do not count');
+  const missesRoundFour={round:4,after:board({green:6}),actions:[]};
+  assert.equal(evaluateWildRole({role:conservationist,playerId:'wild',players,history:[...earlyMatches,missesRoundFour],initialDials:board(),finalDials:missesRoundFour.after}).met,false,'an eligible round must match the total exactly');
+  const matchesRoundFour={round:4,after:board(),actions:[]};
+  const conservationCompleted=evaluateWildRole({role:conservationist,playerId:'wild',players,history:[...earlyMatches,matchesRoundFour,{round:5,after:board({green:9}),actions:[]}],initialDials:board(),finalDials:board({green:9})});
+  assert.equal(conservationCompleted.met,true,'the goal stays complete after a later board moves away');
+  assert.equal(conservationCompleted.progress,1);
+  assert.equal(conservationCompleted.goal,1);
+  assert.equal(conservationCompleted.details.qualifyingRound,4);
 
-  const moderate={kind:'wild',label:'Moderate',wildRole:'moderate',wildData:{colors:['pink','red','green']}};
-  assert.equal(evaluateWildRole({role:moderate,playerId:'wild',players,initialDials:board(),finalDials:board({pink:4,red:5,green:6})}).met,false,'Moderate requires at least one completed round');
-  const inRangeRound={round:2,after:board({pink:4,red:5,green:6}),actions:[]};
-  const moderateMovedOut=evaluateWildRole({role:moderate,playerId:'wild',players,history:[inRangeRound],initialDials:board(),finalDials:board({pink:3,red:5,green:6})});
-  assert.equal(moderateMovedOut.reachedOnce,true);
-  assert.equal(moderateMovedOut.met,false,'all three Moderate dials must be in range at the finish');
-  assert.equal(evaluateWildRole({role:moderate,playerId:'wild',players,history:[inRangeRound],initialDials:board(),finalDials:board({pink:4,red:5,green:6})}).met,true);
-  const missed=evaluateWildRole({role:moderate,playerId:'wild',players,history:[{round:1,after:board({pink:3,red:5,green:6}),actions:[]}],initialDials:board(),finalDials:board({pink:3,red:5,green:6})});
+  const moderate={kind:'wild',label:'Moderate',wildRole:'moderate',wildData:{}};
+  const outOfRange={round:1,after:board({yellow:2}),actions:[]};
+  const startingMatch=evaluateWildRole({role:moderate,playerId:'wild',players,initialDials:board(),finalDials:board(),history:[]});
+  assert.equal(startingMatch.met,true,'the starting board qualifies when all six values are in range');
+  assert.equal(startingMatch.details.qualifyingRound,null);
+  const inRange={round:2,after:board({yellow:3,pink:4,orange:5,red:6,blue:7,green:3}),actions:[]};
+  const moderateCompleted=evaluateWildRole({role:moderate,playerId:'wild',players,history:[outOfRange,inRange,{round:3,after:board({green:8}),actions:[]}],initialDials:outOfRange.after,finalDials:board({green:8})});
+  assert.equal(moderateCompleted.met,true,'all six dials being in range once permanently completes the goal');
+  assert.equal(moderateCompleted.progress,1);
+  assert.equal(moderateCompleted.goal,1);
+  assert.equal(moderateCompleted.details.qualifyingRound,2);
+  const missed=evaluateWildRole({role:moderate,playerId:'wild',players,history:[outOfRange],initialDials:outOfRange.after,finalDials:outOfRange.after});
   assert.equal(missed.met,false);
-  assert.equal(missed.progress,2);
-  assert.equal(missed.goal,3);
+  assert.equal(missed.progress,0,'Moderate has no partial progress');
+  assert.equal(missed.goal,1);
 });
 
 test('Disruptor needs a wrong-way move on each of the three hidden plan dials',()=>{
@@ -444,7 +429,54 @@ test('Loner needs four solitary rounds and cannot progress when arrested',()=>{
   assert.equal(evaluateWildRole({role,playerId:'wild',players,history:[round(1,'blue','red'),round(2,'green','red'),round(3,'yellow','blue')]}).met,false);
 });
 
-test('Wild players win only when their goal qualifies and the Wallfacer completes the plan',()=>{
+test('Oddball completes once after a resolved round has at least five odd dials',()=>{
+  const players=[{id:'wild',name:'Miao'}];
+  const board=values=>Object.fromEntries(COLORS.map((color,index)=>[color,values[index]]));
+  const fiveOdd=board([1,3,5,7,9,0]);
+  const fourOdd=board([1,3,5,7,8,0]);
+  const sixOdd=board([1,3,5,7,9,1]);
+  const role={kind:'wild',team:'loyal',label:'Oddball',wildRole:'oddball',wildData:{}};
+  assert.equal(evaluateWildRole({role,playerId:'wild',players,initialDials:fiveOdd,finalDials:fiveOdd,history:[]}).met,false,'the untouched starting board does not count');
+  const missed=evaluateWildRole({role,playerId:'wild',players,history:[{round:1,after:fourOdd,actions:[]}],finalDials:fourOdd});
+  assert.equal(missed.met,false);
+  assert.equal(missed.progress,0,'four odd dials are not partial progress');
+  assert.equal(missed.goal,1);
+  const completed=evaluateWildRole({role,playerId:'wild',players,history:[
+    {round:1,after:fiveOdd,actions:[]},
+    {round:2,after:fourOdd,actions:[]}
+  ]});
+  assert.equal(completed.met,true,'the one-time goal remains complete after the board moves away');
+  assert.equal(completed.progress,1);
+  assert.equal(completed.details.qualifyingRound,1);
+  assert.deepEqual(completed.details.oddColors,['yellow','pink','orange','red','blue']);
+  assert.match(completed.evidence,/goal is complete/);
+  assert.equal(evaluateWildRole({role,playerId:'wild',players,history:[{round:1,after:sixOdd,actions:[]}]}).met,true,'six odd dials also satisfies at least five');
+});
+
+test('Numerologist completes once after any resolved board has three matching dials',()=>{
+  const players=[{id:'wild',name:'Miao'}];
+  const board=(overrides={})=>Object.fromEntries(COLORS.map((color,index)=>[color,overrides[color]??index]));
+  const role={kind:'wild',team:'loyal',label:'Numerologist',wildRole:'numerologist',wildData:{}};
+  const matching=board({yellow:5,pink:5,green:5});
+  assert.equal(evaluateWildRole({role,playerId:'wild',players,initialDials:matching,finalDials:matching,history:[]}).met,false,'the untouched starting board does not count');
+  const missed=evaluateWildRole({role,playerId:'wild',players,history:[{round:1,after:board({yellow:7,pink:7}),actions:[]}],finalDials:board({yellow:7,pink:7})});
+  assert.equal(missed.met,false);
+  assert.equal(missed.progress,0,'a two-way match is not partial progress');
+  assert.equal(missed.goal,1);
+  const completed=evaluateWildRole({role,playerId:'wild',players,history:[
+    {round:1,after:matching,actions:[{playerId:'wild',arrested:true,action:{type:'move',color:'red',effect:1}}]},
+    {round:2,after:board(),actions:[]}
+  ],finalDials:board()});
+  assert.equal(completed.met,true,'who acted and whether Numerologist was arrested do not affect a resolved-board match');
+  assert.equal(completed.progress,1);
+  assert.equal(completed.goal,1);
+  assert.equal(completed.details.qualifyingRound,1);
+  assert.equal(completed.details.number,5);
+  assert.deepEqual(completed.details.colors,['yellow','pink','green']);
+  assert.match(completed.evidence,/goal is complete/);
+});
+
+test('Wild players win iff their goal qualifies and the Wallfacer team wins',()=>{
   const players=[{id:'wild',name:'Miao'}];
   const role={kind:'wild',team:'loyal',label:'Loner',wildRole:'loner',wildData:{}};
   const roles={wild:role};
@@ -455,25 +487,31 @@ test('Wild players win only when their goal qualifies and the Wallfacer complete
   const complete={...incomplete,...planValues};
   assert.equal(isStandardPlanComplete(incomplete,planValues),false);
   assert.equal(isStandardPlanComplete(complete,planValues),true);
-  assert.equal(buildWildRoleResults(players,roles,{history,planValues,finalDials:incomplete,winner:'Loyal team'})[0].won,false,'a Loyal result from an incorrect Wallbreaker guess is not enough');
+  assert.equal(buildWildRoleResults(players,roles,{history,planValues,finalDials:incomplete,winner:'Loyal team'})[0].won,true,'an incorrect Wallbreaker guess gives a goal-qualified Wild player the Wallfacer-team co-win');
+  assert.equal(buildWildRoleResults(players,roles,{history,planValues,finalDials:incomplete,winner:'Wallfacer team'})[0].won,true);
   assert.equal(buildWildRoleResults(players,roles,{history,planValues,finalDials:complete,winner:'Loyal team'})[0].won,true);
+  assert.equal(buildWildRoleResults(players,roles,{history,planValues,finalDials:complete,winner:'Wallbreaker'})[0].won,false,'goal completion is not enough when the Wallfacer team loses');
+  assert.equal(buildWildRoleResults(players,roles,{history,planValues,finalDials:complete})[0].won,false,'plan state alone cannot substitute for the Wallfacer-team result');
   assert.equal(buildWildRoleResults(players,roles,{history:history.slice(0,3),planValues,finalDials:complete,winner:'Loyal team'})[0].won,false);
 });
 
-test('at-finish goals can be reached earlier but are decided by the final board',()=>{
+test('Conservationist completion persists after the board moves away',()=>{
   const board=(overrides={})=>Object.fromEntries(COLORS.map(color=>[color,overrides[color]??5]));
   const players=[{id:'wild',name:'Miao'}];
   const role={kind:'wild',team:'loyal',label:'Conservationist',wildRole:'conservationist',wildData:{}};
   const roles={wild:role};
-  const history=[{round:1,after:board({green:8}),actions:[]}];
+  const history=[
+    {round:1,after:board({green:6}),actions:[]},
+    {round:2,after:board({green:7}),actions:[]},
+    {round:3,after:board({green:8}),actions:[]},
+    {round:4,after:board(),actions:[]},
+    {round:5,after:board({green:9}),actions:[]}
+  ];
   const planValues={yellow:5,red:5,blue:5};
-  const movedOut=buildWildRoleResults(players,roles,{history,initialDials:board(),finalDials:board({green:9}),planValues})[0];
-  assert.equal(movedOut.reachedOnce,true);
-  assert.equal(movedOut.met,false);
-  assert.equal(movedOut.won,false);
-  const restored=buildWildRoleResults(players,roles,{history,initialDials:board(),finalDials:board({green:8}),planValues})[0];
-  assert.equal(restored.met,true);
-  assert.equal(restored.won,true);
+  const result=buildWildRoleResults(players,roles,{history,initialDials:board(),finalDials:board({green:9}),planValues,winner:'Loyal team'})[0];
+  assert.equal(result.reachedOnce,true);
+  assert.equal(result.met,true);
+  assert.equal(result.won,true);
 });
 
 test('disconnected no-op selections appear explicitly in replay history',()=>{
@@ -507,7 +545,7 @@ test('Wild Role setup and outcome stay private until the host begins the postgam
   const roles={
     wild:{kind:'wild',team:'loyal',label:'Bounty',wildRole:'bounty',wildData:{targetIds:['wb','loner']}},
     wf:{kind:'wallfacer',label:'Wallfacer',plan:{values:{red:4}}},
-    wb:{kind:'wallbreaker',label:'Wallbreaker',targetId:'wf'},
+    wb:{kind:'wallbreaker',label:'Wallbreaker',targetId:'wf',unoccupiedWildRole:'extremist'},
     loner:{kind:'wild',team:'loyal',label:'Loner',wildRole:'loner',wildData:{}}
   };
   const dials=Object.fromEntries(COLORS.map(color=>[color,5]));
@@ -518,23 +556,12 @@ test('Wild Role setup and outcome stay private until the host begins the postgam
   const disclosure=buildPostgameDisclosure('ended',players,roles,history,null,{active:true,roundIndex:0},'wf',context);
   assert.equal(disclosure.roles[0].wildRole,'bounty');
   assert.deepEqual(disclosure.roles[0].wildData.targetIds,['wb','loner']);
+  assert.equal(disclosure.roles.find(role=>role.playerId==='wb').unoccupiedWildRole,'extremist');
   const bountyResult=disclosure.wildResults.find(result=>result.roleId==='bounty');
   assert.equal(bountyResult.met,false);
   assert.equal(bountyResult.won,false);
   assert.equal(bountyResult.name,'Miao');
   assert.equal(buildWildRoleResults(players,roles,{history,...context}).length,2);
-});
-
-test('Mathbreaker plans and specialties stay private until the game ends',()=>{
-  const players=[{id:'wf',name:'Wen'},{id:'s',name:'Ada'}];
-  const roles={
-    wf:{kind:'wallfacer',label:'Wallfacer',plan:{fields:['yellow','blue','green'],threshold:7}},
-    s:{kind:'specialist',label:'Specialist',specialty:'blue'}
-  };
-  assert.equal(buildPostgameDisclosure('playing',players,roles,[],null),undefined);
-  const disclosure=buildPostgameDisclosure('ended',players,roles,[],null,{active:true,roundIndex:0});
-  assert.deepEqual(disclosure.roles[0].plan.fields,['yellow','blue','green']);
-  assert.equal(disclosure.roles[1].specialty,'blue');
 });
 
 test('postgame recap discloses only the host-selected round',()=>{

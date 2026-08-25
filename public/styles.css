@@ -11,6 +11,7 @@ button, input, select { font: inherit; }
 button { cursor: pointer; }
 button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline:3px solid #7dd3fc; outline-offset:3px; }
 .shell { min-height: 100vh; padding: 28px 32px; max-width: 1120px; margin: 0 auto; }
+.shell.wild-goal-complete-shell { background:radial-gradient(circle at 50% 4%,rgba(139,92,246,.14),transparent 38%),linear-gradient(180deg,rgba(45,29,69,.2),rgba(11,13,16,.05) 58%); }
 .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:20px; }
 .brand { font-weight:750; letter-spacing:.02em; }
 .meta { color:#a1a1aa; font-size:.9rem; }
@@ -119,6 +120,8 @@ button.chat-message { cursor:pointer; }
 .extremist-target::after { position:absolute; z-index:5; left:50%; width:max-content; color:#c4b5fd; font-size:1rem; font-weight:900; line-height:1.05; letter-spacing:.08em; text-align:center; white-space:pre; text-shadow:0 0 8px #8b5cf6,0 0 18px rgba(167,139,250,.85); transform:translateX(-50%); pointer-events:none; }
 .extremist-up::after { content:"9\A↑  ↑  ↑"; top:12px; }
 .extremist-down::after { content:"↓  ↓  ↓\A0"; bottom:12px; }
+.wrapper-dial-indicator { position:absolute; z-index:6; top:10px; left:10px; display:grid; place-items:center; width:34px; height:34px; border:1px solid #c4b5fd; border-radius:50%; background:#352254; color:#e4dbff; box-shadow:0 0 16px rgba(167,139,250,.55); pointer-events:none; }
+.wrapper-dial-indicator .role-svg { width:20px; height:20px; }
 .moderate-target { outline:4px solid #a78bfa; outline-offset:2px; box-shadow:0 0 18px rgba(167,139,250,.22); }
 .dial-face { position:relative; display:grid; place-items:center; min-width:0; padding:14px 52px 14px 12px; pointer-events:none; }
 .standard-dial-card .dial-select { width:100%; min-width:0; }
@@ -173,7 +176,13 @@ button.chat-message { cursor:pointer; }
   55% { box-shadow:0 0 0 2px rgba(255,255,255,.24) inset, 0 0 24px rgba(255,255,255,.14); }
   100% { box-shadow:none; }
 }
+.victory-light { position:fixed; inset:0; z-index:9; display:grid; place-items:center; padding:24px; background:radial-gradient(circle,rgba(255,255,255,.98) 0 18%,rgba(255,245,145,.94) 46%,rgba(245,217,10,.82)); color:#080808; text-align:center; pointer-events:none; animation:victory-light-up 1.4s ease-out both; }
+.victory-light > div { display:grid; gap:12px; max-width:760px; }
+.victory-light span { font-size:clamp(2.4rem,8vw,6.5rem); font-weight:950; line-height:.9; letter-spacing:-.055em; text-transform:uppercase; text-shadow:0 2px 0 rgba(255,255,255,.55); }
+.victory-light strong { font-size:clamp(1rem,2.4vw,1.45rem); }
+@keyframes victory-light-up { 0% { opacity:0; filter:brightness(2); } 28% { opacity:1; filter:brightness(1.35); } 100% { opacity:1; filter:brightness(1); } }
 @media (prefers-reduced-motion:reduce){ .dial-revealed,.dial-turning .value-reel,.dial-turning .dial-select,.dial-steady .value-reel,.dial-steady .dial-select{animation:none;} }
+@media (prefers-reduced-motion:reduce){ .victory-light{animation:none;} }
 .move-summary { display:flex; justify-content:space-between; gap:12px; align-items:center; }
 .move-summary span { color:#a1a1aa; }
 .sophon-card { display:grid; grid-template-columns:auto 1fr; gap:12px; align-items:center; padding:12px; background:#0e1116; border-radius:14px; }
@@ -227,13 +236,17 @@ button.chat-message { cursor:pointer; }
 .wild-role-badge { padding:6px 10px; border:1px solid #7657d8; border-radius:999px; color:#d9ceff; background:#211a39; font-size:.72rem; font-weight:800; letter-spacing:.08em; }
 .wild-role-objective { display:grid; gap:8px; margin:4px 0 14px; padding:16px; border:1px solid #7657d8; border-radius:14px; background:linear-gradient(135deg,#211a39,#15131d); }
 .wild-role-objective p { margin:0; line-height:1.5; }
+.wild-role-objective.goal-complete { border-color:#8b6bd0; background:linear-gradient(135deg,#2d1d45,#17131f); }
+.wild-goal-achieved-callout { padding:11px 12px; border:1px solid #9c83f4; border-radius:10px; background:rgba(118,87,216,.17); color:#e8e0ff; font-size:.76rem; font-weight:900; letter-spacing:.06em; text-transform:uppercase; }
+.wallbreaker-wild-intel { display:grid; grid-template-columns:46px 1fr; align-items:center; gap:12px; margin:4px 0 14px; padding:14px; border:1px solid #7657d8; border-radius:14px; background:#171322; }
+.wallbreaker-wild-intel .role-svg { width:46px; height:46px; color:#c6b7ff; }
+.wallbreaker-wild-intel p { margin:4px 0 0; line-height:1.45; }
 .wild-guide-modal { width:min(720px,100%); }
 .wild-guide-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
 .wild-guide-role { display:grid; grid-template-columns:38px 1fr; align-items:start; gap:10px; min-width:0; padding:11px; border:1px solid #49415f; border-radius:11px; background:#111318; }
 .wild-guide-role .role-svg { width:38px; height:38px; color:#c6b7ff; }
 .wild-guide-role>div { display:grid; gap:4px; }
-.wild-timing-label { width:max-content; padding:3px 6px; border:1px solid #6d5c98; border-radius:999px; color:#c6b7ff; font-size:.58rem; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
-.wild-timing-label.end-state { border-color:#9b693e; color:#f1bd87; }
+.dial-wrapped-badge { display:inline-block; margin-top:5px; padding:3px 6px; border:1px solid #8a6bd0; border-radius:999px; color:#d8c7ff; background:#211633; font-size:.52rem; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
 .wild-guide-role strong { display:block; margin:2px 0 4px; }
 .wild-guide-role p { margin:0; color:#a1a1aa; font-size:.76rem; line-height:1.4; }
 .wild-progress { display:grid; gap:7px; margin-top:4px; }
@@ -479,17 +492,6 @@ hr { border:0; border-top:1px solid #2a2e36; margin:8px 0; }
   .game-mode-grid,.power-split,.ending-map,.tutorial-role-grid{grid-template-columns:1fr}.tutorial-header{align-items:flex-start}.tutorial-stage{gap:22px}.tutorial-art{width:100%;min-height:300px;padding:18px;overflow:hidden}.tutorial-controls{grid-template-columns:auto 1fr}.tutorial-dots{display:none}.tutorial-controls>:last-child{grid-column:2}.tutorial-dial-rig{width:100%;justify-content:center;gap:8px}.mini-dial{width:78px;height:116px}.mini-dial strong{font-size:3rem}.plan-beacon{right:8%;bottom:-48px}.tutorial-flow{width:100%;justify-content:center;gap:4px}.tutorial-flow div{width:58px;height:90px}.tutorial-flow i{font-size:.75rem}.glass-wall{grid-template-columns:1fr}.glass-secret{min-height:84px}.tutorial-intel-heading{display:grid}
 }
 
-.mathbreaker-board { grid-template-columns:repeat(3,1fr); }
-.math-dial-card .dial-select .name { max-width:130px; font-size:.72rem; line-height:1.2; }
-.math-dial-card .dial-select:disabled { opacity:1; cursor:default; }
-.mathbreaker-move { border-color:#665d00; }
-.decay-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
-.decay-assignment { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 10px; border:1px solid #332f00; border-radius:11px; background:#050505; }
-.decay-assignment>span { min-width:0; font-size:.82rem; font-weight:700; }
-.decay-assignment>div { display:flex; align-items:center; gap:8px; }
-.decay-assignment button { width:32px; height:32px; padding:0; }
-.decay-assignment strong { min-width:18px; text-align:center; }
-.math-guess-result { padding:10px 12px; border:1px solid #665d00; border-radius:10px; background:#171500; color:#fff3a1; }
 .math-guess-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
 .math-guess-grid label { position:relative; display:flex; min-height:52px; cursor:pointer; }
 .math-guess-grid input { position:absolute; opacity:0; pointer-events:none; }
@@ -498,11 +500,7 @@ hr { border:0; border-top:1px solid #2a2e36; margin:8px 0; }
 .standard-guess-grid span { text-transform:capitalize; }
 .standard-guess-grid .yellow span{background:#5b4b08}.standard-guess-grid .pink span{background:#5b183f}.standard-guess-grid .orange span{background:#5b2b08}.standard-guess-grid .red span{background:#5b1010}.standard-guess-grid .blue span{background:#0b355b}.standard-guess-grid .green span{background:#16452d}
 .standard-guess-grid input:checked+span { border-color:#fff; color:#fff; box-shadow:0 0 0 2px rgba(255,255,255,.15); }
-.math-reveal-notice { display:flex; justify-content:space-between; gap:16px; align-items:center; border:1px solid #d5bd00; }
-.math-reveal-notice span { color:#fff3a1; font-size:.85rem; }
-.math-break-reveal blockquote { margin:0; padding:18px; border-left:4px solid #f5d90a; background:#171500; color:#fff3a1; font-size:1.25rem; font-weight:800; }
-@media (max-width:900px){ .mathbreaker-board{grid-template-columns:repeat(2,1fr)} }
-@media (max-width:620px){ .mathbreaker-board,.decay-grid,.math-guess-grid{grid-template-columns:1fr} .discrete-setting{align-items:flex-start;flex-direction:column}.math-reveal-notice{align-items:flex-start;flex-direction:column} }
+@media (max-width:620px){ .math-guess-grid{grid-template-columns:1fr} .discrete-setting{align-items:flex-start;flex-direction:column} }
 @media (prefers-reduced-motion:reduce){
   .tutorial-aurora,.tutorial-copy,.tutorial-art,.mini-dial,.orbit-card,.tutorial-flow i,.power-orb,.power-ring,.reconnect-spinner{animation:none}
 }
@@ -532,7 +530,6 @@ input, select, .player, .lobby-settings, .sophon-card, .card-line, .role-card, .
   .topbar { align-items:flex-start; }
   .topbar > .row { justify-content:flex-end; }
   .dial-board { grid-template-columns:1fr; gap:12px; }
-  .math-dial-card { grid-template-rows:34px 1fr 34px; min-height:148px; padding:7px; border-radius:13px; }
   .standard-dial-card { grid-template-columns:1fr; grid-template-rows:1fr; min-height:200px; padding:7px; border-radius:13px; }
   .standard-dial-card .dial-face { padding:10px 44px 10px 6px; }
   .standard-dial-card.observer-dial .dial-face { padding:10px; }

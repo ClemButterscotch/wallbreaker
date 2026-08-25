@@ -6,19 +6,6 @@ Technical namespaces are isolated in `public/brand.js`. Change `storageNamespace
 
 A browser prototype for the Wallfacer / Wallbreaker deduction game, supporting flexible player counts.
 
-## Mathbreaker mode
-
-Mathbreaker is a simpler alternate mode for 3 or more players. It always assigns exactly one Wallfacer, one Wallbreaker, no Police, and Specialists in every remaining seat.
-
-- Its fields are Panopticon Theory, Far Lands Theory, Logic, Algebra, Lemon Theory, and Game Theory.
-- The six fields begin between 2 and 4 with a combined value of 17. The Wallfacer secretly needs three fields to reach 7 or higher.
-- The Wallfacer advances any field by +1. Each Specialist advances their private specialty by +2 or another field by +1.
-- The Wallbreaker simultaneously assigns one -1 decay effect per good player, including the Wallfacer. Decay may be stacked on one field.
-- Once everyone locks, advancements are publicly applied first; the already-committed decay is publicly applied immediately afterward.
-- Once per turn, the Wallbreaker may privately guess an unused combination of three fields. Incorrect combinations remain private and cannot be repeated.
-- A correct guess privately alerts the Wallbreaker and Wallfacer. The Wallbreaker must say “[Wallfacer], I am your Wallbreaker,” reveal the three fields aloud, and confirm the declaration to end the game.
-- There is no Police and no round limit. The loyal team wins only if all three required fields remain at or above 7 after decay resolves.
-
 ## Current rules implemented
 
 - Every standard game uses exactly one Wallfacer, one Wallbreaker, and one Shi Qiang. Every remaining player is a Loyal Specialist. At least three players are required.
@@ -33,18 +20,23 @@ Mathbreaker is a simpler alternate mode for 3 or more players. It always assigns
 
 ### Wild Roles advanced pack
 
-Standard-game hosts may enable the free optional Wild Roles pack with 4–9 players. Every Specialist seat becomes a different secretly assigned Wild Role, so no Wild Role can appear twice. The core Wallfacer, Wallbreaker, and Police roles do not change, and disabling the pack preserves the standard role composition and rules.
+Standard-game hosts may enable the free optional Wild Roles pack with 4–11 players. Every Specialist seat becomes a different secretly assigned Wild Role, so no Wild Role can appear twice and at least one role always remains unoccupied. The core Wallfacer, Wallbreaker, and Police roles do not change, and disabling the pack preserves the standard role composition and rules.
 
-Wild Roles are Loyal Specialists with an additional private goal. They never receive a Wallfacer plan display or its target values; they must help the Wallfacer complete the unknown plan while also satisfying their own goal. Bounty, Extremist, Disruptor, and Loner are one-time goals that stay complete. Conservationist and Moderate are at-finish board states checked when the game ends. A Loyal result caused by an incorrect Wallbreaker guess is not sufficient. Moderate has specialist-strength -2/+2 moves on its three assigned dials; other Wild Roles use -1/+1.
+Wild Roles are Loyal Specialists with an additional private goal. A Wild player wins if and only if their goal is satisfied and the Wallfacer team wins, whether by completing the plan or receiving the win after an incorrect Wallbreaker guess. Wild players never receive a Wallfacer plan display or its target values. A completed Wild goal stays complete. Wild Roles use normal -1/+1 moves. Wrapper additionally makes a touched dial use modulo-10 wrapping for that round when its move is not cancelled.
 
-During the game, a public **Wild roles** button opens a reference popup containing all six role names, generic goals, and whether each happens once or is checked at the finish. It reveals neither assignments nor private setup data. Police and Wallbreaker receive no special Wild Role information.
+During the game, a public **Wild roles** button opens a reference popup containing all nine role names and generic goals. It reveals neither assignments nor private setup data. Police receives no special Wild Role information. The Wallbreaker privately learns exactly one randomly selected unoccupied role and may use it as a cover identity.
 
-- **Bounty — happens once:** complete after two assigned players who are neither Police nor Wallfacer have each been arrested. Bounty is omitted from four-player draws because only one valid target exists.
-- **Extremist — happens once:** complete after the assigned extreme non-plan dial reaches its opposite endpoint (0 or 9) at least once.
-- **Conservationist — at finish:** the six-dial total must be within 3 of its starting sum when the game ends.
-- **Moderate — at finish:** the three non-plan dials must all be in the inclusive 4–6 range when the game ends; those dials allow -2, -1, +1, or +2 moves.
-- **Disruptor — happens once:** complete after making an uncancelled move away from its exact target on each of the three hidden plan dials. The player is not told the plan and learns by trial and error which moves qualify.
-- **Loner — happens once:** complete after four non-arrested rounds in which no other player chose the same dial color.
+- **Bounty:** complete after two assigned players who are neither Police nor Wallfacer have each been arrested. Bounty is omitted from four-player draws because only one valid target exists.
+- **Extremist:** complete after the assigned extreme non-plan dial reaches its opposite endpoint (0 or 9) at least once.
+- **Conservationist:** complete when a round from round 4 onward ends with the six-dial total exactly equal to its starting sum. Matching during rounds 1–3 does not count.
+- **Moderate:** complete whenever all six dials are simultaneously in the inclusive 3–7 range. The starting board can qualify.
+- **Disruptor:** complete after making an uncancelled move away from its exact target on each of the three hidden plan dials. The player is not told the plan and learns by trial and error which moves qualify.
+- **Loner:** complete after four non-arrested rounds in which no other player chose the same dial color.
+- **Oddball:** complete after any completed round ends with at least five of the six dials showing odd numbers. The starting board does not count.
+- **Numerologist:** complete after any completed round ends with three or more dials showing the same number. The starting board does not count.
+- **Wrapper:** complete after Wrapper’s persistent power has made three different dials wrap past 0 or 9. Any dial touched by Wrapper’s uncancelled move uses modulo-10 wrapping for that round, and the power remains active after completion.
+
+When any Wild goal is complete, its live progress panel and dial markers disappear. The player screen gains a subtle purple tint, and **Show role** confirms the achievement. Oddball and Numerologist have no partial progress display before completion because each qualifying board either occurs or does not.
 
 ## Match controls and recovery
 
@@ -71,10 +63,8 @@ Use the host page for the game you intend to run, choose whether to join as a no
 
 - `/rules` opens the complete visual Wallbreaker rulebook. It supports slide controls, keyboard and swipe navigation, deep links, fullscreen, and printing to a PDF handout.
 - `/preview` opens the UI preview lab, including each Wild Role in full player-screen context and the retained visual alternatives for roles still under comparison.
-- `/mathbreaker/rules` opens Mathbreaker’s separate visual rulebook.
 - `/host` hosts the standard Wallbreaker game.
 - `/tutorial/host` hosts the guided Wallbreaker tutorial.
-- `/mathbreaker/host` hosts the experimental Mathbreaker mode.
 
 Host recovery is isolated by mode, so a saved room on one host page cannot replace a room from another mode.
 
@@ -84,7 +74,7 @@ To run the checks:
 npm test
 ```
 
-The test suite imports the same pure rules module used by the browser. It covers fixed role composition, unique multi-Wild assignment, happens-once and at-finish Wild goals, active-game plan privacy, Loyal-aligned Wild wins, role-specific movement, mutually exclusive Sophon actions, Police arrests, write-once locks, simultaneous resolution, dial bounds, disconnected no-ops, color-only plan guesses, replay records, and postgame privacy.
+The test suite imports the same pure rules module used by the browser. It covers fixed role composition, unique multi-Wild assignment, every Wild goal, active-game plan privacy, Loyal-aligned Wild wins, role-specific movement, mutually exclusive Sophon actions, Police arrests, write-once locks, simultaneous resolution, dial bounds, disconnected no-ops, color-only plan guesses, replay records, and postgame privacy.
 
 For a free public version later, deploy this folder as a static site on Cloudflare Pages. The app has no server-side routes or build step; set the build command to empty and the output directory to the project root. PeerJS handles room signaling and WebRTC connections in the browser.
 

@@ -92,6 +92,10 @@
 .preview-context-option-heading h3 { margin:0; font-size:1.25rem; }
 .preview-context-option-heading p { margin:3px 0 0; color:#a1a1aa; line-height:1.4; }
 .preview-wild-player-shell { position:relative; display:grid; gap:14px; width:min(1120px,100%); min-height:900px; margin:0 auto; padding:28px 32px 70px; border:1px solid #303640; border-radius:22px; background:#0b0d10; overflow:hidden; }
+.preview-wild-player-shell.goal-complete { border-color:#59437d; background:radial-gradient(circle at 50% 3%,rgba(139,92,246,.16),transparent 38%),linear-gradient(180deg,#17111f,#0b0d10 62%); }
+.preview-wild-state-control { display:grid; justify-items:end; gap:10px; max-width:520px; }
+.preview-wild-state-control p { margin:0; }
+.preview-wild-state-control button.active { border-color:#9c83f4; background:#2b1c43; color:#e8e0ff; }
 .preview-wild-topbar { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .preview-wild-topbar p { margin:4px 0 0; color:#a1a1aa; font-size:.9rem; }
 .preview-wild-topbar>div:last-child { display:flex; gap:10px; }
@@ -123,6 +127,8 @@
 .preview-moderate-corners::before { content:""; top:8px; left:8px; width:28px; height:28px; border-top:5px solid #c4b5fd; border-left:5px solid #c4b5fd; filter:drop-shadow(0 0 6px #8b5cf6); }
 .preview-moderate-corners::after { content:""; right:8px; bottom:8px; width:28px; height:28px; border-right:5px solid #c4b5fd; border-bottom:5px solid #c4b5fd; filter:drop-shadow(0 0 6px #8b5cf6); }
 .preview-moderate-seal::before { content:"◆"; top:10px; left:10px; display:grid; place-items:center; width:28px; height:28px; border:1px solid #c4b5fd; border-radius:8px; background:#4c1d95; color:#ddd6fe; font-size:.72rem; box-shadow:0 0 14px rgba(139,92,246,.75); }
+.preview-wrapper-marker { position:absolute; z-index:6; top:10px; left:10px; display:grid; place-items:center; width:34px; height:34px; border:1px solid #c4b5fd; border-radius:50%; background:#352254; color:#e4dbff; box-shadow:0 0 16px rgba(167,139,250,.55); }
+.preview-wrapper-marker .role-svg { width:20px; height:20px; }
 .preview-chat-launch { position:absolute; right:26px; bottom:22px; display:grid; place-items:center; width:52px; height:52px; padding:0; border-radius:50%; background:#f5d90a; color:#050505; letter-spacing:.1em; }
 .preview-wild-segments { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; }
 .preview-wild-segments i { height:10px; border:1px solid #5a526d; border-radius:999px; background:#17151f; }
@@ -130,6 +136,10 @@
 .preview-wild-status { padding:11px 12px; border:1px solid #49415f; border-radius:11px; color:#d4cdea; background:#17151f; font-size:.75rem; font-weight:750; }
 .preview-wild-status.warning { border-color:#7b6428; color:#fff3a1; background:#211d10; }
 .preview-wild-status.loyal { border-color:#236942; color:#a7f3d0; background:#102219; }
+.preview-total-readout { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.preview-total-readout>div { display:grid; justify-items:center; gap:5px; padding:14px; border:1px solid #49415f; border-radius:12px; background:#111016; }
+.preview-total-readout span { color:#a998e7; font-size:.62rem; font-weight:900; letter-spacing:.1em; text-transform:uppercase; }
+.preview-total-readout strong { color:#eee9ff; font-size:1.8rem; }
 .preview-bounty-targets { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
 .preview-bounty-target { position:relative; display:grid; grid-template-columns:54px 1fr; align-items:center; gap:12px; min-width:0; padding:13px; border:1px solid #49415f; border-radius:13px; background:#14131b; overflow:hidden; }
 .preview-bounty-target .chat-avatar { width:54px; height:54px; }
