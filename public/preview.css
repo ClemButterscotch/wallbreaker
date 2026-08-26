@@ -2,7 +2,8 @@
 #preview-lab { width:min(1440px,100%); margin:0 auto; padding:28px clamp(18px,4vw,56px) 64px; }
 .preview-header { display:flex; justify-content:space-between; align-items:end; gap:28px; margin-bottom:26px; }
 .preview-header a { color:#fff3a1; text-decoration:none; }
-.preview-header .brand { margin-top:28px; font-size:.78rem; }
+.preview-header .product-brand { margin-top:28px; }
+.preview-header .brand { font-size:.78rem; }
 .preview-header h1 { margin:8px 0 6px; font-size:clamp(2.3rem,6vw,5rem); line-height:.92; letter-spacing:-.055em; }
 .preview-header p { max-width:700px; margin:0; color:#a1a1aa; font-size:1.05rem; }
 .preview-tabs { position:sticky; top:10px; z-index:8; display:flex; gap:8px; width:max-content; max-width:100%; margin-bottom:22px; padding:7px; overflow-x:auto; border:1px solid #332f00; border-radius:16px; background:rgba(5,5,5,.9); backdrop-filter:blur(14px); }

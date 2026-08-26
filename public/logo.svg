@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" role="img" aria-labelledby="title desc">
+  <title id="title">Wallbreaker</title>
+  <desc id="desc">Six color fields arranged in Mathematics, Science, and Agriculture rows.</desc>
+  <rect width="150" height="100" fill="#F5D90A"/>
+  <rect x="150" width="150" height="100" fill="#D94892"/>
+  <rect y="100" width="150" height="100" fill="#3D8FE4"/>
+  <rect x="150" y="100" width="150" height="100" fill="#35A86B"/>
+  <rect y="200" width="150" height="100" fill="#F28C28"/>
+  <rect x="150" y="200" width="150" height="100" fill="#E43D3D"/>
+</svg>

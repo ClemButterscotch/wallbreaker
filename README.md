@@ -4,6 +4,8 @@
 
 Technical namespaces are isolated in `public/brand.js`. Change `storageNamespace` or `peerNamespace` only when intentionally separating a renamed game from existing saved sessions and PeerJS rooms. Product branding is separate from the Wallfacer and Wallbreaker role names.
 
+The official product mark is `public/logo.svg`: six gapless color fields arranged in the Mathematics, Science, and Agriculture specialty pairs.
+
 A browser prototype for the Wallfacer / Wallbreaker deduction game, supporting flexible player counts.
 
 ## Current rules implemented

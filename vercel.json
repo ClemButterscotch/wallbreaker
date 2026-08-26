@@ -12,7 +12,8 @@
     { "src": "public/tutorial.js", "use": "@vercel/static" },
     { "src": "public/rules.js", "use": "@vercel/static" },
     { "src": "public/rules.css", "use": "@vercel/static" },
-    { "src": "public/styles.css", "use": "@vercel/static" }
+    { "src": "public/styles.css", "use": "@vercel/static" },
+    { "src": "public/logo.svg", "use": "@vercel/static" }
   ],
   "routes": [
     { "src": "/rules", "dest": "/rules.html" },
@@ -29,6 +30,7 @@
     { "src": "/rules.js", "dest": "/public/rules.js" },
     { "src": "/rules.css", "dest": "/public/rules.css" },
     { "src": "/styles.css", "dest": "/public/styles.css" },
+    { "src": "/logo.svg", "dest": "/public/logo.svg" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
