@@ -735,6 +735,7 @@ kbd { display:inline-grid; min-width:22px; min-height:22px; place-items:center; 
 .rules-nav-button:hover:not(:disabled) { color:var(--rules-yellow); }
 .rules-nav-button:disabled { opacity:.25; cursor:not-allowed; }
 .rules-nav-button span { display:grid; place-items:center; width:30px; height:30px; border:1px solid #3b3931; border-radius:50%; }
+.rules-nav-button svg { display:block; width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 .rules-nav-button.is-next { justify-self:end; }
 .rules-progress-wrap { display:grid; gap:8px; width:min(600px,100%); justify-self:center; }
 .rules-progress-label { display:flex; justify-content:space-between; gap:20px; color:#77756d; font-size:.61rem; font-weight:850; letter-spacing:.08em; text-transform:uppercase; }

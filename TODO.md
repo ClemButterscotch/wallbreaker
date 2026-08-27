@@ -66,7 +66,7 @@ wrapping power.
 - Active-game/postgame disclosure boundaries, plan privacy, goal completion timing,
   and Loyal-aligned Wild results.
 - Regression coverage for standard role composition, legal actions, round
-  resolution, tutorial disclosure, and Wild Roles disabled.
+  resolution, disclosure boundaries, and Wild Roles disabled.
 
 ### Manual verification remaining
 

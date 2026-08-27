@@ -7,7 +7,6 @@ export const BRAND = Object.freeze({
 
 export const HOST_MODES = Object.freeze({
   '/host': 'standard',
-  '/tutorial/host': 'tutorial',
 });
 
 export function hostModeForPath(pathname) {

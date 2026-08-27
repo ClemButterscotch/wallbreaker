@@ -42,7 +42,7 @@ When any Wild goal is complete, its live progress panel and dial markers disappe
 
 ## Match controls and recovery
 
-- The standard and tutorial lobbies show the fixed core role composition and offer 6-, 8-, 10-, or 12-round matches. Standard hosts may also enable the Wild Roles pack.
+- The lobby shows the fixed core role composition and offers 6-, 8-, 10-, or 12-round matches. Hosts may also enable the Wild Roles pack.
 - Players see connection recovery notices. The host sees each player's live connection state and can resolve a disconnected player as a no-op for the current round so the match does not hang.
 - Host and player sessions attempt to reconnect after reload while preserving the room code, the host's chosen participation mode, and authoritative state.
 - When a game ends, roles and Wallfacer plans become public, followed by an expandable round-by-round replay of dial changes, actions, arrests, Sophon observations, and connection no-ops. This information is not included in public state while a match is active.
@@ -66,9 +66,6 @@ Use the host page for the game you intend to run, choose whether to join as a no
 - `/rules` opens the complete visual Wallbreaker rulebook. It supports slide controls, keyboard and swipe navigation, deep links, fullscreen, and printing to a PDF handout.
 - `/preview` opens the UI preview lab, including each Wild Role in full player-screen context and the retained visual alternatives for roles still under comparison.
 - `/host` hosts the standard Wallbreaker game.
-- `/tutorial/host` hosts the guided Wallbreaker tutorial.
-
-Host recovery is isolated by mode, so a saved room on one host page cannot replace a room from another mode.
 
 To run the checks:
 

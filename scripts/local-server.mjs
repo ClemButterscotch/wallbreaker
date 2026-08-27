@@ -11,8 +11,8 @@ const httpServer = createServer(async (req, res) => {
   const requested = decodeURIComponent((req.url || '/').split('?')[0]);
   const relative = requested === '/rules' ? '/rules.html' :
     requested === '/preview' ? '/preview.html' :
-    requested === '/' || requested === '/host' || requested === '/tutorial/host' ? '/index.html' :
-    (requested === '/app.js' || requested === '/styles.css' || requested === '/brand.js' || requested === '/icons.js' || requested === '/preview.js' || requested === '/preview.css' || requested === '/game-rules.js' || requested === '/tutorial.js' || requested === '/rules.js' || requested === '/rules.css' || requested === '/logo.svg' ? `/public${requested}` : requested);
+    requested === '/' || requested === '/host' ? '/index.html' :
+    (requested === '/app.js' || requested === '/styles.css' || requested === '/brand.js' || requested === '/icons.js' || requested === '/preview.js' || requested === '/preview.css' || requested === '/game-rules.js' || requested === '/rules.js' || requested === '/rules.css' || requested === '/logo.svg' ? `/public${requested}` : requested);
   const file = normalize(join(root, relative));
   if (!file.startsWith(root)) { res.writeHead(403).end('Forbidden'); return; }
   try {

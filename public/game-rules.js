@@ -385,21 +385,6 @@ export function privateArrestOutcome(playerId,role,players,arrested,history=[]){
   return outcome;
 }
 
-function privateHistoryForViewer(history,roles,viewerId){
-  return (history||[]).map(entry=>{
-    const policeAction=entry.actions?.find(item=>roles[item.playerId]?.kind==='police');
-    if(!policeAction||viewerId===policeAction.playerId||(policeAction.action?.type==='arrest'&&viewerId===policeAction.action.targetId)) return entry;
-    return {
-      ...entry,
-      actions:entry.actions.map(item=>({
-        ...item,
-        arrested:false,
-        action:roles[item.playerId]?.kind==='police'?{type:'private'}:item.action
-      }))
-    };
-  });
-}
-
 export function buildPostgameDisclosure(phase,players,roles,history,finalGuess,recap,viewerId=null,wildContext=null){
   if(phase!=='ended'||recap?.active!==true) return undefined;
   const completedRounds=history||[];
@@ -414,22 +399,5 @@ export function buildPostgameDisclosure(phase,players,roles,history,finalGuess,r
     finalGuess:complete?(finalGuess||null):null,
     wildResults:wildContext?buildWildRoleResults(players,roles,{history:completedRounds,...wildContext}):[],
     recap:{roundIndex,totalRounds:completedRounds.length,complete}
-  };
-}
-
-export function buildTutorialDisclosure(mode,players,roles,selections,tutorialReady,history=[],viewerId=null){
-  if(mode!=='tutorial') return undefined;
-  return {
-    readyPlayerIds:Object.keys(tutorialReady||{}),
-    roles:players.map(player=>{
-      const role=roles[player.id]||{};
-      return {playerId:player.id,name:player.name,kind:role.kind,label:role.label,profession:role.profession,plan:role.plan,targetId:role.targetId};
-    }),
-    lockedMoves:players.filter(player=>selections[player.id]&&(roles[player.id]?.kind!=='police'||player.id===viewerId)).map(player=>({
-      playerId:player.id,
-      name:player.name,
-      selection:{...selections[player.id]}
-    })),
-    lastRound:privateHistoryForViewer(history,roles,viewerId).at(-1)||null
   };
 }

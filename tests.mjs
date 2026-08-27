@@ -26,8 +26,7 @@ import {
   isPlanFieldGuess,
   isStandardPlanComplete,
   privateArrestOutcome,
-  buildPostgameDisclosure,
-  buildTutorialDisclosure
+  buildPostgameDisclosure
 } from './public/game-rules.js';
 
 const test=(name,fn)=>{
@@ -65,11 +64,11 @@ test('the rulebook ends with one advanced Wild Role primer and one slide per rol
   assert.doesNotMatch(rulebookHtml,/Combination unlocked/i);
 });
 
-test('host subpages select and isolate their game modes',()=>{
+test('only the standard host page selects a game mode',()=>{
   assert.equal(hostModeForPath('/host'),'standard');
-  assert.equal(hostModeForPath('/tutorial/host'),'tutorial');
+  assert.equal(hostModeForPath('/tutorial/host'),null);
   assert.equal(hostModeForPath('/unknown/host'),null);
-  assert.notEqual(hostStorageName('/host'),hostStorageName('/tutorial/host'));
+  assert.equal(hostStorageName('/host'),'host-standard');
 });
 
 test('a playing host has player-only access while an observer has omniscient access',()=>{
@@ -608,30 +607,6 @@ test('arrest outcomes stay private during play but are revealed in the postgame 
   const revealedPoliceMove=buildPostgameDisclosure('ended',players,roles,policeMoveHistory,null,recap,'other');
   assert.deepEqual(revealedPoliceMove.history[0].actions[0].action,{type:'move',color:'green',effect:1});
 
-  const selections={police:{policeMode:'arrest',arrestTarget:'target'},other:{color:'blue',effect:-1}};
-  const targetTutorial=buildTutorialDisclosure('tutorial',players,roles,selections,{},history,'target');
-  const policeTutorial=buildTutorialDisclosure('tutorial',players,roles,selections,{},history,'police');
-  const otherTutorial=buildTutorialDisclosure('tutorial',players,roles,selections,{},history,'other');
-  assert.equal(targetTutorial.lockedMoves.some(move=>move.playerId==='police'),false,'target learns only after resolution');
-  assert.equal(policeTutorial.lockedMoves.some(move=>move.playerId==='police'),true);
-  assert.equal(targetTutorial.lastRound.actions[0].action.targetId,'target');
-  assert.deepEqual(otherTutorial.lastRound.actions[0].action,{type:'private'});
-});
-
-test('tutorial disclosures are isolated from standard games',()=>{
-  const players=[{id:'wf',name:'Wen'},{id:'wb',name:'Bo'}];
-  const roles={
-    wf:{kind:'wallfacer',label:'Wallfacer',plan:{values:{red:4,blue:2,pink:8}}},
-    wb:{kind:'wallbreaker',label:'Wallbreaker',targetId:'wf'}
-  };
-  const selections={wb:{sophonMode:'see'}};
-  assert.equal(buildTutorialDisclosure('standard',players,roles,selections,{}),undefined);
-  const disclosure=buildTutorialDisclosure('tutorial',players,roles,selections,{wf:true},[{round:1,actions:[]}]);
-  assert.equal(disclosure.roles[0].plan.values.red,4);
-  assert.equal(disclosure.roles[1].targetId,'wf');
-  assert.deepEqual(disclosure.readyPlayerIds,['wf']);
-  assert.deepEqual(disclosure.lockedMoves,[{playerId:'wb',name:'Bo',selection:{sophonMode:'see'}}]);
-  assert.equal(disclosure.lastRound.round,1);
 });
 
 console.log('\nAll regression groups passed');
