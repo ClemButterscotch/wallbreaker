@@ -127,7 +127,10 @@ button.chat-message { cursor:pointer; }
 .wrapper-dial-indicator .role-svg { width:20px; height:20px; }
 .moderate-target { outline:4px solid #a78bfa; outline-offset:2px; box-shadow:0 0 18px rgba(167,139,250,.22); }
 .dial-face { position:relative; display:grid; place-items:center; min-width:0; padding:14px 52px 14px 12px; pointer-events:none; }
-.standard-dial-card .dial-select { width:100%; min-width:0; }
+.standard-dial-card .dial-select { width:100%; min-width:0; overflow:visible; border:0; background:transparent; box-shadow:none; }
+.standard-dial-card .dial-select::before,
+.standard-dial-card .dial-select::after { display:none; }
+.standard-dial-card .value-window { border:0; border-radius:0; background:transparent; box-shadow:none; }
 .standard-dial-card.observer-dial .dial-face { padding:14px; }
 .dial-actions { position:absolute; inset:0; z-index:2; display:grid; min-height:0; overflow:hidden; border:0; border-radius:inherit; background:transparent; }
 .dial-actions.action-count-2 { grid-template-rows:repeat(2,1fr); }
