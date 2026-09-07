@@ -12,11 +12,21 @@ function hostModeForPath(){ return modeForHostPath(location.pathname); }
 function isHostRoute(){ return Boolean(hostModeForPath()); }
 function hostStorageKey(){ return storageKey(hostStorageName(location.pathname)); }
 function localAccess(){ return viewerAccess({isHost,adminPlaying:game.adminPlaying===true,playerId:myPlayerId}); }
+const storage = {
+  getItem(key){ try { return localStorage.getItem(key); } catch { return null; } },
+  setItem(key,value){ try { localStorage.setItem(key,value); } catch { /* Storage may be disabled or full. */ } },
+  removeItem(key){ try { localStorage.removeItem(key); } catch {} }
+};
+function readSaved(key){
+  try { return JSON.parse(storage.getItem(key)||'null'); } catch { return null; }
+}
 let peer = null;
 let hostConn = null;
 let conns = new Map();
-let clientId = localStorage.getItem(storageKey('client-id')) || crypto.randomUUID?.() || `local-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-localStorage.setItem(storageKey('client-id'), clientId);
+let clientId = storage.getItem(storageKey('client-id')) || crypto.randomUUID?.() || `local-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+storage.setItem(storageKey('client-id'), clientId);
+const reconnectToken=storage.getItem(storageKey('reconnect-token'))||newId();
+storage.setItem(storageKey('reconnect-token'),reconnectToken);
 let isHost = false;
 let myName = query.get('name') || '';
 let myPlayerId = null;
@@ -35,9 +45,10 @@ let countdownTimer = null;
 let victoryRevealTimer = null;
 let localView = { screen:isHostRoute() ? 'host' : 'home', state:null, role:null, error:'', modal:null, revealKey:'', revealAnimationPending:false };
 
+function newId(){ return crypto.randomUUID?.()||Array.from(crypto.getRandomValues(new Uint8Array(16)),byte=>byte.toString(16).padStart(2,'0')).join(''); }
 function roomPeerId(code){ return `${BRAND.peerNamespace}-${code}`; }
-function fourDigit(){ return String(Math.floor(100000 + Math.random()*900000)); }
-function escapeHtml(s=''){ return s.replace(/[&<>'"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':'&quot;'}[c])); }
+function roomCode(){ return String(Math.floor(100000 + Math.random()*900000)); }
+function escapeHtml(s=''){ return String(s??'').replace(/[&<>'"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':'&quot;'}[c])); }
 function playTung(){
   try{
     audioContext ||= new (window.AudioContext||window.webkitAudioContext)();
@@ -50,17 +61,16 @@ function playTung(){
   }catch{}
 }
 function send(conn, msg){
-  if(!conn) return;
-  if(conn.open) conn.send(msg);
-  else conn.once?.('open',()=>{ if(conn.open) conn.send(msg); });
+  if(!conn?.open) return false;
+  try { conn.send(msg); return true; } catch { return false; }
 }
-function saveClientSession(){ const code=localView.state?.code||game.code; if(code&&myName) localStorage.setItem(storageKey('session'),JSON.stringify({code,name:myName})); }
-function clearSession(){ localStorage.removeItem(storageKey('session')); }
+function saveClientSession(){ const code=localView.state?.code||game.code; if(code&&myName) storage.setItem(storageKey('session'),JSON.stringify({code,name:myName})); }
+function clearSession(){ storage.removeItem(storageKey('session')); }
 function clearHostSession(){
-  localStorage.removeItem(hostStorageKey());
-  if(hostModeForPath()==='standard') localStorage.removeItem(storageKey('host'));
+  storage.removeItem(hostStorageKey());
+  if(hostModeForPath()==='standard') storage.removeItem(storageKey('host'));
 }
-function saveHost(){ localStorage.setItem(hostStorageKey(),JSON.stringify({code:game.code,game})); }
+function saveHost(){ storage.setItem(hostStorageKey(),JSON.stringify({code:game.code,game})); }
 function broadcast(){
   if(isHost) saveHost();
   for(const [pid,conn] of conns){
@@ -77,6 +87,7 @@ function broadcast(){
     revealAnimationTimer=setTimeout(()=>{ localView.revealAnimationPending=false; render(); },3000);
   }
   if(previousRound!==nextState.round&&nextState.phase==='playing') pendingSelection=freshPendingSelection();
+  localView.screen=['lobby','countdown'].includes(nextState.phase)?'lobby':'game';
   localView.state = nextState;
   localView.role = access.player?roleFor(game.players.find(p=>p.id===access.viewerId)):null;
   if(nextState.phase==='victory-reveal'){ localView.modal=null; noticeQueue=[]; }
@@ -85,7 +96,7 @@ function broadcast(){
 }
 function publicState(viewerId=null){
   const state={
-    code:game.code, mode:game.mode||'standard', phase:game.phase, countdown:game.countdown||0, round:game.round, maxRounds:game.maxRounds, dials:game.dials, playerCount:game.players.length, wallfacerCount:game.wallfacerCount, includeMessaging:game.includeMessaging===true, wildRolesEnabled:game.wildRolesEnabled===true,
+    code:game.code, gameId:game.gameId, mode:game.mode||'standard', phase:game.phase, countdown:game.countdown||0, round:game.round, maxRounds:game.maxRounds, dials:game.dials, playerCount:game.players.length, wallfacerCount:game.wallfacerCount, includeMessaging:game.includeMessaging===true, wildRolesEnabled:game.wildRolesEnabled===true,
     players:game.players.map(p=>({id:p.id,name:p.name,ready:!!game.selections[p.id],connected:Boolean(conns.get(p.id)?.open)||(game.adminPlaying===true&&p.id===myPlayerId)})),
     adminPlaying:game.adminPlaying, paused:game.paused, breakerName:game.breakerName,
     revealed:game.revealed, revealedBefore:game.revealedBefore, wrappedColors:game.wrappedColors||[], winner:game.winner, reason:game.reason
@@ -118,7 +129,7 @@ function roleFor(player){
 }
 let game = freshGame();
 function randomDials(){ return Object.fromEntries(COLORS.map(c=>[c,Math.floor(Math.random()*10)])); }
-function freshGame(){ return {code:'',mode:'standard',phase:'lobby',round:1,maxRounds:MAX_ROUNDS,wallfacerCount:1,includeMessaging:false,wildRolesEnabled:false,initialDials:null,dials:randomDials(),players:[],roles:{},selections:{},arrested:{},history:[],finalGuess:null,recap:{active:false,roundIndex:0},victoryReveal:null,adminPlaying:true,paused:false,breakerName:'',revealed:null,revealedBefore:null,wrappedColors:[],winner:null,reason:''}; }
+function freshGame(){ return {code:'',gameId:newId(),mode:'standard',phase:'lobby',round:1,maxRounds:MAX_ROUNDS,wallfacerCount:1,includeMessaging:false,wildRolesEnabled:false,initialDials:null,dials:randomDials(),players:[],roles:{},selections:{},arrested:{},history:[],finalGuess:null,recap:{active:false,roundIndex:0},victoryReveal:null,adminPlaying:true,paused:false,breakerName:'',revealed:null,revealedBefore:null,wrappedColors:[],winner:null,reason:''}; }
 
 function beginGoalVictory(winner,reason){
   const now=Date.now();
@@ -150,9 +161,17 @@ function scheduleVictoryReveal(){
   },Math.max(0,boundary-Date.now()));
 }
 
+function shuffle(items){
+  const result=[...items];
+  for(let i=result.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [result[i],result[j]]=[result[j],result[i]];
+  }
+  return result;
+}
 function createPlan(){
   const values={};
-  for(const c of [...COLORS].sort(()=>Math.random()-.5).slice(0,3)) values[c]=Math.floor(Math.random()*10);
+  for(const c of shuffle(COLORS).slice(0,3)) values[c]=Math.floor(Math.random()*10);
   return {values};
 }
 function assignRoles(){
@@ -160,7 +179,7 @@ function assignRoles(){
   if(players.length<3) throw new Error('At least 3 players are required so Police is always included.');
   const composition=roleComposition(players.length);
   const wallfacerCount=composition.wallfacers;
-  const shuffled=[...players].sort(()=>Math.random()-.5);
+  const shuffled=shuffle(players);
   const wallfacers=shuffled.slice(0,wallfacerCount);
   const wallbreakers=shuffled.slice(wallfacerCount,wallfacerCount*2);
   const police=composition.police?shuffled[wallfacerCount*2]:null;
@@ -212,9 +231,11 @@ function resolveRound(){
   broadcast();
 }
 function attemptBreak(playerId, colors){
+  if(!isHost||game.phase!=='playing') return;
   const role=game.roles[playerId];
   if(role?.kind!=='wallbreaker') return;
   const targetRole=game.roles[role.targetId];
+  if(!targetRole?.plan||!Array.isArray(colors)||colors.length!==3||new Set(colors).size!==3||!colors.every(color=>COLORS.includes(color))) return;
   const plan=targetRole.plan;
   const guessColors=Array.isArray(colors)?[...colors]:[];
   const correct=isPlanFieldGuess(plan.values,guessColors);
@@ -225,9 +246,19 @@ function attemptBreak(playerId, colors){
   broadcast();
 }
 
+function watchSignaling(instance){
+  instance.on('disconnected',()=>{
+    if(peer!==instance||instance.destroyed) return;
+    setTimeout(()=>{
+      if(peer!==instance||instance.destroyed||!instance.disconnected) return;
+      try { instance.reconnect(); } catch { /* A later disconnect can retry. */ }
+    },1000);
+  });
+}
 function setupPeerAsHost(code){
   return new Promise((resolve,reject)=>{
     peer = new Peer(roomPeerId(code));
+    watchSignaling(peer);
     peer.on('open',resolve);
     peer.on('error',err=>reject(err));
     peer.on('connection',conn=>{
@@ -244,13 +275,16 @@ function setupPeerAsHost(code){
 }
 function setupPeerAsClient(){
   return new Promise((resolve,reject)=>{
-    peer=new Peer(undefined,{debug:0}); peer.on('open',resolve); peer.on('error',reject);
+    peer=new Peer(undefined,{debug:0}); watchSignaling(peer); peer.on('open',resolve); peer.on('error',reject);
   });
 }
 function attachClientConnection(conn){
   hostConn=conn;
-  conn.on('open',()=>send(conn,{type:'join',name:myName,clientId}));
-  conn.on('data',handleClientMessage);
+  conn.on('open',()=>{ if(hostConn===conn) send(conn,{type:'join',name:myName,clientId,reconnectToken}); });
+  setTimeout(()=>{
+    if(hostConn===conn&&localView.screen==='connecting'&&storage.getItem(storageKey('session'))) retryClientConnection(0);
+  },12000);
+  conn.on('data',msg=>{ if(hostConn===conn) handleClientMessage(msg); });
   conn.on('close',()=>{
     // An older connection may close after a replacement has already opened.
     // Only the currently active connection is allowed to trigger recovery.
@@ -267,11 +301,11 @@ function attachClientConnection(conn){
   });
 }
 function retryClientConnection(delay=700){
-  if(reconnecting || isHost || !localStorage.getItem(storageKey('session'))) return;
+  if(reconnecting || isHost || !storage.getItem(storageKey('session'))) return;
   reconnecting=true;
   setTimeout(async()=>{
     reconnecting=false;
-    if(isHost || !localStorage.getItem(storageKey('session'))) return;
+    if(isHost || !storage.getItem(storageKey('session'))) return;
     const oldConn=hostConn;
     hostConn=null;
     oldConn?.close?.();
@@ -280,13 +314,17 @@ function retryClientConnection(delay=700){
   },delay);
 }
 function handleHostMessage(conn,msg){
-  if(msg._transportClientId) {
-    msg.clientId ||= msg._transportClientId;
-    msg.playerId ||= msg._transportClientId;
-  }
+  if(!isHost||!msg||typeof msg!=='object'||Array.isArray(msg)) return;
+  if(msg.type!=='join'&&conn&&conns.get(msg.playerId)!==conn) return;
   if(msg.type==='join'){
+    if(!conn||typeof msg.clientId!=='string'||!/^[-a-zA-Z0-9]{1,100}$/.test(msg.clientId)||['__proto__','constructor','prototype',clientId].includes(msg.clientId)) return;
+    if(typeof msg.name!=='string'||!msg.name.trim()||msg.name.trim().length>40||typeof msg.reconnectToken!=='string'||msg.reconnectToken.length>100||!msg.reconnectToken) return;
+    msg={...msg,name:msg.name.trim()};
+    if([...conns].some(([id,connection])=>connection===conn&&id!==msg.clientId)) return;
     const existing=game.players.find(p=>p.id===msg.clientId);
     if(existing){
+      if(existing.reconnectToken&&existing.reconnectToken!==msg.reconnectToken) return;
+      existing.reconnectToken=msg.reconnectToken;
       const previous=conns.get(msg.clientId);
       if(previous && previous!==conn) previous.close?.();
       conns.set(msg.clientId,conn);
@@ -299,12 +337,13 @@ function handleHostMessage(conn,msg){
     if(game.mode==='standard'&&game.wildRolesEnabled===true&&game.players.length+(pendingHostSeat?1:0)>=MAX_WILD_PLAYERS){ send(conn,{type:'error',message:`Wild Roles games are capped at ${MAX_WILD_PLAYERS} players.`}); return; }
     if(game.players.some(p=>p.name.toLowerCase()===msg.name.toLowerCase())){ send(conn,{type:'error',message:'Name already used.'}); return; }
     const id=msg.clientId;
-    conns.set(id,conn); game.players.push({id,name:msg.name});
+    conns.set(id,conn); game.players.push({id,name:msg.name,reconnectToken:msg.reconnectToken});
     send(conn,{type:'joined',playerId:id}); saveHost();
     broadcast();
   }
   if(msg.type==='leave'){
     conns.delete(msg.playerId);
+    conn?.close?.();
     if(game.phase==='lobby'){
       game.players=game.players.filter(player=>player.id!==msg.playerId);
       delete game.roles[msg.playerId]; delete game.selections[msg.playerId];
@@ -322,9 +361,8 @@ function handleHostMessage(conn,msg){
     broadcast();
   }
   if(msg.type==='lockSelection' && game.phase==='playing' && !game.paused){
-    // A lock is write-once for the current round. This prevents late retries,
-    // duplicate WebSocket deliveries, and stale UI events from changing an
-    // answer after it has been committed.
+    // Reject delayed actions from earlier rounds and previous games.
+    if(msg.round!==game.round||msg.gameId!==game.gameId) return;
     if(!game.players.some(p=>p.id===msg.playerId)) return;
     if(!tryLockSelection(game.selections,msg.playerId,msg.selection,selection=>isLegalSelection(msg.playerId,selection))) return;
     if(Object.keys(game.selections).length===game.players.length) resolveRound(); else broadcast();
@@ -335,7 +373,7 @@ function handleHostMessage(conn,msg){
     game.selections[player.id]={systemSkipped:true};
     if(Object.keys(game.selections).length===game.players.length) resolveRound(); else broadcast();
   }
-  if(msg.type==='breakGuess' && game.phase==='playing') attemptBreak(msg.playerId,msg.colors);
+  if(msg.type==='breakGuess' && game.phase==='playing' && msg.gameId===game.gameId) attemptBreak(msg.playerId,msg.colors);
   if(msg.type==='chat' && game.includeMessaging===true && typeof msg.text==='string'){
     const player=game.players.find(p=>p.id===msg.playerId);
     if(!player || !msg.text.trim()) return;
@@ -345,9 +383,11 @@ function handleHostMessage(conn,msg){
   }
 }
 function handleClientMessage(msg){
+  if(!msg||typeof msg!=='object') return;
   if(msg.type==='joined'){ myPlayerId=msg.playerId; }
   if(msg.type==='state'){
     const wasPlaying=localView.state?.phase==='playing';
+    if(msg.state.gameId!==localView.state?.gameId){ pendingSelection=freshPendingSelection(); noticeQueue=[]; shownNoticeKeys.clear(); localView.revealKey=''; localView.modal=null; }
     const previousRound=localView.state?.round;
     if(msg.state.phase==='countdown' && msg.state.countdown!==lastCountdownSound){ lastCountdownSound=msg.state.countdown; playTung(); }
     const nextRevealKey=`${msg.state.round}:${JSON.stringify(msg.state.revealed)}`;
@@ -363,7 +403,10 @@ function handleClientMessage(msg){
     queueOutcomeModals(msg.state,msg.role);
     render();
   }
-  if(msg.type==='error'){ localView.error=msg.message; render(); }
+  if(msg.type==='error'){
+    if(localView.screen==='connecting'){ giveUpReconnection(); }
+    localView.error=msg.message; render();
+  }
   if(msg.type==='removed'){
     clearSession(); peer?.destroy?.();
     localView={screen:'home',state:null,role:null,error:msg.message||'You were removed from the room.',modal:null};
@@ -384,6 +427,7 @@ function syncHostPlayerName(rawName,{required=false}={}){
     if(required) localView.error='Enter your name to play as a normal player.';
     return false;
   }
+  if(name.length>40){ localView.error='Keep your name to 40 characters.'; return false; }
   if(game.players.some(player=>player.id!==clientId&&player.name.toLowerCase()===name.toLowerCase())){
     localView.error='That name is already being used by another player.';
     return false;
@@ -418,7 +462,7 @@ function setHostParticipation(role){
 
 async function createRoom(){
   myName=document.querySelector('#name')?.value.trim() || '';
-  localView.error=''; const code=fourDigit();
+  localView.error=''; const code=roomCode();
   try{
     await setupPeerAsHost(code); isHost=true; game=freshGame(); game.code=code; game.mode=hostModeForPath()||'standard'; myPlayerId=clientId;
     syncHostPlayerName(myName);
@@ -429,10 +473,10 @@ async function createRoom(){
 function peerError(e){ const code=e?.type||e?.code; return code==='unavailable-id'?'That room code is already in use. Create another room.':code==='network'?'PeerJS signaling is unavailable right now.':code==='browser-incompatible'?'This browser does not support the required WebRTC features.':'check the room code and try again'; }
 async function joinRoom(){
   myName=document.querySelector('#name').value.trim(); const code=document.querySelector('#code').value.trim() || new URLSearchParams(location.search).get('room')?.trim();
-  if(!myName || !/^\d{6}$/.test(code)){ localView.error='Enter a name and six-digit room code.'; render(); return; }
+  if(!myName || myName.length>40 || !/^\d{6}$/.test(code)){ localView.error='Enter a name (up to 40 characters) and six-digit room code.'; render(); return; }
   try{
     await setupPeerAsClient(); attachClientConnection(peer.connect(roomPeerId(code),{reliable:true}));
-    setTimeout(()=>{ if(!hostConn?.open && localView.screen==='connecting'){ peer?.destroy(); localView.screen='home'; localView.error='Connection timed out. Make sure the host is already in the room and the code is correct.'; render(); } },12000);
+    setTimeout(()=>{ if(localView.screen==='connecting' && !storage.getItem(storageKey('session'))){ peer?.destroy(); localView.screen='home'; localView.error='Connection timed out. Make sure the host is already in the room and the code is correct.'; render(); } },12000);
     localView.screen='connecting'; render();
   }catch{ localView.error='Could not connect.'; render(); }
 }
@@ -448,10 +492,10 @@ function sendChat(){
   const text=input?.value.trim(); if(!text) return;
   if(isHost){
     const conn=chatReplyTo&&conns.get(chatReplyTo); if(!conn) return;
-    send(conn,{type:'chat',from:'Observer',text});
+    if(!send(conn,{type:'chat',from:'Observer',text})){ localView.error='Message not sent. The player is disconnected.'; render(); return; }
     chatMessages.push({from:'Observer',text,playerId:chatReplyTo});
   } else {
-    send(hostConn,{type:'chat',playerId:myPlayerId,text});
+    if(!send(hostConn,{type:'chat',playerId:myPlayerId,text})){ localView.error='Message not sent. Wait for the host connection to return.'; render(); return; }
     chatMessages.push({from:'You',text});
   }
   input.value=''; render();
@@ -477,7 +521,7 @@ function chatHtml(){
       const bubble=`<div class="chat-bubble"><div class="chat-author">${escapeHtml(m.from)}</div><div class="chat-text">${escapeHtml(m.text)}</div></div>`;
       return `<div class="chat-message ${mine?'mine':'theirs'}">${bubble}</div>`;
     }).join('')||'<div class="chat-empty">No messages in this conversation.</div>';
-    const contacts=players.map(p=>`<button class="chat-contact ${p.id===active?'selected':''}" data-chat-contact="${escapeHtml(p.id)}" aria-label="Open messages with ${escapeHtml(p.name)}"><span class="chat-avatar">${chatInitials(p.name)}</span><span class="chat-contact-name">${escapeHtml(p.name)}</span>${chatUnread[p.id]?`<span class="chat-unread">${chatUnread[p.id]>9?'9+':chatUnread[p.id]}</span>`:''}</button>`).join('');
+    const contacts=players.map(p=>`<button class="chat-contact ${p.id===active?'selected':''}" data-chat-contact="${escapeHtml(p.id)}" aria-label="Open messages with ${escapeHtml(p.name)}"><span class="chat-avatar">${escapeHtml(chatInitials(p.name))}</span><span class="chat-contact-name">${escapeHtml(p.name)}</span>${chatUnread[p.id]?`<span class="chat-unread">${chatUnread[p.id]>9?'9+':chatUnread[p.id]}</span>`:''}</button>`).join('');
     return `<section class="panel chat-panel"><div class="chat-header"><strong>Private player messages</strong>${player?`<span>${escapeHtml(player.name)}</span>`:''}</div><div class="chat-contacts">${contacts||'<div class="chat-empty">No players yet.</div>'}</div><div class="chat-messages">${messages}</div><div class="chat-composer"><input id="chat-input" placeholder="${player?'Message '+escapeHtml(player.name)+'...':'Select a player'}" ${player?'':'disabled'}><button id="chat-send" ${player?'':'disabled'}>Send</button></div></section>`;
   }
   const messages=chatMessages.length?chatMessages.map(m=>{
@@ -491,19 +535,20 @@ function chatHtml(){
   return `<section class="panel chat-panel"><div class="chat-header"><strong>Message the observer</strong></div><div class="chat-messages">${messages}</div><div class="chat-composer"><input id="chat-input" placeholder="Ask the observer a question..."><button id="chat-send">Send</button></div></section>`;
 }
 async function resumeHost(attempt=0){
-  const currentSaved=localStorage.getItem(hostStorageKey());
-  const legacySaved=hostModeForPath()==='standard'?localStorage.getItem(storageKey('host')):null;
-  const saved=JSON.parse(currentSaved||legacySaved||'null');
+  const currentSaved=storage.getItem(hostStorageKey());
+  const legacySaved=hostModeForPath()==='standard'?storage.getItem(storageKey('host')):null;
+  const saved=readSaved(hostStorageKey())||(legacySaved?readSaved(storageKey('host')):null);
   if(!saved?.code||!saved.game) return;
   if((saved.game.mode||'standard')!==hostModeForPath()) return;
   try {
-    await setupPeerAsHost(saved.code); isHost=true; game=saved.game; game.mode='standard'; game.wallfacerCount=1; game.maxRounds ||= MAX_ROUNDS; game.adminPlaying=game.adminPlaying===true; game.includeMessaging=!game.adminPlaying; game.wildRolesEnabled=game.wildRolesEnabled===true; game.initialDials ||= game.phase==='lobby'?null:{...game.dials}; game.history ||= []; game.finalGuess ||= null; game.recap ||= {active:false,roundIndex:0}; game.victoryReveal ||= null;
+    await setupPeerAsHost(saved.code); isHost=true; game=saved.game; game.gameId ||= newId(); game.mode='standard'; game.wallfacerCount=1; game.maxRounds ||= MAX_ROUNDS; game.adminPlaying=game.adminPlaying===true; game.includeMessaging=!game.adminPlaying; game.wildRolesEnabled=game.wildRolesEnabled===true; game.initialDials ||= game.phase==='lobby'?null:{...game.dials}; game.history ||= []; game.finalGuess ||= null; game.recap ||= {active:false,roundIndex:0}; game.victoryReveal ||= null;
     const legacyWildRoles={doomsayer:['extremist','Extremist'],curator:['moderate','Moderate'],contrarian:['disruptor','Disruptor'],hermit:['loner','Loner']};
     Object.values(game.roles||{}).forEach(role=>{ const migrated=role?.kind==='wild'?legacyWildRoles[role.wildRole]:null; if(migrated){ [role.wildRole,role.label]=migrated; } });
     myPlayerId=game.adminPlaying?clientId:null;
     if(game.adminPlaying) myName=game.players.find(player=>player.id===clientId)?.name||myName;
-    if(!currentSaved){ saveHost(); localStorage.removeItem(storageKey('host')); }
-    localView.screen=['lobby','countdown'].includes(game.phase)?'lobby':'game'; localView.state=publicState(); render();
+    if(!currentSaved){ saveHost(); storage.removeItem(storageKey('host')); }
+    localView.error='';
+    broadcast();
     if(game.phase==='countdown') beginCountdown();
     if(game.phase==='victory-reveal') scheduleVictoryReveal();
   } catch {
@@ -517,21 +562,23 @@ async function resumeHost(attempt=0){
   }
 }
 async function resumeClient(){
-  const saved=JSON.parse(localStorage.getItem(storageKey('session'))||'null');
+  const saved=readSaved(storageKey('session'));
   if(!saved?.code||!saved.name||isHostRoute()) return;
   myName=saved.name; document.querySelector('#name')?.setAttribute('value',myName); localView.error='';
   try { await setupPeerAsClient(); attachClientConnection(peer.connect(roomPeerId(saved.code),{reliable:true})); localView.screen='connecting'; render(); } catch { localView.error='Unable to reconnect yet. Retrying…'; localView.screen='connecting'; render(); retryClientConnection(1500); }
 }
 function giveUpReconnection(){
   reconnecting=false;
-  hostConn?.close?.(); hostConn=null;
+  clearSession();
+  const oldConn=hostConn; hostConn=null; oldConn?.close?.();
   peer?.destroy?.(); peer=null;
-  clearSession(); myPlayerId=null;
+  myPlayerId=null;
+  chatMessages=[]; chatReplyTo=null; chatUnread={};
   pendingSelection=freshPendingSelection(); noticeQueue=[];
   localView={screen:'home',state:null,role:null,error:'',modal:null,revealKey:'',revealAnimationPending:false};
   render();
 }
-function leaveGame(){ if(isHost){ peer?.destroy(); clearHostSession(); location.href=location.pathname; return; } send(hostConn,{type:'leave',playerId:myPlayerId}); peer?.destroy(); clearSession(); localView={screen:'home',state:null,role:null,error:'',modal:null}; render(); }
+function leaveGame(){ if(isHost){ peer?.destroy(); clearHostSession(); location.href=location.pathname; return; } send(hostConn,{type:'leave',playerId:myPlayerId}); giveUpReconnection(); }
 function startPostgameRecap(){
   if(!isHost||game.phase!=='ended'||game.recap?.active) return;
   game.recap={active:true,roundIndex:0};
@@ -553,11 +600,12 @@ function returnToLobby(){
   broadcast();
 }
 function resetGameStart(){
-  game.mode='standard'; game.round=1; game.selections={}; game.arrested={}; game.history=[]; game.finalGuess=null; game.recap={active:false,roundIndex:0}; game.victoryReveal=null; game.revealed=null; game.revealedBefore=null; game.wrappedColors=[]; game.winner=null; game.reason=''; game.paused=false;
+  game.gameId=newId(); game.mode='standard'; game.round=1; game.selections={}; game.arrested={}; game.history=[]; game.finalGuess=null; game.recap={active:false,roundIndex:0}; game.victoryReveal=null; game.revealed=null; game.revealedBefore=null; game.wrappedColors=[]; game.winner=null; game.reason=''; game.paused=false;
   game.initialDials={...game.dials};
   pendingSelection=freshPendingSelection(); localView.modal=null; noticeQueue=[]; shownNoticeKeys.clear();
 }
 function startGame(){
+  if(!isHost||game.phase!=='lobby') return;
   try{
     if(game.adminPlaying===true){
       const enteredName=document.querySelector('#host-player-name')?.value??myName;
@@ -585,6 +633,7 @@ function beginCountdown(){
   },1000);
 }
 function submitSelection(){
+  if(localView.state?.phase!=='playing'||localView.state.paused||!localAccess().player) return;
   const role=currentRoleFor(myPlayerId);
   const color=pendingSelection.color;
   const effect=pendingSelection.effect;
@@ -596,13 +645,17 @@ function submitSelection(){
   if(isHost){
     if(!tryLockSelection(game.selections,myPlayerId,selection,item=>isLegalSelection(myPlayerId,item))) return;
     if(Object.keys(game.selections).length===game.players.length) resolveRound(); else broadcast();
-  } else send(hostConn,{type:'lockSelection',playerId:myPlayerId,selection});
+  } else if(!send(hostConn,{type:'lockSelection',playerId:myPlayerId,gameId:localView.state.gameId,round:localView.state.round,selection})){
+    localView.error='Move not sent. Wait for the host connection, then lock again.'; render();
+  }
 }
-function pauseForBreak(){ localView.modal='break'; render(); }
 function sendBreak(){
   const colors=[...document.querySelectorAll('.break-dial:checked')].map(input=>input.value);
   if(colors.length!==3){ alert('Choose exactly three dial colors.'); return; }
-  if(isHost) attemptBreak(myPlayerId,colors); else send(hostConn,{type:'breakGuess',playerId:myPlayerId,colors});
+  if(isHost) attemptBreak(myPlayerId,colors);
+  else if(!send(hostConn,{type:'breakGuess',playerId:myPlayerId,gameId:localView.state.gameId,colors})){
+    localView.error='Guess not sent. Wait for the host connection, then try again.'; render(); return;
+  }
   localView.modal=null; render();
 }
 function queueOutcomeModals(state,role){
@@ -643,7 +696,7 @@ function sophonResultModal(role){
 }
 function arrestPickerModal(state){
   if(localView.modal!=='arrest-picker') return '';
-  return `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="arrest-picker-title"><div class="modal-card stack"><div class="role-heading">${roleSvg('police')}<div><div class="eyebrow">Private action</div><h2 class="role-title" id="arrest-picker-title">Who will you arrest?</h2></div></div><p class="small">Choose one player. Their locked dial effect will be cancelled when the round resolves.</p><div class="arrest-choices">${state.players.filter(player=>player.id!==myPlayerId).map(player=>`<button class="arrest-target ${pendingSelection.arrestTarget===player.id?'selected':''}" data-arrest-target="${escapeHtml(player.id)}"><span class="chat-avatar">${chatInitials(player.name)}</span><span>${escapeHtml(player.name)}</span>${pendingSelection.arrestTarget===player.id?'<strong>Selected</strong>':''}</button>`).join('')}</div><button class="secondary" id="close-modal">Cancel</button></div></div>`;
+  return `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="arrest-picker-title"><div class="modal-card stack"><div class="role-heading">${roleSvg('police')}<div><div class="eyebrow">Private action</div><h2 class="role-title" id="arrest-picker-title">Who will you arrest?</h2></div></div><p class="small">Choose one player. Their locked dial effect will be cancelled when the round resolves.</p><div class="arrest-choices">${state.players.filter(player=>player.id!==myPlayerId).map(player=>`<button class="arrest-target ${pendingSelection.arrestTarget===player.id?'selected':''}" data-arrest-target="${escapeHtml(player.id)}"><span class="chat-avatar">${escapeHtml(chatInitials(player.name))}</span><span>${escapeHtml(player.name)}</span>${pendingSelection.arrestTarget===player.id?'<strong>Selected</strong>':''}</button>`).join('')}</div><button class="secondary" id="close-modal">Cancel</button></div></div>`;
 }
 function outcomeModalsHtml(state,role){
   return arrestOutcomeModal(role)||sophonResultModal(role)||arrestPickerModal(state);
@@ -802,9 +855,9 @@ function lobby(state){
   const potentialPlayerCount=state.players.length+(pendingHostSeat?1:0);
   const canStart=potentialPlayerCount>=3&&(!wildPackActive||(potentialPlayerCount>=4&&potentialPlayerCount<=MAX_WILD_PLAYERS))&&state.phase==='lobby';
   const modeName='Wallbreaker';
-  const roundChoices=`<div class="discrete-setting"><strong>Round limit</strong><div class="choice-pills" aria-label="Round limit">${[6,8,10,12].map(rounds=>`<button class="secondary round-choice ${state.maxRounds===rounds?'selected':''}" data-round-limit="${rounds}" aria-pressed="${state.maxRounds===rounds}">${rounds}</button>`).join('')}</div></div>`;
+  const roundChoices=`<div class="discrete-setting"><strong>Round limit</strong><div class="choice-pills" aria-label="Round limit">${[6,8,10,12].map(rounds=>`<button class="secondary round-choice ${state.maxRounds===rounds?'selected':''}" data-round-limit="${rounds}" aria-pressed="${state.maxRounds===rounds}" ${state.phase!=='lobby'?'disabled':''}>${rounds}</button>`).join('')}</div></div>`;
   const hostPlaying=state.adminPlaying===true;
-  const participationSetting=`<div class="participation-setting"><div class="role-toggle" role="group" aria-label="Your role in this game"><button class="secondary ${hostPlaying?'selected':''}" type="button" data-host-role="player" aria-pressed="${hostPlaying}" ${state.phase!=='lobby'?'disabled':''}>I want to play as a normal player</button><button class="secondary ${hostPlaying?'':'selected'}" type="button" data-host-role="observer" aria-pressed="${!hostPlaying}" ${state.phase!=='lobby'?'disabled':''}>I want to play as observer</button></div>${hostPlaying?`<input id="host-player-name" autocomplete="name" aria-label="Your player name" placeholder="Your name" value="${escapeHtml(myName)}" ${state.phase!=='lobby'?'disabled':''} required>`:''}</div>`;
+  const participationSetting=`<div class="participation-setting"><div class="role-toggle" role="group" aria-label="Your role in this game"><button class="secondary ${hostPlaying?'selected':''}" type="button" data-host-role="player" aria-pressed="${hostPlaying}" ${state.phase!=='lobby'?'disabled':''}>Play</button><button class="secondary ${hostPlaying?'':'selected'}" type="button" data-host-role="observer" aria-pressed="${!hostPlaying}" ${state.phase!=='lobby'?'disabled':''}>Observe</button></div>${hostPlaying?`<input id="host-player-name" autocomplete="name" aria-label="Your player name" placeholder="Your name" value="${escapeHtml(myName)}" ${state.phase!=='lobby'?'disabled':''} required>`:''}</div>`;
   const wildSetting=`<label class="toggle-setting"><input id="wild-roles" type="checkbox" ${wildPackActive?'checked':''} ${state.phase!=='lobby'?'disabled':''}><strong>Wild Roles</strong></label>`;
   const standardRoleCopy=wildPackActive?`The three core roles stay fixed; every Specialist seat becomes a different Loyal Wild Role. Maximum ${MAX_WILD_PLAYERS} players, leaving one role unoccupied for the Wallbreaker to bluff.`:'One Wallfacer, one Wallbreaker, one Shi Qiang, and a Specialist in every remaining seat.';
   const standardSettings=`<div class="setting-heading"><div><strong>Fixed standard roles</strong><div class="small">${standardRoleCopy}</div></div></div>${compositionHtml}${roundChoices}`;
@@ -883,7 +936,7 @@ function gameScreen(state,role){
   <div class="dial-board">${DIAL_GROUPS.map(group=>`<section class="dial-group"><div class="group-label">${group.name}</div><div class="dials">${group.colors.map(c=>access.observer?observerDialCardHtml(c,state):dialCardHtml(c,state,role)).join('')}</div></section>`).join('')}</div>
   ${omniscientHtml(state)}
   ${hostOperationsHtml(state)}
-  ${state.revealed?`<section class="panel stack"><strong>Last reveal</strong>${COLORS.map(c=>`<div class="card-line">${c.toUpperCase()}: ${signed(revealTotal(state.revealed,c))}</div>`).join('')}</section>`:''}
+  ${state.revealed?`<details id="last-reveal" class="panel stack"><summary>Last round changes</summary>${COLORS.map(c=>`<div class="card-line">${c.toUpperCase()}: ${signed(revealTotal(state.revealed,c))}</div>`).join('')}</details>`:''}
   ${localView.modal==='role'?`<div class="modal"><div class="modal-card">${roleHtml(role)}<hr><button class="secondary" id="close-modal">Close</button></div></div>`:''}
   ${wildRoleGuideModal()}
   ${localView.modal==='break'?breakModal():''}
@@ -896,20 +949,43 @@ function breakModal(){ return `<div class="modal"><div class="modal-card stack">
 function legalNotice(){ return '<footer class="legal">Unofficial, noncommercial fan project. Not affiliated with or endorsed by the rights holders of <em>The Three-Body Problem</em>.</footer>'; }
 function render(){
   const s=localView.state;
+  // Broadcasts replace the markup; keep drafts and keyboard position intact.
+  const screenKey=`${localView.screen}:${s?.gameId}:${s?.phase}`;
+  const preserve=app.dataset.screenKey===screenKey;
+  const active=document.activeElement;
+  const focusId=preserve&&app.contains(active)?active.id:null;
+  const selection=focusId&&typeof active.selectionStart==='number'?[active.selectionStart,active.selectionEnd]:null;
+  const draftIds=['name','code','host-player-name','chat-input'];
+  const drafts=preserve?draftIds.flatMap(id=>{
+    const input=document.getElementById(id);
+    if(!input||id==='chat-input'&&app.dataset.chatRecipient!==(chatReplyTo||'')) return [];
+    return [[id,input.value]];
+  }):[];
+  const revealOpen=preserve&&app.querySelector('#last-reveal')?.open;
+  const guesses=preserve?[...app.querySelectorAll('.break-dial:checked')].map(input=>input.value):[];
   app.classList.toggle('host-view',isHost || isHostRoute());
   if(localView.screen==='home') app.innerHTML=home();
   else if(localView.screen==='host') app.innerHTML=hostPage();
-  else if(localView.screen==='connecting') app.innerHTML=`<div class="shell reconnect-shell"><section class="panel stack"><div class="reconnect-spinner" aria-hidden="true"></div><div><h2>Reconnecting…</h2><p class="small">${escapeHtml(localView.error||'Looking for the room and restoring your seat.')}</p></div>${localStorage.getItem(storageKey('session'))?'<button class="secondary" id="give-up-reconnect">Give up and return home</button>':''}</section></div>`;
+  else if(localView.screen==='connecting') app.innerHTML=`<div class="shell reconnect-shell"><section class="panel stack"><div class="reconnect-spinner" aria-hidden="true"></div><div><h2>${storage.getItem(storageKey('session'))||isHostRoute()?'Reconnecting…':'Joining room…'}</h2><p class="small">${escapeHtml(localView.error||'Looking for the room and restoring your seat.')}</p></div>${storage.getItem(storageKey('session'))?'<button class="secondary" id="give-up-reconnect">Give up and return home</button>':''}</section></div>`;
   else if(localView.screen==='lobby') app.innerHTML=lobby(s);
   else app.innerHTML=gameScreen(s,localView.role);
   app.insertAdjacentHTML('beforeend',legalNotice());
   bind();
+  for(const [id,value] of drafts){ const input=document.getElementById(id); if(input) input.value=value; }
+  for(const input of app.querySelectorAll('.break-dial')) input.checked=guesses.includes(input.value);
+  const reveal=document.getElementById('last-reveal');
+  if(reveal) reveal.open=Boolean(revealOpen);
+  const nextFocus=focusId&&document.getElementById(focusId);
+  if(nextFocus){ nextFocus.focus({preventScroll:true}); if(selection) nextFocus.setSelectionRange(...selection); }
+  app.dataset.screenKey=screenKey;
+  app.dataset.chatRecipient=chatReplyTo||'';
 }
+
 function bind(){
   document.querySelector('#create')?.addEventListener('click',createRoom);
   document.querySelector('#join')?.addEventListener('click',joinRoom);
   document.querySelector('#start-game')?.addEventListener('click',startGame);
-  document.querySelectorAll('[data-round-limit]').forEach(element=>element.addEventListener('click',()=>{ game.maxRounds=Number(element.dataset.roundLimit); broadcast(); }));
+  document.querySelectorAll('[data-round-limit]').forEach(element=>element.addEventListener('click',()=>{ if(!isHost||game.phase!=='lobby') return; game.maxRounds=Number(element.dataset.roundLimit); broadcast(); }));
   document.querySelector('#wild-roles')?.addEventListener('change',event=>{
     if(!isHost||game.phase!=='lobby') return;
     if(event.target.checked&&game.players.length>MAX_WILD_PLAYERS){ localView.error=`Remove players until the room has ${MAX_WILD_PLAYERS} or fewer before enabling Wild Roles.`; render(); return; }

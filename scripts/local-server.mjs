@@ -8,7 +8,9 @@ const port = Number(process.env.PORT || 4173);
 const types = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.json':'application/json; charset=utf-8', '.svg':'image/svg+xml' };
 
 const httpServer = createServer(async (req, res) => {
-  const requested = decodeURIComponent((req.url || '/').split('?')[0]);
+  let requested;
+  try { requested = decodeURIComponent((req.url || '/').split('?')[0]); }
+  catch { res.writeHead(400, { 'Content-Type':'text/plain; charset=utf-8' }).end('Bad request'); return; }
   const relative = requested === '/rules' ? '/rules.html' :
     requested === '/preview' ? '/preview.html' :
     requested === '/' || requested === '/host' ? '/index.html' :

@@ -304,7 +304,9 @@ export function legalEffectsFor(role,color){
 }
 
 export function isLegalSelection(role,selection,players,playerId){
-  if(!role||!selection) return false;
+  if(!role||!selection||typeof selection!=='object'||Array.isArray(selection)||selection.systemSkipped) return false;
+  if(selection.policeMode==='arrest'&&role.kind!=='police') return false;
+  if(selection.sophonMode==='see'&&role.kind!=='wallbreaker') return false;
   if(role.kind==='wallbreaker'){
     if(selection.sophonMode==='see') return selection.color==null&&selection.effect==null;
     if(selection.sophonMode!=='affect') return false;

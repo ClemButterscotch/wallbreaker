@@ -1,3 +1,7 @@
+import { createContext, runInContext } from 'node:vm';
+import { webcrypto } from 'node:crypto';
+import * as gameRules from './public/game-rules.js';
+import * as brand from './public/brand.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { hostModeForPath, hostStorageName } from './public/brand.js';
@@ -608,5 +612,145 @@ test('arrest outcomes stay private during play but are revealed in the postgame 
   assert.deepEqual(revealedPoliceMove.history[0].actions[0].action,{type:'move',color:'green',effect:1});
 
 });
+
+// Run the actual app handlers offline with fake storage, timers, and connections.
+function appHarness(){
+  const saved=new Map();
+  const timers=[];
+  const context=createContext({
+    ...gameRules,...brand,modeForHostPath:brand.hostModeForPath,selectionIsLegal:gameRules.isLegalSelection,
+    crypto:webcrypto,URLSearchParams,console,
+    location:{pathname:'/host',search:'',origin:'http://localhost'},
+    document:{querySelector:()=>null},
+    localStorage:{getItem:key=>saved.get(key)||null,setItem:(key,value)=>saved.set(key,value),removeItem:key=>saved.delete(key)},
+    setTimeout:fn=>{ timers.push(fn); return timers.length; },clearTimeout:()=>{},
+    setInterval:fn=>{ timers.push(fn); return timers.length; },clearInterval:()=>{}
+  });
+  const source=appSource.replace(/^import .*;\n/gm,'').replace(/render\(\);\nif\(isHostRoute\(\)\) resumeHost\(\); else resumeClient\(\);\s*$/,'');
+  runInContext(source+'\nrender=()=>{};',context);
+  return {run:code=>runInContext(code,context),timers,context};
+}
+
+test('a player cannot smuggle Police, Sophon, or system-only actions into a move',()=>{
+  const players=[{id:'a'},{id:'b'}];
+  const role={kind:'civilian',profession:'science'};
+  for(const extra of [{policeMode:'arrest',arrestTarget:'b'},{sophonMode:'see'},{systemSkipped:true}]){
+    assert.equal(isLegalSelection(role,{color:'blue',effect:1,...extra},players,'a'),false);
+  }
+});
+
+test('host handlers reject impersonation, old rounds, old games, and duplicate locks',()=>{
+  const h=appHarness();
+  h.run(`
+    isHost=true; game.phase='playing'; game.adminPlaying=false;
+    game.players=[{id:'a',name:'A'},{id:'b',name:'B'},{id:'c',name:'C'}];
+    game.roles=Object.fromEntries(game.players.map(p=>[p.id,{kind:'civilian',profession:'science'}]));
+    const a={open:true,send(){}}; const b={open:true,send(){}};
+    conns.set('a',a); conns.set('b',b);
+    const message={type:'lockSelection',playerId:'a',gameId:game.gameId,round:game.round,selection:{color:'blue',effect:1}};
+    handleHostMessage(b,message);
+    handleHostMessage(a,{...message,round:0});
+    handleHostMessage(a,{...message,gameId:'previous-game'});
+    handleHostMessage(a,null);
+  `);
+  assert.equal(h.run('Object.keys(game.selections).length'),0);
+  h.run(`handleHostMessage(a,message); handleHostMessage(a,{...message,selection:{color:'red',effect:-1}});`);
+  assert.equal(h.run('game.selections.a.color'),'blue');
+  h.run(`handleHostMessage(b,{type:'leave',playerId:'a'});`);
+  assert.equal(h.run("conns.get('a')===a"),true);
+  h.run(`game.selections={}; game.round++; handleHostMessage(a,message);`);
+  assert.equal(h.run('Object.keys(game.selections).length'),0);
+});
+
+test('rejoining requires the private seat token and never exposes it in public state',()=>{
+  const h=appHarness();
+  h.run(`
+    isHost=true; game.adminPlaying=false;
+    const original={open:true,send(){},close(){this.open=false;}};
+    const intruder={open:true,send(){}};
+    const replacement={open:true,send(){}};
+    const join={type:'join',clientId:'guest',name:'Guest',reconnectToken:'private-token'};
+    handleHostMessage(original,join);
+    handleHostMessage(intruder,{...join,reconnectToken:'wrong-token'});
+  `);
+  assert.equal(h.run("conns.get('guest')===original"),true);
+  assert.equal(h.run("JSON.stringify(publicState()).includes('private-token')"),false);
+  h.run('handleHostMessage(replacement,join);');
+  assert.equal(h.run("conns.get('guest')===replacement"),true);
+  h.run("handleHostMessage(intruder,{type:'join',clientId:'__proto__',name:'Bad',reconnectToken:'x'});");
+  assert.equal(h.run('game.players.length'),1);
+});
+
+test('countdown moves both host roles to the game and preserves their access',()=>{
+  for(const playing of [true,false]){
+    const h=appHarness();
+    h.run(`
+      isHost=true; game.adminPlaying=${playing}; myName='Host'; myPlayerId=${playing?'clientId':'null'};
+      game.players=[{id:${playing?'clientId':"'a'"},name:'Host'},{id:'b',name:'B'},{id:'c',name:'C'}];
+      startGame();
+    `);
+    assert.equal(h.run('game.phase'),'countdown');
+    const tick=h.timers[0]; tick(); tick(); tick();
+    assert.equal(h.run('game.phase'),'playing');
+    assert.equal(h.run('localView.screen'),'game');
+    assert.equal(h.run('Boolean(localView.role)'),playing);
+    assert.equal(h.run('localAccess().observer'),!playing);
+  }
+});
+
+test('client submission includes round identity and clears private notices between games',()=>{
+  const h=appHarness();
+  h.run(`
+    isHost=false; myPlayerId='guest';
+    const sent=[]; hostConn={open:true,send:msg=>sent.push(msg)};
+    const state={...publicState(),gameId:'first',phase:'playing',players:[{id:'guest',name:'Guest',ready:false}]};
+    handleClientMessage({type:'state',state,role:{kind:'civilian',profession:'science'}});
+    pendingSelection={color:'blue',effect:1}; submitSelection();
+  `);
+  assert.equal(h.run('sent[0].gameId'),'first');
+  assert.equal(h.run('sent[0].round'),1);
+  h.run(`shownNoticeKeys.add('arrest:2:target'); handleClientMessage({type:'state',state:{...state,gameId:'second',phase:'lobby'},role:null});`);
+  assert.equal(h.run('shownNoticeKeys.size'),0);
+  assert.equal(h.run('pendingSelection.color'),null);
+  assert.equal(h.run('localView.screen'),'lobby');
+});
+
+test('invalid final guesses cannot end a game and completed outcomes cannot change',()=>{
+  const h=appHarness();
+  h.run(`
+    isHost=true; game.phase='playing'; game.adminPlaying=false;
+    game.players=[{id:'wf',name:'Wen'},{id:'wb',name:'Bo'}];
+    game.roles={wf:{kind:'wallfacer',plan:{values:{red:1,blue:2,green:3}}},wb:{kind:'wallbreaker',targetId:'wf'}};
+    attemptBreak('wb',['red']);
+  `);
+  assert.equal(h.run('game.phase'),'playing');
+  h.run("attemptBreak('wb',['red','blue','green']); attemptBreak('wb',['pink','orange','yellow']);");
+  assert.equal(h.run('game.winner'),'Wallbreaker');
+});
+
+test('blocked or corrupt storage does not crash startup or state broadcasts',()=>{
+  const h=appHarness();
+  h.run("storage.setItem('broken','{');");
+  assert.equal(h.run("readSaved('broken')"),null);
+  h.run(`localStorage.getItem=()=>{throw new Error('disabled');}; localStorage.setItem=()=>{throw new Error('full');}; isHost=true; broadcast();`);
+  assert.equal(h.run("readSaved('missing')"),null);
+  assert.equal(h.run('localView.screen'),'lobby');
+});
+
+for(const playing of [true,false]){
+  const h=appHarness();
+  await h.run(`
+    game.adminPlaying=${playing}; game.phase='playing'; game.code='123456';
+    game.players=[{id:clientId,name:'Host'}]; game.roles={[clientId]:{kind:'civilian',profession:'science'}};
+    game.selections={[clientId]:{color:'blue',effect:1}}; saveHost();
+    game=freshGame(); setupPeerAsHost=async()=>{}; resumeHost();
+  `);
+  test(playing?'host reload restores the private role and locked move':'observer reload keeps private player access disabled',()=>{
+    assert.equal(h.run('localView.screen'),'game');
+    assert.equal(h.run('Boolean(localView.role)'),playing);
+    assert.equal(h.run('Boolean(localView.state.lockedSelection)'),playing);
+    assert.equal(h.run('game.code'),'123456');
+  });
+}
 
 console.log('\nAll regression groups passed');
