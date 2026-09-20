@@ -55,13 +55,12 @@ test('the rulebook ends with one advanced Wild Role primer and one slide per rol
   assert.doesNotMatch(rulebookHtml,/4–11 players/);
   assert.doesNotMatch(rulebookHtml,/The host may enable Wild Roles in a standard game/);
   assert.doesNotMatch(rulebookHtml,/id="rules-wild-bank"|class="wild-pack-summary"/);
-  assert.match(rulebookHtml,/Wallbreaker learns exactly one of them and may pretend to be it/);
+  assert.match(rulebookHtml,/Wallbreaker learns all of them and may pretend to be any of them/);
   assert.doesNotMatch(rulebookHtml,/Happens once/i);
   assert.match(rulebookHtml,/ROUND 4 COMPLETED.*Starting total.*Round 4 total/s);
   assert.match(rulebookHtml,/wild-moderate-demo.*wild-six-dial-board/s);
   assert.match(rulebookHtml,/wild-numerologist-demo.*wild-six-dial-board/s);
-  assert.match(rulebookHtml,/wild-wrapper-demo.*wild-six-dial-board/s);
-  assert.match(rulebookHtml,/aria-valuemax="22"/);
+  assert.match(rulebookHtml,/aria-valuemax="21"/);
   assert.doesNotMatch(rulebookHtml,/Doomsayer|Curator|Contrarian|Hermit|Must remain/i);
   assert.match(rulebookHtml,/Wild players never see the plan/);
   assert.doesNotMatch(rulebookHtml,/Wallfacer plan revealed|Plan targets revealed|See the exact Wallfacer plan/i);
@@ -103,14 +102,14 @@ test('Wild Roles are opt-in and replace every eligible Specialist',()=>{
   assert.deepEqual(wildRoleComposition(8,true),{wallfacers:1,wallbreakers:1,police:1,civilians:0,wilds:5});
   assert.deepEqual(wildRoleComposition(9,true),{wallfacers:1,wallbreakers:1,police:1,civilians:0,wilds:6});
   assert.deepEqual(wildRoleComposition(10,true),{wallfacers:1,wallbreakers:1,police:1,civilians:0,wilds:7});
-  assert.deepEqual(wildRoleComposition(11,true),{wallfacers:1,wallbreakers:1,police:1,civilians:0,wilds:8});
-  assert.deepEqual(wildRoleComposition(12,true),{wallfacers:1,wallbreakers:1,police:1,civilians:1,wilds:8});
-  assert.deepEqual(WILD_ROLE_IDS,['bounty','extremist','conservationist','moderate','disruptor','loner','oddball','numerologist','wrapper']);
-  assert.equal(MAX_WILD_PLAYERS,11);
+  assert.deepEqual(wildRoleComposition(11,true),{wallfacers:1,wallbreakers:1,police:1,civilians:1,wilds:7});
+  assert.deepEqual(wildRoleComposition(12,true),{wallfacers:1,wallbreakers:1,police:1,civilians:2,wilds:7});
+  assert.deepEqual(WILD_ROLE_IDS,['bounty','extremist','conservationist','moderate','disruptor','loner','oddball','numerologist']);
+  assert.equal(MAX_WILD_PLAYERS,10);
 });
 
 test('Wild Role assignment preserves every core role, stays unique, and reserves a Wallbreaker cover',()=>{
-  const specialists=Array.from({length:8},(_,index)=>({id:`specialist${index+1}`,name:`Specialist ${index+1}`}));
+  const specialists=Array.from({length:7},(_,index)=>({id:`specialist${index+1}`,name:`Specialist ${index+1}`}));
   const players=[{id:'wf',name:'Wen'},{id:'wb',name:'Bo'},{id:'police',name:'Shi'},...specialists];
   const roles={
     wf:{kind:'wallfacer',label:'Wallfacer',plan:{values:{yellow:4,orange:6,blue:2}}},
@@ -120,19 +119,19 @@ test('Wild Role assignment preserves every core role, stays unique, and reserves
   };
   const dials=Object.fromEntries(COLORS.map(color=>[color,5]));
   const assignment=assignWildRoles({players,roles,dials,random:()=>0});
-  assert.equal(assignment.assignments.length,8);
-  assert.equal(new Set(assignment.assignments.map(item=>item.role.wildRole)).size,8);
+  assert.equal(assignment.assignments.length,7);
+  assert.equal(new Set(assignment.assignments.map(item=>item.role.wildRole)).size,7);
   assert.ok(assignment.assignments.every(item=>item.role.team==='loyal'));
-  assert.equal(Object.values(assignment.roles).filter(role=>role.kind==='wild').length,8);
+  assert.equal(Object.values(assignment.roles).filter(role=>role.kind==='wild').length,7);
   const bounty=assignment.assignments.find(item=>item.role.wildRole==='bounty');
   assert.equal(bounty.role.wildData.targetIds.length,2);
   assert.ok(bounty.role.wildData.targetIds.every(targetId=>!['police','wallfacer'].includes(roles[targetId].kind)));
   assert.deepEqual(assignment.roles.wf,roles.wf);
   assert.equal(assignment.roles.wb.targetId,roles.wb.targetId);
   const occupiedAtCap=new Set(assignment.assignments.map(item=>item.role.wildRole));
-  assert.equal(WILD_ROLE_IDS.filter(roleId=>!occupiedAtCap.has(roleId)).length,1,'the eleven-player cap leaves exactly one role unoccupied');
-  assert.equal(occupiedAtCap.has(assignment.unoccupiedWildRole),false);
-  assert.equal(assignment.roles.wb.unoccupiedWildRole,assignment.unoccupiedWildRole);
+  assert.equal(WILD_ROLE_IDS.filter(roleId=>!occupiedAtCap.has(roleId)).length,1,'the ten-player cap leaves exactly one role unoccupied');
+  assert.deepEqual(assignment.unoccupiedWildRoles,WILD_ROLE_IDS.filter(id=>!occupiedAtCap.has(id)));
+  assert.deepEqual(assignment.roles.wb.unoccupiedWildRoles,assignment.unoccupiedWildRoles);
   assert.deepEqual(assignment.roles.police,roles.police);
   assert.ok(specialists.every(player=>roles[player.id].kind==='civilian'),'assignment must not mutate the default role map');
 
@@ -141,9 +140,9 @@ test('Wild Role assignment preserves every core role, stays unique, and reserves
   assert.equal(fourPlayerAssignment.assignments.length,1);
   assert.notEqual(fourPlayerAssignment.assignments[0].role.wildRole,'bounty','Bounty must not be dealt when two valid non-Wallfacer targets do not exist');
   const fourPlayerOccupied=new Set(fourPlayerAssignment.assignments.map(item=>item.role.wildRole));
-  assert.ok(WILD_ROLE_IDS.includes(fourPlayerAssignment.unoccupiedWildRole));
-  assert.equal(fourPlayerOccupied.has(fourPlayerAssignment.unoccupiedWildRole),false,'the Wallbreaker clue must name an unoccupied role');
-  assert.equal(fourPlayerAssignment.roles.wb.unoccupiedWildRole,fourPlayerAssignment.unoccupiedWildRole,'exactly one absent role is stored privately on the Wallbreaker role');
+  assert.deepEqual(fourPlayerAssignment.roles.wb.unoccupiedWildRoles,WILD_ROLE_IDS.filter(id=>!fourPlayerOccupied.has(id)));
+  assert.equal(fourPlayerAssignment.roles.wb.unoccupiedWildRoles.length,7);
+  assert.ok(Object.values(fourPlayerAssignment.roles).filter(role=>role.kind!=='wallbreaker').every(role=>!role.unoccupiedWildRoles));
 
   const noSpecialist=assignWildRoles({players:players.slice(0,3),roles:{wf:roles.wf,wb:roles.wb,police:roles.police},dials,random:()=>0});
   assert.deepEqual(noSpecialist.playerIds,[]);
@@ -163,7 +162,6 @@ test('the public Wild Role guide describes every role without private setup data
   assert.doesNotMatch(appSource,/unlockedWildPlan|\bwildPlan\b/,'the active player UI must have no Wild plan payload or rendering path');
   assert.match(appSource,/role\?\.kind==='wallfacer'\?role\.plan\?\.values:null/,'dial target markers must be exclusive to Wallfacers');
   assert.match(appSource,/wild-goal-complete-shell/,'completed one-time goals tint and simplify the player screen');
-  assert.match(appSource,/wrapper-dial-indicator/,'Wrapper can identify dials already wrapped for its goal');
   assert.doesNotMatch(appSource,/Happens once|wild-timing-label/i,'standard Wild completion timing is not repeated on individual roles');
 });
 
@@ -245,40 +243,6 @@ test('round resolution applies arrests, clamps dials, and records every action',
   assert.equal(dials.blue,9,'resolution must not mutate its input board');
 });
 
-test('Wrapper makes its touched dial wrap and keeps the power after three distinct wraps',()=>{
-  const players=[{id:'wrapper',name:'Rae'},{id:'helper',name:'Miao'}];
-  const roles={wrapper:{kind:'wild',team:'loyal',label:'Wrapper',wildRole:'wrapper',wildData:{}},helper:{kind:'civilian',profession:'mathematics'}};
-  const board=(overrides={})=>Object.fromEntries(COLORS.map(color=>[color,overrides[color]??5]));
-  const resolve=(round,dials,color,wrapperEffect,helperEffect)=>resolveRoundState({
-    dials,players,roles,round,
-    selections:{wrapper:{color,effect:wrapperEffect},helper:{color,effect:helperEffect}}
-  });
-  const low=resolve(1,board({yellow:0}),'yellow',-1,-2);
-  assert.equal(low.net.yellow,-3);
-  assert.equal(low.after.yellow,7,'0 − 3 wraps to 7 when Wrapper touches the dial');
-  assert.deepEqual(low.wraps,[{playerId:'wrapper',color:'yellow',from:0,to:7,net:-3}]);
-  const high=resolve(2,board({blue:9}),'blue',1,1);
-  assert.equal(high.after.blue,1,'9 + 2 wraps to 1');
-  const third=resolve(3,board({red:0}),'red',-1,-1);
-  const result=evaluateWildRole({role:roles.wrapper,playerId:'wrapper',players,history:[low.record,high.record,third.record]});
-  assert.equal(result.met,true);
-  assert.equal(result.progress,3);
-  assert.deepEqual(result.details.qualifyingDials.map(item=>item.color),['yellow','blue','red']);
-  const afterCompletion=resolve(4,board({orange:9}),'orange',1,1);
-  assert.equal(afterCompletion.after.orange,1,'the wrapping power remains active after the personal goal is complete');
-  assert.equal(afterCompletion.wraps.length,1);
-
-  const arrestedPlayers=[...players,{id:'police',name:'Shi'}];
-  const arrestedRoles={...roles,police:{kind:'police'}};
-  const arrested=resolveRoundState({dials:board({green:0}),players:arrestedPlayers,roles:arrestedRoles,round:5,selections:{
-    wrapper:{color:'green',effect:-1},
-    helper:{color:'green',effect:-2},
-    police:{policeMode:'arrest',arrestTarget:'wrapper'}
-  }});
-  assert.equal(arrested.after.green,0,'a cancelled Wrapper move does not activate wrapping');
-  assert.deepEqual(arrested.wraps,[]);
-});
-
 test('Moderate assignment carries no plan-derived dial data',()=>{
   const players=[{id:'wf',name:'Wen'},{id:'wb',name:'Bo'},{id:'police',name:'Shi'},{id:'specialist',name:'Miao'}];
   const roles={
@@ -287,7 +251,7 @@ test('Moderate assignment carries no plan-derived dial data',()=>{
     police:{kind:'police'},
     specialist:{kind:'civilian',profession:'science'}
   };
-  const randomValues=[0.25];
+  const randomValues=[2/7];
   const assignment=assignWildRoles({players,roles,dials:Object.fromEntries(COLORS.map(color=>[color,5])),random:()=>randomValues.shift()??0});
   const role=assignment.assignments[0].role;
   assert.equal(role.wildRole,'moderate');
@@ -548,7 +512,7 @@ test('Wild Role setup and outcome stay private until the host begins the postgam
   const roles={
     wild:{kind:'wild',team:'loyal',label:'Bounty',wildRole:'bounty',wildData:{targetIds:['wb','loner']}},
     wf:{kind:'wallfacer',label:'Wallfacer',plan:{values:{red:4}}},
-    wb:{kind:'wallbreaker',label:'Wallbreaker',targetId:'wf',unoccupiedWildRole:'extremist'},
+    wb:{kind:'wallbreaker',label:'Wallbreaker',targetId:'wf',unoccupiedWildRoles:['extremist','moderate']},
     loner:{kind:'wild',team:'loyal',label:'Loner',wildRole:'loner',wildData:{}}
   };
   const dials=Object.fromEntries(COLORS.map(color=>[color,5]));
@@ -559,7 +523,7 @@ test('Wild Role setup and outcome stay private until the host begins the postgam
   const disclosure=buildPostgameDisclosure('ended',players,roles,history,null,{active:true,roundIndex:0},'wf',context);
   assert.equal(disclosure.roles[0].wildRole,'bounty');
   assert.deepEqual(disclosure.roles[0].wildData.targetIds,['wb','loner']);
-  assert.equal(disclosure.roles.find(role=>role.playerId==='wb').unoccupiedWildRole,'extremist');
+  assert.deepEqual(disclosure.roles.find(role=>role.playerId==='wb').unoccupiedWildRoles,['extremist','moderate']);
   const bountyResult=disclosure.wildResults.find(result=>result.roleId==='bounty');
   assert.equal(bountyResult.met,false);
   assert.equal(bountyResult.won,false);

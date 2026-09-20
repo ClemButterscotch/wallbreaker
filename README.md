@@ -22,11 +22,11 @@ A browser prototype for the Wallfacer / Wallbreaker deduction game, supporting f
 
 ### Wild Roles advanced pack
 
-Standard-game hosts may enable the free optional Wild Roles pack with 4–11 players. Every Specialist seat becomes a different secretly assigned Wild Role, so no Wild Role can appear twice and at least one role always remains unoccupied. The core Wallfacer, Wallbreaker, and Police roles do not change, and disabling the pack preserves the standard role composition and rules.
+Standard-game hosts may enable the free optional Wild Roles pack with 4–10 players. Every Specialist seat becomes a different secretly assigned Wild Role, so no Wild Role can appear twice and at least one role always remains unoccupied. The core Wallfacer, Wallbreaker, and Police roles do not change, and disabling the pack preserves the standard role composition and rules.
 
-Wild Roles are Loyal Specialists with an additional private goal. A Wild player wins if and only if their goal is satisfied and the Wallfacer team wins, whether by completing the plan or receiving the win after an incorrect Wallbreaker guess. Wild players never receive a Wallfacer plan display or its target values. A completed Wild goal stays complete. Wild Roles use normal -1/+1 moves. Wrapper additionally makes a touched dial use modulo-10 wrapping for that round when its move is not cancelled.
+Wild Roles are Loyal Specialists with an additional private goal. A Wild player wins if and only if their goal is satisfied and the Wallfacer team wins, whether by completing the plan or receiving the win after an incorrect Wallbreaker guess. Wild players never receive a Wallfacer plan display or its target values. A completed Wild goal stays complete. Wild Roles use normal -1/+1 moves.
 
-During the game, a public **Wild roles** button opens a reference popup containing all nine role names and generic goals. It reveals neither assignments nor private setup data. Police receives no special Wild Role information. The Wallbreaker privately learns exactly one randomly selected unoccupied role and may use it as a cover identity.
+During the game, a public **Wild roles** button opens a reference popup containing all eight role names and generic goals. It reveals neither assignments nor private setup data. Police receives no special Wild Role information. The Wallbreaker privately learns all unoccupied Wild Roles and may use any of them as a cover identity.
 
 - **Bounty:** complete after two assigned players who are neither Police nor Wallfacer have each been arrested. Bounty is omitted from four-player draws because only one valid target exists.
 - **Extremist:** complete after the assigned extreme non-plan dial reaches its opposite endpoint (0 or 9) at least once.
@@ -36,7 +36,7 @@ During the game, a public **Wild roles** button opens a reference popup containi
 - **Loner:** complete after four non-arrested rounds in which no other player chose the same dial color.
 - **Oddball:** complete after any completed round ends with at least five of the six dials showing odd numbers. The starting board does not count.
 - **Numerologist:** complete after any completed round ends with three or more dials showing the same number. The starting board does not count.
-- **Wrapper:** complete after Wrapper’s persistent power has made three different dials wrap past 0 or 9. Any dial touched by Wrapper’s uncancelled move uses modulo-10 wrapping for that round, and the power remains active after completion.
+
 
 When any Wild goal is complete, its live progress panel and dial markers disappear. The player screen gains a subtle purple tint, and **Show role** confirms the achievement. Oddball and Numerologist have no partial progress display before completion because each qualifying board either occurs or does not.
 

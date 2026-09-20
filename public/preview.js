@@ -21,7 +21,6 @@ const WILD_PREVIEWS={
   loner:{label:'Loner',objective:'Complete four rounds as the only player choosing your dial. Arrested rounds do not count.'},
   oddball:{label:'Oddball',objective:'Finish any completed round with at least five of the six dials showing odd numbers.'},
   numerologist:{label:'Numerologist',objective:'Get three different dials to finish the same completed round showing the same number.'},
-  wrapper:{label:'Wrapper',objective:'When your uncancelled move touches a dial, it can wrap past 0 or 9 that round. Use this power to wrap three different dials; the power remains afterward.'}
 };
 
 function targetMarker(value,label='Target'){
@@ -73,7 +72,7 @@ function modalPanel(){
 }
 
 function rolePanel(){
-  return `<section class="preview-panel" data-panel="system"><div class="preview-section-heading"><div><span>Reusable element shelf</span><h2>Roles, public reference, and reconnection</h2></div><p>The Wild Role guide lists the complete nine-role bank without revealing who received which role.</p></div><div class="preview-system-grid"><article><h3>Role icon set</h3><div class="preview-role-row"><div>${roleSvg('wallfacer')}<span>Wallfacer</span></div><div>${roleSvg('wallbreaker')}<span>Wallbreaker</span></div><div class="police">${roleSvg('police')}<span>Shi Qiang</span></div><div>${roleSvg('civilian')}<span>Specialist</span></div></div></article><article><h3>Reconnecting</h3><div class="preview-reconnect"><div class="reconnect-spinner"></div><strong>Reconnecting…</strong><p>Looking for the room and restoring your seat.</p><button class="secondary">Give up and return home</button></div></article><article class="preview-guide-shelf"><h3>Public Wild Role reference</h3><div class="preview-guide-buttons"><button data-demo-modal="wild-guide">Open Wild Roles</button></div></article></div></section>`;
+  return `<section class="preview-panel" data-panel="system"><div class="preview-section-heading"><div><span>Reusable element shelf</span><h2>Roles, public reference, and reconnection</h2></div><p>The Wild Role guide lists the complete eight-role bank without revealing who received which role.</p></div><div class="preview-system-grid"><article><h3>Role icon set</h3><div class="preview-role-row"><div>${roleSvg('wallfacer')}<span>Wallfacer</span></div><div>${roleSvg('wallbreaker')}<span>Wallbreaker</span></div><div class="police">${roleSvg('police')}<span>Shi Qiang</span></div><div>${roleSvg('civilian')}<span>Specialist</span></div></div></article><article><h3>Reconnecting</h3><div class="preview-reconnect"><div class="reconnect-spinner"></div><strong>Reconnecting…</strong><p>Looking for the room and restoring your seat.</p><button class="secondary">Give up and return home</button></div></article><article class="preview-guide-shelf"><h3>Public Wild Role reference</h3><div class="preview-guide-buttons"><button data-demo-modal="wild-guide">Open Wild Roles</button></div></article></div></section>`;
 }
 
 function segments(value,max=3){
@@ -94,22 +93,19 @@ function wildCompactVisual(role,variant='default'){
   if(role==='moderate') return '';
   if(role==='disruptor') return `<div class="preview-subtle-progress"><span>Wrong-way dials</span><strong>1/3</strong></div>${segments(1,3)}`;
   if(role==='oddball'||role==='numerologist') return '';
-  if(role==='wrapper') return `<div class="preview-subtle-progress"><span>Wrapped dials</span><strong>1/3</strong></div>${segments(1,3)}`;
   return `<div class="preview-subtle-progress"><span>Solitary rounds</span><strong>3/4</strong></div>${segments(3,4)}`;
 }
 
 function wildRoundDial(color,roleId,variant,completed=false){
   const extremistTarget=!completed&&roleId==='extremist'&&color==='green';
   const extremistClass=extremistTarget?`preview-extremist-target preview-extremist-${variant} preview-extremist-up`:'';
-  const wrapperWrapped=!completed&&roleId==='wrapper'&&color==='yellow';
-  const wrapperMarker=wrapperWrapped?`<span class="preview-wrapper-marker" aria-hidden="true">${wildRoleSvg('wrapper')}</span>`:'';
   const effects=[1,-1];
-  return `<div class="preview-round-dial dial ${color} ${extremistClass} ${wrapperWrapped?'preview-wrapper-wrapped':''}"><div class="preview-round-face"><span>${color}</span><strong>${VALUES[color]}</strong></div><div class="preview-action-zones count-${effects.length}">${effects.map(effect=>`<button aria-label="${effect>0?'Increase':'Decrease'} ${color} by ${Math.abs(effect)}">${effect>0?'+':''}${effect}</button>`).join('')}</div>${wrapperMarker}</div>`;
+  return `<div class="preview-round-dial dial ${color} ${extremistClass}"><div class="preview-round-face"><span>${color}</span><strong>${VALUES[color]}</strong></div><div class="preview-action-zones count-${effects.length}">${effects.map(effect=>`<button aria-label="${effect>0?'Increase':'Decrease'} ${color} by ${Math.abs(effect)}">${effect>0?'+':''}${effect}</button>`).join('')}</div></div>`;
 }
 
 function wildPlayerScreen(roleId,variant='default'){
   const completed=wildComplete&&WILD_ROLE_DEFINITIONS[roleId].timing==='one-time';
-  const subtle=['disruptor','loner','oddball','numerologist','wrapper'].includes(roleId);
+  const subtle=['disruptor','loner','oddball','numerologist'].includes(roleId);
   const status=completed||['extremist','moderate','oddball','numerologist'].includes(roleId)?'':`<section class="preview-wild-status-panel ${subtle?'subtle':''}">${wildCompactVisual(roleId,variant)}</section>`;
   return `<div class="preview-wild-player-shell ${completed?'goal-complete':''}"><div class="preview-wild-topbar"><div><span class="brand">ROUND 6/10</span><p>Room PREVIEW</p></div><div><button class="secondary" data-demo-modal="wild-guide">Wild roles</button><button class="secondary" data-wild-show-role>Show role</button><button class="secondary">Leave game</button></div></div><section class="preview-wild-move-panel"><div><strong>Your move</strong><span>Select a dial and adjustment</span></div><button disabled>Lock selection</button><small>3/4 locked</small></section>${status}<div class="preview-round-board preview-wild-board">${[
     {name:'Mathematics',colors:['yellow','pink']},
@@ -140,7 +136,7 @@ function modalHtml(type){
   }
   if(type==='wild-guide'){
     const cards=Object.entries(WILD_PREVIEWS).map(([roleId,role])=>`<article class="wild-guide-role">${wildRoleSvg(roleId)}<div><strong>${role.label}</strong><p>${describeWildRoleType(roleId)}</p></div></article>`).join('');
-    return `<div class="modal preview-demo-modal"><div class="modal-card stack wild-guide-modal"><div><div class="eyebrow">Public reference</div><h2 class="role-title">Wild Roles</h2></div><p class="small">Complete your Wild goal and help the Wallfacer team win. A completed goal stays complete. Wild players never see the Wallfacer's plan. The Wallbreaker privately knows one unoccupied role they can claim as a cover.</p><div class="wild-guide-grid">${cards}</div><button class="secondary" data-close-demo>Close</button></div></div>`;
+    return `<div class="modal preview-demo-modal"><div class="modal-card stack wild-guide-modal"><div><div class="eyebrow">Public reference</div><h2 class="role-title">Wild Roles</h2></div><p class="small">Complete your Wild goal and help the Wallfacer team win. A completed goal stays complete. Wild players never see the Wallfacer's plan. The Wallbreaker privately knows all unoccupied Wild Roles and can claim any of them as a cover.</p><div class="wild-guide-grid">${cards}</div><button class="secondary" data-close-demo>Close</button></div></div>`;
   }
   if(type==='role') return `<div class="modal preview-demo-modal"><div class="modal-card"><div class="role-only"><div class="eyebrow">Your role</div>${roleSvg(roundDemo.role==='specialist'?'civilian':'wallfacer')}<h2 class="role-title">${roundDemo.role==='specialist'?'Science Specialist':'Wallfacer'}</h2></div><hr><button class="secondary" data-close-demo>Close</button></div></div>`;
   if(type==='guess') return `<div class="modal preview-demo-modal"><div class="modal-card stack"><div><div class="eyebrow">Final action</div><h2 class="role-title">Guess the plan</h2></div><p class="small">Choose the three dial colors in the Wallfacer's plan. A correct guess wins; an incorrect guess gives the Loyal team the win.</p><div class="math-guess-grid standard-guess-grid">${COLORS.map(color=>`<label class="${color}"><input class="preview-break-dial" type="checkbox" value="${color}"><span>${color}</span></label>`).join('')}</div><div class="small" id="preview-guess-count" aria-live="polite">0 of 3 selected</div><button class="danger" data-submit-demo-guess disabled>Submit final guess</button><button class="secondary" data-close-demo>Cancel</button></div></div>`;

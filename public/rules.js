@@ -2,7 +2,8 @@ import {eyeSvg,roleSvg,wildRoleSvg} from './icons.js';
 import {WILD_ROLE_DEFINITIONS} from './game-rules.js';
 
 const deck=document.querySelector('[data-rules-deck]');
-const slides=[...document.querySelectorAll('.rules-slide')];
+const allSlides=[...document.querySelectorAll('.rules-slide')];
+let slides=allSlides;
 const stage=document.querySelector('#rulebook');
 const previousButton=document.querySelector('#rules-prev');
 const nextButton=document.querySelector('#rules-next');
@@ -217,7 +218,7 @@ function buildToc(){
     });
     fragment.append(button);
   });
-  tocLinks.append(fragment);
+  tocLinks.replaceChildren(fragment);
 }
 
 function openMenu(){
@@ -334,9 +335,38 @@ function isTypingTarget(target){
   return ['INPUT','TEXTAREA','SELECT'].includes(target.tagName)||target.isContentEditable;
 }
 
+function selectVersion(version,{initial=false}={}){
+  const wild=version==='wild';
+  const current=slides[currentIndex];
+  slides=allSlides.filter(slide=>wild?slide.id!=='rules-slide-specialists':!slide.classList.contains('wild-rules-slide'));
+  allSlides.forEach(slide=>{
+    const excluded=!slides.includes(slide);
+    slide.classList.toggle('version-excluded',excluded);
+    if(excluded){
+      slide.classList.remove('is-current');
+      slide.setAttribute('aria-hidden','true');
+      slide.setAttribute('inert','');
+    }
+  });
+  document.querySelectorAll('[data-rules-version]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.rulesVersion===(wild?'wild':'basic'))));
+  document.querySelector('#rules-team-ui .wallfacer-team-ui p').textContent=wild?'Leads Shi Qiang and the Wild Roles.':'Leads Shi Qiang and the Specialists.';
+  slides.forEach((slide,index)=>{
+    const kicker=slide.querySelector('.rules-kicker');
+    if(kicker) [...kicker.childNodes].filter(node=>node.nodeType===Node.TEXT_NODE).forEach(node=>{
+      node.textContent=node.textContent.replace(/^\d+ ·/,String(index).padStart(2,'0')+' ·');
+    });
+  });
+  const url=new URL(location.href);
+  url.searchParams.set('version',wild?'wild':'basic');
+  history.replaceState(null,'',url);
+  buildToc();
+  showSlide(initial?indexForHash():Math.max(0,slides.indexOf(current)));
+}
+
 mountGameScreens();
 mountWildRuleSlides();
-buildToc();
+selectVersion(new URLSearchParams(location.search).get('version'),{initial:true});
+document.querySelectorAll('[data-rules-version]').forEach(button=>button.addEventListener('click',()=>selectVersion(button.dataset.rulesVersion)));
 deck.classList.add('is-enhanced');
 showSlide(indexForHash(),{updateHash:false,announce:false});
 requestAnimationFrame(()=>deck.classList.add('is-ready'));

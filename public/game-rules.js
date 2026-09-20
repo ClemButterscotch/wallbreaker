@@ -13,7 +13,6 @@ export const WILD_ROLE_DEFINITIONS = Object.freeze({
   loner:{label:'Loner',timing:'one-time'},
   oddball:{label:'Oddball',timing:'one-time'},
   numerologist:{label:'Numerologist',timing:'one-time'},
-  wrapper:{label:'Wrapper',timing:'one-time'}
 });
 export const WILD_ROLE_IDS = Object.freeze(Object.keys(WILD_ROLE_DEFINITIONS));
 export const MAX_WILD_PLAYERS = WILD_ROLE_IDS.length+2;
@@ -85,13 +84,12 @@ export function assignWildRoles({players=[],roles={},dials={},random=Math.random
   }
   const occupied=new Set(assignments.map(assignment=>assignment.role.wildRole));
   const unoccupied=WILD_ROLE_IDS.filter(roleId=>!occupied.has(roleId));
-  const unoccupiedWildRole=randomItem(unoccupied,random);
   nextRoles=Object.fromEntries(Object.entries(nextRoles).map(([playerId,role])=>{
     if(role?.kind!=='wallbreaker') return [playerId,role];
     const {unoccupiedWildRole:previousClue,...baseRole}=role;
-    return [playerId,unoccupiedWildRole?{...baseRole,unoccupiedWildRole}:baseRole];
+    return [playerId,{...baseRole,unoccupiedWildRoles:unoccupied}];
   }));
-  return {roles:nextRoles,playerIds:assignments.map(assignment=>assignment.playerId),assignments,unoccupiedWildRole:unoccupiedWildRole||null};
+  return {roles:nextRoles,playerIds:assignments.map(assignment=>assignment.playerId),assignments,unoccupiedWildRoles:unoccupied};
 }
 
 export function describeWildRoleType(roleId){
@@ -103,7 +101,6 @@ export function describeWildRoleType(roleId){
   if(roleId==='loner') return 'Complete four non-arrested rounds as the only player choosing your dial.';
   if(roleId==='oddball') return 'Finish any completed round with at least five of the six dials showing odd numbers.';
   if(roleId==='numerologist') return 'Get three different dials to finish a round showing the same number.';
-  if(roleId==='wrapper') return 'Use your persistent wrapping power to wrap three different dials past an endpoint.';
   return '';
 }
 
@@ -127,7 +124,7 @@ export function describeWildRole(role,players=[]){
   if(role.wildRole==='loner') return 'Complete four rounds when you are not arrested and no other player chooses your dial.';
   if(role.wildRole==='oddball') return 'Finish any completed round with at least five of the six dials showing odd numbers.';
   if(role.wildRole==='numerologist') return 'Get three different dials to finish the same completed round showing the same number.';
-  return 'When your uncancelled move touches a dial, that round it wraps past 0 or 9 instead of stopping. Use this power to wrap three different dials; the power remains after completion.';
+  return '';
 }
 
 function roundAction(entry,playerId){
@@ -257,18 +254,6 @@ export function evaluateWildRole({role,playerId,players=[],history=[],initialDia
     reachedOnce=met;
     details={qualifyingRound:qualifying?.round??null,number:qualifying?.number??null,colors:qualifying?.colors||[]};
     evidence=met?`${qualifying.colors.length} dials showed ${qualifying.number} after round ${qualifying.round}; the goal is complete.`:'No completed round has ended with three dials showing the same number.';
-  } else if(role.wildRole==='wrapper'){
-    const qualifyingByColor=new Map();
-    history.flatMap(entry=>entry.wraps||[]).filter(item=>item.playerId===playerId).forEach(item=>{
-      if(!qualifyingByColor.has(item.color)) qualifyingByColor.set(item.color,item);
-    });
-    const qualifyingDials=[...qualifyingByColor.values()];
-    progress=Math.min(qualifyingDials.length,3);
-    goal=3;
-    met=progress===goal;
-    reachedOnce=met;
-    details={qualifyingDials};
-    evidence=met?'Your power has wrapped three different dials; the goal is complete and the power remains active.':`${progress} of 3 different dials have wrapped using your power.`;
   }
   return {roleId:role.wildRole,label:role.label,timing:WILD_ROLE_DEFINITIONS[role.wildRole].timing,met,reachedOnce,progress,goal,objective,evidence,details};
 }
@@ -332,26 +317,12 @@ export function resolveRoundState({dials,selections,players,roles,round}){
   const arrested={};
   if(arrest?.arrestTarget&&players.some(player=>player.id===arrest.arrestTarget)) arrested[arrest.arrestTarget]=true;
   const net=Object.fromEntries(COLORS.map(color=>[color,0]));
-  const wrappersByColor=new Map();
   for(const [playerId,selection] of entries){
     if(selection.color&&!arrested[playerId]){
       net[selection.color]+=selection.effect;
-      if(roles[playerId]?.kind==='wild'&&roles[playerId]?.wildRole==='wrapper'){
-        wrappersByColor.set(selection.color,[...(wrappersByColor.get(selection.color)||[]),playerId]);
-      }
     }
   }
-  const wraps=[];
-  const after=Object.fromEntries(COLORS.map(color=>{
-    const raw=before[color]+net[color];
-    const wrapperIds=wrappersByColor.get(color)||[];
-    if(wrapperIds.length&&(raw<0||raw>9)){
-      const value=((raw%10)+10)%10;
-      wrapperIds.forEach(playerId=>wraps.push({playerId,color,from:before[color],to:value,net:net[color]}));
-      return [color,value];
-    }
-    return [color,clampDial(raw)];
-  }));
+  const after=Object.fromEntries(COLORS.map(color=>[color,clampDial(before[color]+net[color])]));
   const actions=players.map(player=>{
     const selection=selections[player.id]||{};
     const action=selection.systemSkipped
@@ -363,7 +334,7 @@ export function resolveRoundState({dials,selections,players,roles,round}){
           : {type:'move',color:selection.color,effect:selection.effect};
     return {playerId:player.id,name:player.name,kind:roles[player.id]?.kind,arrested:!!arrested[player.id],action};
   });
-  return {before,after,net,wraps,arrested,record:{round,before,after:{...after},net:{...net},wraps:wraps.map(item=>({...item})),actions}};
+  return {before,after,net,arrested,record:{round,before,after:{...after},net:{...net},actions}};
 }
 
 export function isPlanFieldGuess(planValues,guessColors){
@@ -395,7 +366,7 @@ export function buildPostgameDisclosure(phase,players,roles,history,finalGuess,r
   return {
     roles:players.map(player=>{
       const role=roles[player.id]||{};
-      return {playerId:player.id,name:player.name,kind:role.kind,label:role.label,profession:role.profession,plan:role.plan,targetId:role.targetId,wildRole:role.wildRole,wildData:role.wildData,unoccupiedWildRole:role.unoccupiedWildRole};
+      return {playerId:player.id,name:player.name,kind:role.kind,label:role.label,profession:role.profession,plan:role.plan,targetId:role.targetId,wildRole:role.wildRole,wildData:role.wildData,unoccupiedWildRoles:role.unoccupiedWildRoles};
     }),
     history:completedRounds[roundIndex]?[completedRounds[roundIndex]]:[],
     finalGuess:complete?(finalGuess||null):null,

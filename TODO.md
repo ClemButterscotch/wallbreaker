@@ -3,11 +3,10 @@
 ## Wild Roles advanced play pack — implemented
 
 The free, optional **Wild Roles** host setting is implemented for standard games with
-4–11 players. When enabled, every Specialist seat receives a different secret Wild
+4–10 players. When enabled, every Specialist seat receives a different secret Wild
 Role. Wild Roles are Loyal: each Wild player must satisfy a private goal and the
 Wallfacer team must win. The plan remains hidden from the Wild player.
-Every Wild Role uses a normal `+1` / `-1` dial action. Wrapper also has its persistent
-wrapping power.
+Every Wild Role uses a normal `+1` / `-1` dial action.
 
 ### Role bank
 
@@ -30,21 +29,19 @@ wrapping power.
   at least five of the six dials showing odd numbers. The starting board does not count.
 - **Numerologist** — Complete the goal after any completed round ends
   with three or more dials showing the same number. The starting board does not count.
-- **Wrapper** — A dial touched by Wrapper’s uncancelled move uses modulo-10
-  wrapping for that round instead of stopping at 0 or 9. Complete the goal after this
-  power wraps three different dial colors; the power remains active afterward.
+
 
 ### Implemented design
 
-- The pack requires 4–11 players and replaces every Specialist with a unique Wild
+- The pack requires 4–10 players and replaces every Specialist with a unique Wild
   Role; it never alters the Wallfacer, Wallbreaker, or Police seats. The cap ensures
-  at least one of the nine roles is always unoccupied.
+  at least one of the eight roles is always unoccupied.
 - The setting is host-controlled, persisted in authoritative state, and restored
   after reload or return to the lobby.
 - Assignments, setup data, and progress stay private. Police receives no partial
-  Wild information. Wallbreaker privately learns exactly one randomly selected
-  unoccupied role and may use it as a cover identity. A public reference popup lists
-  all nine generic roles.
+  Wild information. Wallbreaker privately learns all unoccupied Wild Roles
+  and may use any of them as a cover identity. A public reference popup lists
+  all eight generic roles.
 - The private role card shows live progress meters for countable objectives and
   the starting and current totals for Conservationist. Moderate, Oddball, and Numerologist
   have no partial progress display because their completed-round conditions are binary.
@@ -58,9 +55,9 @@ wrapping power.
 
 ### Automated test coverage added
 
-- Unique multi-role assignment, preservation of all three core roles, the eleven-player
+- Unique multi-role assignment, preservation of all three core roles, the ten-player
   cap, Bounty eligibility, and the no-eligible-seat case.
-- Pure-rules evaluation for all nine objectives, including arrest cancellation,
+- Pure-rules evaluation for all eight objectives, including arrest cancellation,
   simultaneous actions, repeated-round counters, boundary values, and final-round
   timing.
 - Active-game/postgame disclosure boundaries, plan privacy, goal completion timing,
