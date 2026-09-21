@@ -16,7 +16,7 @@ A browser prototype for the Wallfacer / Wallbreaker deduction game, supporting f
 - Each round, every non-observer player privately selects one action; passing and zero-effect dial moves are not legal. The Wallfacer and Wallbreaker are limited to -1 or +1. Specialists independently receive a random subject; they may use -2 or +2 only on that subject's dial pair, while all their other dial moves are limited to -1 or +1. Duplicate specialties are allowed, and a subject may have no Specialist.
 - The host resolves all committed selections simultaneously.
 - Completing the plan exactly immediately wins for the Loyal team.
-- The Wallbreaker chooses exactly one action per round: adjust one dial by -1 or +1, or use the Sophon to observe the Wallfacer's locked move. There are no tokens, inventories, combined actions, or regeneration.
+- The Wallbreaker adjusts one dial by -1 or +1 every round and automatically receives a private Sophon observation of the Wallfacer's locked move after resolution. Arrest cancels the dial effect but never the observation, even if the Wallfacer was arrested. There are no observation tokens or costs.
 - The Wallbreaker may guess the three dial colors in the plan; target values are not part of the guess. A correct guess wins for the Wallbreaker, while a wrong guess immediately wins for the Loyal team.
 - The Wallbreaker wins if the configured final round ends without the Wallfacer completing the plan.
 
@@ -73,7 +73,7 @@ To run the checks:
 npm test
 ```
 
-The test suite imports the same pure rules module used by the browser. It covers fixed role composition, unique multi-Wild assignment, every Wild goal, active-game plan privacy, Loyal-aligned Wild wins, role-specific movement, mutually exclusive Sophon actions, Police arrests, write-once locks, simultaneous resolution, dial bounds, disconnected no-ops, color-only plan guesses, replay records, and postgame privacy.
+The test suite imports the same pure rules module used by the browser. It covers fixed role composition, unique multi-Wild assignment, every Wild goal, active-game plan privacy, Loyal-aligned Wild wins, role-specific movement, automatic Sophon observation alongside required dial moves, Police arrests, write-once locks, simultaneous resolution, dial bounds, disconnected no-ops, color-only plan guesses, replay records, and postgame privacy.
 
 For a free public version later, deploy this folder as a static site on Cloudflare Pages. The app has no server-side routes or build step; set the build command to empty and the output directory to the project root. PeerJS handles room signaling and WebRTC connections in the browser.
 

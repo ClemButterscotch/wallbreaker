@@ -52,16 +52,16 @@ function dialBoardHtml({observer=false,targets=false,specialty=null,selection=nu
 }
 
 function gameTopbarHtml({wallbreaker=false,label='ROUND 1/10'}={}){
-  return `<div class="topbar rules-live-topbar"><div><div class="brand">${label}</div><div class="meta">Room 173451</div></div><div class="row">${wallbreaker?`<div class="sophon-inventory"><span class="sophon-count">SOPHON · CHOOSE 1</span></div>`:''}<button class="secondary" type="button" disabled>Show role</button></div></div>`;
+  return `<div class="topbar rules-live-topbar"><div><div class="brand">${label}</div><div class="meta">Room 173451</div></div><div class="row">${wallbreaker?`<div class="sophon-inventory"><span class="sophon-count">SOPHON · AUTOMATIC</span></div>`:''}<button class="secondary" type="button" disabled>Show role</button></div></div>`;
 }
 
 function movePanelHtml({role='wallfacer',selection=null,locked=false,playersLocked=3,totalPlayers=6}={}){
   const isWallbreaker=role==='wallbreaker';
   const isPolice=role==='police';
   const special=selection?.kind;
-  const chosen=special==='sophon'?"Spy on Wallfacer's move":special==='arrest'?(selection.target?`Arrest ${selection.target}`:'Choose a player'):selection?.color?`${selection.color} ${selection.effect>0?'+':''}${selection.effect}`:'Select a dial and adjustment';
-  const hasChoice=Boolean(special==='sophon'||(special==='arrest'&&selection.target)||selection?.color);
-  const spy=isWallbreaker?`<button class="spy-choice ${special==='sophon'?'selected':''}" type="button" data-rule-sophon aria-pressed="${special==='sophon'}" ${locked?'disabled':''}>${eyeSvg()}<span>Spy on Wallfacer's move</span></button>`:'';
+  const chosen=special==='arrest'?(selection.target?`Arrest ${selection.target}`:'Choose a player'):selection?.color?`${selection.color} ${selection.effect>0?'+':''}${selection.effect}`:'Select a dial and adjustment';
+  const hasChoice=Boolean((special==='arrest'&&selection.target)||selection?.color);
+  const spy=isWallbreaker?'<p class="small">After every round, your Sophon automatically reveals the Wallfacer’s locked move.</p>':'';
   const arrest=isPolice?`<button class="spy-choice ${special==='arrest'?'selected':''}" type="button" data-rule-arrest aria-pressed="${special==='arrest'}" ${locked?'disabled':''}>${roleSvg('police')}<span>${selection?.target?`Arrest ${selection.target}`:'Arrest someone for this turn'}</span></button>`:'';
   const guess=isWallbreaker?'<button class="danger" type="button" data-rule-open-guess>Guess combination</button>':'';
   return `<section class="panel stack move-panel"><div class="move-summary"><strong>Your move</strong><span>${locked?`Locked in · ${chosen}`:chosen}</span></div>${spy}${arrest}<button type="button" data-rule-lock ${locked||!hasChoice?'disabled':''}>${locked?`Locked in · ${chosen}`:'Lock selection'}</button>${guess}<div class="small">${locked?playersLocked+1:playersLocked}/${totalPlayers} locked</div></section>`;
@@ -100,11 +100,6 @@ function bindActionScreen({selector,role='wallfacer',targets=false,specialty=nul
       arrestPickerOpen=false;
       render();
     }));
-    screen.querySelector('[data-rule-sophon]')?.addEventListener('click',()=>{
-      if(locked) return;
-      selection={kind:'sophon'};
-      render();
-    });
     screen.querySelector('[data-rule-arrest]')?.addEventListener('click',()=>{
       if(locked) return;
       selection={kind:'arrest',target:selection?.kind==='arrest'?selection.target:null};
@@ -294,10 +289,10 @@ function bindWallbreakerChoiceExample(){
     });
     if(choice==='sophon'){
       title.textContent='Use Sophon observation';
-      copy.textContent='No dial is moved. After resolution, the Wallbreaker privately sees the action the Wallfacer locked.';
+      copy.textContent='After resolution, the Wallbreaker automatically sees the action the Wallfacer locked, in addition to moving one dial.';
     } else {
       title.textContent='Affect Blue by −1';
-      copy.textContent='Blue would move from 3 to 2. Sophon observation is not used this round.';
+      copy.textContent='Blue would move from 3 to 2. Sophon observation also happens automatically after resolution.';
     }
   }
 

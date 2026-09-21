@@ -196,10 +196,10 @@ test('role-specific dial limits are enforced',()=>{
   assert.equal(isLegalSelection({kind:'wallfacer'},{color:'yellow',effect:0},[],'wf'),false,'passing with a zero move is illegal');
 });
 
-test('the simple Sophon rule permits exactly one action',()=>{
+test('Wallbreaker must select one dial move with automatic observation',()=>{
   const players=[{id:'breaker'},{id:'target'}];
   const role={kind:'wallbreaker',targetId:'target'};
-  assert.equal(isLegalSelection(role,{sophonMode:'see'},players,'breaker'),true);
+  assert.equal(isLegalSelection(role,{sophonMode:'see'},players,'breaker'),false);
   assert.equal(isLegalSelection(role,{sophonMode:'affect',color:'blue',effect:1},players,'breaker'),true);
   assert.equal(isLegalSelection(role,{sophonMode:'see',color:'blue',effect:1},players,'breaker'),false);
   assert.equal(isLegalSelection(role,{sophonMode:'both',color:'blue',effect:1},players,'breaker'),false);
@@ -228,7 +228,7 @@ test('round resolution applies arrests, clamps dials, and records every action',
   const dials=Object.fromEntries(COLORS.map(color=>[color,color==='blue'?9:5]));
   const selections={
     wf:{color:'yellow',effect:1,sophonMode:'affect',policeMode:'affect'},
-    wb:{sophonMode:'see'},
+    wb:{sophonMode:'affect',color:'red',effect:-1},
     police:{policeMode:'arrest',arrestTarget:'wf'},
     civilian:{color:'blue',effect:2,sophonMode:'affect',policeMode:'affect'}
   };
@@ -239,7 +239,7 @@ test('round resolution applies arrests, clamps dials, and records every action',
   assert.equal(result.arrested.wf,true);
   assert.equal(result.record.round,3);
   assert.equal(result.record.actions.length,4);
-  assert.deepEqual(result.record.actions.find(action=>action.playerId==='wb').action,{type:'spy',targetId:'wf'});
+  assert.deepEqual(result.record.actions.find(action=>action.playerId==='wb').action,{type:'move',color:'red',effect:-1});
   assert.equal(dials.blue,9,'resolution must not mutate its input board');
 });
 
@@ -718,3 +718,37 @@ for(const playing of [true,false]){
 }
 
 console.log('\nAll regression groups passed');
+
+
+test('automatic Sophon observation accompanies each move and survives arrests privately',()=>{
+  for(const hostPlaying of [false,true]){
+    for(const arrested of ['wf','wb']){
+      const h=appHarness();
+      h.run(`
+        isHost=true; game.adminPlaying=${hostPlaying}; myPlayerId=${hostPlaying?"'wb'":"null"};
+        game.phase='playing'; game.round=1; game.maxRounds=10;
+        game.players=[{id:'wf',name:'Wen'},{id:'wb',name:'Bo'},{id:'police',name:'Shi'}];
+        game.roles={wf:{kind:'wallfacer',plan:{values:{red:0,blue:0,green:0}}},wb:{kind:'wallbreaker',targetId:'wf'},police:{kind:'police'}};
+        game.dials=Object.fromEntries(COLORS.map(color=>[color,5]));
+        const packets=[];
+        conns.set('wb',{open:true,send:message=>packets.push(message)});
+        for(let turn=0;turn<2;turn++){
+          game.selections={wf:{color:'yellow',effect:1},wb:{color:'red',effect:-1,sophonMode:'affect'},police:{policeMode:'arrest',arrestTarget:'${arrested}'}};
+          resolveRound();
+        }
+      `);
+      assert.equal(h.run('game.round'),3);
+      assert.equal(h.run('game.dials.red'),arrested==='wb'?5:3);
+      assert.equal(h.run('game.roles.wb.sophonResult.color'),'yellow');
+      assert.equal(h.run('packets.at(-1).role.sophonResult.effect'),1);
+      assert.equal(h.run("JSON.stringify(publicState()).includes('sophonResult')"),false);
+      assert.equal(h.run("Boolean(roleFor(game.players[0]).sophonResult)"),false);
+      assert.equal(h.run('Boolean(localView.role?.sophonResult)'),hostPlaying);
+      assert.equal(h.run("game.history[1].actions.find(a=>a.playerId==='wb').observationTargetId"),'wf');
+      if(hostPlaying){
+        assert.equal(h.run("[...shownNoticeKeys].filter(key=>key.startsWith('sophon:')).length"),2);
+        assert.doesNotMatch(h.run('movePanelHtml(localView.state,localView.role,false)'),/id="spy-choice"/);
+      }
+    }
+  }
+});

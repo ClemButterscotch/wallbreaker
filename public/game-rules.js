@@ -293,7 +293,6 @@ export function isLegalSelection(role,selection,players,playerId){
   if(selection.policeMode==='arrest'&&role.kind!=='police') return false;
   if(selection.sophonMode==='see'&&role.kind!=='wallbreaker') return false;
   if(role.kind==='wallbreaker'){
-    if(selection.sophonMode==='see') return selection.color==null&&selection.effect==null;
     if(selection.sophonMode!=='affect') return false;
   }
   if(role.kind==='police'){
@@ -332,7 +331,7 @@ export function resolveRoundState({dials,selections,players,roles,round}){
         : selection.policeMode==='arrest'
           ? {type:'arrest',targetId:selection.arrestTarget}
           : {type:'move',color:selection.color,effect:selection.effect};
-    return {playerId:player.id,name:player.name,kind:roles[player.id]?.kind,arrested:!!arrested[player.id],action};
+    return {playerId:player.id,name:player.name,kind:roles[player.id]?.kind,arrested:!!arrested[player.id],action,...(roles[player.id]?.kind==='wallbreaker'?{observationTargetId:roles[player.id].targetId}:{})};
   });
   return {before,after,net,arrested,record:{round,before,after:{...after},net:{...net},actions}};
 }

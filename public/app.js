@@ -217,9 +217,7 @@ function resolveRound(){
   for(const p of game.players){
     const role=game.roles[p.id];
     if(role?.kind==='wallbreaker'){
-      const mode=roundSelections[p.id]?.sophonMode||'affect';
-      if(mode==='see') role.sophonResult=roundSelections[role.targetId]||null;
-      else role.sophonResult=null;
+      role.sophonResult=roundSelections[role.targetId]||null;
     }
   }
   game.history||=[];
@@ -637,10 +635,9 @@ function submitSelection(){
   const role=currentRoleFor(myPlayerId);
   const color=pendingSelection.color;
   const effect=pendingSelection.effect;
-  const sophonMode=pendingSelection.sophonMode || 'affect';
   const policeMode=pendingSelection.policeMode || 'affect';
   if(localView.state?.players.find(p=>p.id===myPlayerId)?.ready) return;
-  const selection=role?.kind==='wallbreaker'&&sophonMode==='see' ? {sophonMode:'see'} : role?.kind==='police'&&policeMode==='arrest' ? {policeMode:'arrest',arrestTarget:pendingSelection.arrestTarget} : {color,effect,sophonMode:'affect',policeMode:'affect'};
+  const selection=role?.kind==='police'&&policeMode==='arrest' ? {policeMode:'arrest',arrestTarget:pendingSelection.arrestTarget} : {color,effect,sophonMode:'affect',policeMode:'affect'};
   if(!isLegalSelection(myPlayerId,selection)) return;
   if(isHost){
     if(!tryLockSelection(game.selections,myPlayerId,selection,item=>isLegalSelection(myPlayerId,item))) return;
@@ -821,12 +818,12 @@ function dialValueHtml(c,state){
 }
 function movePanelHtml(state,role,current){
   const selection=current&&state.lockedSelection?state.lockedSelection:pendingSelection;
-  const chosen=selection.sophonMode==='see'?"Spy on Wallfacer's move":selection.color?`${selection.color} ${selection.effect>0?'+':''}${selection.effect}`:'Select a dial and adjustment';
-  const spy=role?.kind==='wallbreaker'?`<button class="spy-choice ${selection.sophonMode==='see'?'selected':''}" id="spy-choice" aria-pressed="${selection.sophonMode==='see'}" ${current?'disabled':''}>${eyeSvg()}<span>Spy on Wallfacer's move</span></button>`:'';
+  const chosen=selection.color?`${selection.color} ${selection.effect>0?'+':''}${selection.effect}`:'Select a dial and adjustment';
+  const spy=role?.kind==='wallbreaker'?'<p class="small">After every round, your Sophon automatically reveals the Wallfacer’s locked move.</p>':'';
   const arrest=role?.kind==='police'?`<button class="spy-choice ${selection.policeMode==='arrest'?'selected':''}" id="arrest-choice" aria-pressed="${selection.policeMode==='arrest'}" ${current?'disabled':''}>${roleSvg('police')}<span>${selection.arrestTarget?'Arrest selected player':'Arrest someone for this turn'}</span></button>`:'';
-  const hasChoice=role?.kind==='wallbreaker' ? selection.sophonMode==='see'||(selection.color&&EFFECTS.includes(selection.effect)) : role?.kind==='police' ? selection.policeMode==='arrest'?Boolean(selection.arrestTarget):(selection.color&&EFFECTS.includes(selection.effect)) : Boolean(selection.color&&EFFECTS.includes(selection.effect));
+  const hasChoice=role?.kind==='police' ? selection.policeMode==='arrest'?Boolean(selection.arrestTarget):(selection.color&&EFFECTS.includes(selection.effect)) : Boolean(selection.color&&EFFECTS.includes(selection.effect));
   const summary=role?.kind==='police'&&selection.policeMode==='arrest'?(selection.arrestTarget?'Arrest selected player':'Choose a player'):chosen;
-  const lockedLabel=role?.kind==='wallbreaker'&&selection.sophonMode==='see'?'Locked in · spying':role?.kind==='police'&&selection.policeMode==='arrest'?`Locked in · arrest selected player`:`Locked in · ${chosen}`;
+  const lockedLabel=role?.kind==='police'&&selection.policeMode==='arrest'?`Locked in · arrest selected player`:`Locked in · ${chosen}`;
   const guess=role?.kind==='wallbreaker'?'<button class="danger" id="break-now">Guess combination</button>':'';
   return `<section class="panel stack move-panel"><div class="move-summary"><strong>Your move</strong><span>${current?lockedLabel:summary}</span></div>${spy}${arrest}<button id="submit" ${state.paused||current||!hasChoice?'disabled':''}>${current?lockedLabel:'Lock selection'}</button>${guess}<div class="small">${state.players.filter(p=>p.ready).length}/${state.players.length} locked</div></section>`;
 }
@@ -899,7 +896,7 @@ function postgameHtml(state){
   const roleCards=postgame.roles.map(role=>`<article class="reveal-role-card">${role.kind==='wild'?wildRoleSvg(role.wildRole):roleSvg(role.kind)}<div><strong>${escapeHtml(role.name)}</strong><div class="reveal-role-name">${escapeHtml(role.label||role.kind||'Unknown')}</div><div class="small">${escapeHtml(postgameRoleDetail(role,names))}</div></div></article>`).join('');
   const rounds=postgame.history.map(entry=>{
     const dials=COLORS.map(color=>{ const before=Number(entry.before?.[color]||0); const after=Number(entry.after?.[color]||0); const wrapped=(entry.wraps||[]).some(item=>item.color===color); const change=wrapped?`${signed(Number(entry.net?.[color]||0))} · wrapped`:signed(after-before); return `<div class="history-dial ${color}"><span>${escapeHtml(color)}</span><strong>${before} → ${after}</strong><small>${escapeHtml(change)}</small></div>`; }).join('');
-    const actions=entry.actions.map(item=>`<div class="history-action ${item.arrested?'cancelled':''}"><div><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.kind||'')}</span></div><div>${escapeHtml(postgameActionText(item.action,names))}${item.arrested?' · cancelled by arrest':''}</div></div>`).join('');
+    const actions=entry.actions.map(item=>`<div class="history-action ${item.arrested?'cancelled':''}"><div><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.kind||'')}</span></div><div>${escapeHtml(postgameActionText(item.action,names))}${item.arrested?' · cancelled by arrest':''}${item.observationTargetId?' · Sophon observed '+escapeHtml(names.get(item.observationTargetId)||'the Wallfacer'):''}</div></div>`).join('');
     return `<article class="history-round recap-round"><div class="recap-round-heading"><span>Round ${entry.round}</span><span>${entry.actions.length} actions</span></div><div class="history-dials">${dials}</div><div class="history-actions">${actions}</div></article>`;
   }).join('');
   const finalGuess=postgame.finalGuess;
@@ -919,7 +916,7 @@ function gameScreen(state,role){
   const access=localAccess();
   const mine=state.players.find(p=>p.id===myPlayerId);
   const current=mine?.ready;
-  const sophonHeader=role?.kind==='wallbreaker'?`<div class="sophon-inventory" aria-label="Choose one Sophon action each round"><span class="sophon-count">SOPHON · CHOOSE 1</span></div>`:'';
+  const sophonHeader=role?.kind==='wallbreaker'?`<div class="sophon-inventory" aria-label="Automatic Sophon observation each round"><span class="sophon-count">SOPHON · AUTOMATIC</span></div>`:'';
   const oneTimeComplete=access.player&&isCompletedOneTimeWildRole(role);
   if(state.phase==='ended') return `<div class="shell postgame-shell"><div class="topbar"><div>${productBrandHtml()}<div class="meta">Room ${state.code}</div></div>${isHost?'':`<button class="secondary" id="leave">Leave game</button>`}</div>${postgameHtml(state)}${outcomeModalsHtml(state,role)}${chatHtml()}</div>`;
   return `<div class="shell ${oneTimeComplete?'wild-goal-complete-shell':''} ${state.phase==='victory-reveal'?`goal-victory-stage-${state.victoryReveal?.stage||'dials'}`:''}"><div class="topbar"><div><div class="brand">ROUND ${state.round}/${state.maxRounds}</div><div class="meta">Room ${state.code}</div></div><div class="row">${sophonHeader}${state.wildRolesEnabled?'<button class="secondary" id="show-wild-guide">Wild roles</button>':''}${access.player&&state.phase==='playing'?'<button class="secondary" id="show-role">Show role</button>':''}<button class="secondary" id="leave">${isHost?'End game':'Leave game'}</button></div></div>
@@ -993,7 +990,6 @@ function bind(){
   document.querySelector('#host-player-name')?.addEventListener('keydown',event=>{ if(event.key==='Enter'){ event.preventDefault(); event.currentTarget.blur(); } });
   document.querySelector('#submit')?.addEventListener('click',submitSelection);
   document.querySelectorAll('.dial-action.adjust').forEach(el=>el.addEventListener('click',()=>{ if(localView.state?.players.find(player=>player.id===myPlayerId)?.ready) return; pendingSelection.color=el.dataset.color; pendingSelection.effect=Number(el.dataset.effect); pendingSelection.sophonMode='affect'; pendingSelection.policeMode='affect'; render(); }));
-  document.querySelector('#spy-choice')?.addEventListener('click',()=>{ if(localView.state?.players.find(player=>player.id===myPlayerId)?.ready) return; pendingSelection.color=null; pendingSelection.effect=null; pendingSelection.sophonMode='see'; pendingSelection.policeMode='affect'; render(); });
   document.querySelector('#arrest-choice')?.addEventListener('click',()=>{ if(localView.state?.players.find(player=>player.id===myPlayerId)?.ready) return; pendingSelection.color=null; pendingSelection.effect=null; pendingSelection.sophonMode='affect'; pendingSelection.policeMode='arrest'; localView.modal='arrest-picker'; render(); });
   document.querySelectorAll('.arrest-target').forEach(el=>el.addEventListener('click',()=>{ if(localView.state?.players.find(player=>player.id===myPlayerId)?.ready) return; pendingSelection.arrestTarget=el.dataset.arrestTarget||null; dismissModal(); }));
   document.querySelector('#show-role')?.addEventListener('click',()=>{localView.modal='role';render();});
